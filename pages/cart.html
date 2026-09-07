@@ -110,9 +110,9 @@
 <body>
 
 <nav>
-  <a class="nav-logo" href="index.html">Gift<em>Genius</em></a>
+  <a class="nav-logo" href="../index.html">Gift<em>Genius</em></a>
   <ul class="nav-links">
-    <li><a href="index.html">Home</a></li>
+    <li><a href="../index.html">Home</a></li>
     <li><a href="quiz.html">Gift Quiz</a></li>
     <li><a href="cart.html" style="color:var(--rose)">🛒 Cart</a></li>
   </ul>
@@ -207,7 +207,7 @@
       <br>
       <a class="btn-track" href="track.html">📦 Track Your Order</a>
       <br><br>
-      <a href="index.html" style="font-size:0.9rem;color:var(--mid);text-decoration:none">← Continue Shopping</a>
+      <a href="../index.html" style="font-size:0.9rem;color:var(--mid);text-decoration:none">← Continue Shopping</a>
     </div>
   </div>
 
@@ -241,7 +241,7 @@
   function renderCart(){
     const list = document.getElementById('cart-items-list');
     if(!cart.length){
-      list.innerHTML = `<div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty</h3><p>Looks like you haven't added any gifts yet.</p><a class="btn-shop" href="index.html">Shop Gifts →</a></div>`;
+      list.innerHTML = `<div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty</h3><p>Looks like you haven't added any gifts yet.</p><a class="btn-shop" href="../index.html">Shop Gifts →</a></div>`;
       document.getElementById('main-cta').disabled = true;
       document.getElementById('main-cta').style.opacity = '0.5';
     } else {
