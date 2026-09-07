@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Cart & Checkout — GiftGenius</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --rose:#e8637a; --rose-light:#fce8ec; --gold:#c9a84c; --dark:#1a1a2e; --mid:#4a4a6a; --light:#f9f4f5; --white:#fff; --shadow:0 4px 24px rgba(232,99,122,0.10); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--light); color:var(--dark); }
+    nav { background:var(--white); padding:14px 32px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 12px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100; }
+    .nav-logo { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--rose); text-decoration:none; }
+    .nav-links { display:flex; gap:24px; list-style:none; }
+    .nav-links a { text-decoration:none; color:var(--mid); font-size:0.9rem; font-weight:500; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--rose); }
+
+    /* STEPS */
+    .steps-bar { background:white; padding:16px 24px; border-bottom:1px solid #eee; }
+    .steps-inner { max-width:900px; margin:0 auto; display:flex; align-items:center; justify-content:center; gap:0; }
+    .step { display:flex; align-items:center; gap:8px; font-size:0.85rem; font-weight:600; color:#bbb; }
+    .step.active { color:var(--rose); }
+    .step.done { color:#2e9e5b; }
+    .step-num { width:28px; height:28px; border-radius:50%; border:2px solid currentColor; display:flex; align-items:center; justify-content:center; font-size:0.8rem; font-weight:700; flex-shrink:0; }
+    .step-done .step-num::before { content:'✓'; }
+    .step-divider { flex:1; max-width:60px; height:2px; background:#eee; margin:0 8px; }
+
+    /* LAYOUT */
+    .page-wrap { max-width:1000px; margin:32px auto 60px; padding:0 24px; display:grid; grid-template-columns:1fr 380px; gap:28px; align-items:start; }
+
+    /* CART SECTION */
+    .cart-section { }
+    .section-title { font-family:'Playfair Display',serif; font-size:1.4rem; margin-bottom:20px; }
+
+    /* EMPTY */
+    .empty-cart { background:white; border-radius:16px; padding:56px 32px; text-align:center; box-shadow:var(--shadow); }
+    .empty-icon { font-size:3.5rem; margin-bottom:16px; }
+    .empty-cart h3 { font-family:'Playfair Display',serif; font-size:1.4rem; margin-bottom:8px; }
+    .empty-cart p { color:var(--mid); font-size:0.9rem; margin-bottom:24px; }
+    .btn-shop { display:inline-block; padding:13px 32px; background:linear-gradient(135deg,var(--rose),#c44d65); color:white; border-radius:12px; font-weight:700; font-size:0.95rem; text-decoration:none; transition:all 0.2s; }
+    .btn-shop:hover { transform:translateY(-2px); }
+
+    /* CART ITEMS */
+    .cart-item { background:white; border-radius:16px; padding:20px; display:flex; gap:16px; box-shadow:var(--shadow); margin-bottom:14px; align-items:flex-start; }
+    .item-img { width:88px; height:88px; border-radius:12px; object-fit:cover; flex-shrink:0; }
+    .item-body { flex:1; }
+    .item-name { font-weight:700; font-size:1rem; margin-bottom:4px; }
+    .item-meta { font-size:0.8rem; color:var(--mid); margin-bottom:10px; }
+    .item-price { font-size:1.1rem; font-weight:700; color:var(--rose); }
+    .item-qty-row { display:flex; align-items:center; gap:10px; margin-top:8px; }
+    .qty-btn { width:30px; height:30px; border:1.5px solid #e8e0f0; background:white; border-radius:7px; font-size:1rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+    .qty-btn:hover { border-color:var(--rose); color:var(--rose); }
+    .item-qty-num { font-weight:700; min-width:20px; text-align:center; }
+    .btn-remove { margin-left:auto; font-size:0.8rem; color:#bbb; background:none; border:none; cursor:pointer; transition:color 0.2s; }
+    .btn-remove:hover { color:var(--rose); }
+
+    /* COUPON */
+    .coupon-box { background:white; border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); margin-bottom:14px; }
+    .coupon-row { display:flex; gap:10px; }
+    .coupon-input { flex:1; padding:11px 14px; border:2px solid #e8e0f0; border-radius:10px; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.2s; }
+    .coupon-input:focus { border-color:var(--rose); }
+    .btn-apply { padding:11px 20px; background:var(--dark); color:white; border:none; border-radius:10px; font-family:'Inter',sans-serif; font-weight:600; font-size:0.85rem; cursor:pointer; transition:background 0.2s; white-space:nowrap; }
+    .btn-apply:hover { background:var(--rose); }
+    .coupon-msg { font-size:0.82rem; margin-top:8px; }
+    .coupon-msg.success { color:#2e9e5b; }
+    .coupon-msg.error { color:var(--rose); }
+
+    /* ORDER SUMMARY */
+    .summary-card { background:white; border-radius:20px; padding:28px; box-shadow:var(--shadow); position:sticky; top:90px; }
+    .summary-card h3 { font-family:'Playfair Display',serif; font-size:1.2rem; margin-bottom:20px; }
+    .summary-row { display:flex; justify-content:space-between; align-items:center; font-size:0.9rem; margin-bottom:12px; color:var(--mid); }
+    .summary-row.total { font-size:1.1rem; font-weight:700; color:var(--dark); margin-top:16px; padding-top:16px; border-top:2px solid #eee; }
+    .discount-row { color:#2e9e5b; font-weight:600; }
+    .btn-checkout { width:100%; padding:15px; background:linear-gradient(135deg,var(--rose),#c44d65); border:none; color:white; border-radius:13px; font-family:'Inter',sans-serif; font-weight:700; font-size:1rem; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(232,99,122,0.3); margin-top:20px; margin-bottom:12px; }
+    .btn-checkout:hover { transform:translateY(-2px); }
+    .safe-badge { text-align:center; font-size:0.78rem; color:var(--mid); }
+    .safe-icons { display:flex; justify-content:center; gap:12px; font-size:1.2rem; margin-bottom:4px; }
+
+    /* CHECKOUT FORM (shown in modal-like inline section) */
+    #checkout-section { display:none; }
+    .form-section { background:white; border-radius:16px; padding:28px; box-shadow:var(--shadow); margin-bottom:20px; }
+    .form-section h3 { font-size:1rem; font-weight:700; margin-bottom:18px; display:flex; align-items:center; gap:8px; }
+    .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+    .form-row.full { grid-template-columns:1fr; }
+    .form-input { padding:12px 14px; border:2px solid #e8e0f0; border-radius:10px; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.2s; width:100%; }
+    .form-input:focus { border-color:var(--rose); }
+    .form-label { font-size:0.78rem; font-weight:600; color:var(--mid); margin-bottom:5px; display:block; text-transform:uppercase; letter-spacing:0.06em; }
+
+    /* PAYMENT */
+    .pay-methods { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+    .pay-method { border:2px solid #e8e0f0; border-radius:10px; padding:12px; display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s; font-size:0.85rem; font-weight:500; }
+    .pay-method.selected { border-color:var(--rose); background:var(--rose-light); color:var(--rose); }
+    .pay-method input { accent-color:var(--rose); }
+
+    /* SUCCESS SCREEN */
+    #success-section { display:none; text-align:center; background:white; border-radius:20px; padding:56px 32px; box-shadow:var(--shadow); }
+    .success-icon { font-size:4rem; margin-bottom:16px; }
+    #success-section h2 { font-family:'Playfair Display',serif; font-size:1.8rem; margin-bottom:10px; }
+    #success-section p { color:var(--mid); margin-bottom:8px; }
+    .order-id-box { background:var(--rose-light); border:1.5px dashed var(--rose); border-radius:10px; padding:12px 20px; display:inline-block; margin:16px 0; font-weight:700; color:var(--rose); font-size:1rem; }
+    .btn-track { display:inline-block; margin-top:16px; padding:13px 32px; background:linear-gradient(135deg,var(--rose),#c44d65); color:white; border-radius:12px; font-weight:700; font-size:0.95rem; text-decoration:none; }
+
+    .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px); background:#1a1a2e; color:white; padding:14px 28px; border-radius:40px; font-size:0.9rem; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,0.2); transition:transform 0.35s ease; z-index:999; white-space:nowrap; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+    footer { text-align:center; padding:32px 24px; color:var(--mid); font-size:0.85rem; border-top:1px solid #eee; background:white; }
+
+    @media(max-width:768px){ .page-wrap { grid-template-columns:1fr; } .summary-card { position:static; } .form-row { grid-template-columns:1fr; } .pay-methods { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">Gift<em>Genius</em></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="quiz.html">Gift Quiz</a></li>
+    <li><a href="cart.html" style="color:var(--rose)">🛒 Cart</a></li>
+  </ul>
+</nav>
+
+<!-- STEPS -->
+<div class="steps-bar">
+  <div class="steps-inner">
+    <div class="step active" id="step1"><div class="step-num">1</div> Cart</div>
+    <div class="step-divider"></div>
+    <div class="step" id="step2"><div class="step-num">2</div> Delivery</div>
+    <div class="step-divider"></div>
+    <div class="step" id="step3"><div class="step-num">3</div> Payment</div>
+    <div class="step-divider"></div>
+    <div class="step" id="step4"><div class="step-num">4</div> Confirmed</div>
+  </div>
+</div>
+
+<div class="page-wrap" id="main-page">
+
+  <!-- LEFT -->
+  <div>
+    <!-- CART ITEMS -->
+    <div id="cart-section">
+      <div class="section-title" id="cart-title">Your Cart 🛒</div>
+      <div id="cart-items-list"></div>
+
+      <!-- Coupon -->
+      <div class="coupon-box">
+        <div style="font-size:0.85rem;font-weight:600;margin-bottom:10px">🎟️ Apply Coupon Code</div>
+        <div class="coupon-row">
+          <input class="coupon-input" type="text" id="coupon-inp" placeholder="Try GIFT20"/>
+          <button class="btn-apply" onclick="applyCoupon()">Apply</button>
+        </div>
+        <div class="coupon-msg" id="coupon-msg"></div>
+      </div>
+    </div>
+
+    <!-- CHECKOUT FORM -->
+    <div id="checkout-section">
+      <div class="section-title">Delivery Details 📦</div>
+      <div class="form-section">
+        <h3>📦 Shipping Address</h3>
+        <div class="form-row">
+          <div><label class="form-label">First Name</label><input class="form-input" type="text" placeholder="Shubham" id="fname"/></div>
+          <div><label class="form-label">Last Name</label><input class="form-input" type="text" placeholder="Bhavar" id="lname"/></div>
+        </div>
+        <div class="form-row full">
+          <div><label class="form-label">Email</label><input class="form-input" type="email" placeholder="shubham@email.com" id="email"/></div>
+        </div>
+        <div class="form-row full">
+          <div><label class="form-label">Phone</label><input class="form-input" type="tel" placeholder="+91 98765 43210" id="phone"/></div>
+        </div>
+        <div class="form-row full">
+          <div><label class="form-label">Address</label><input class="form-input" type="text" placeholder="Flat / House No., Street, Landmark" id="address"/></div>
+        </div>
+        <div class="form-row">
+          <div><label class="form-label">City</label><input class="form-input" type="text" placeholder="Mumbai" id="city"/></div>
+          <div><label class="form-label">Pincode</label><input class="form-input" type="text" placeholder="400001" id="pincode"/></div>
+        </div>
+        <div class="form-row full">
+          <div>
+            <label class="form-label">Delivery Option</label>
+            <select class="form-input" id="delivery-type">
+              <option value="standard">Standard Delivery (2–4 days) — Free</option>
+              <option value="express">Express Delivery (Next day) — ₹99</option>
+              <option value="same_day">Same-Day Delivery (Mumbai only) — ₹149</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <h3>💳 Payment Method</h3>
+        <div class="pay-methods">
+          <div class="pay-method selected" onclick="selectPay(this,'upi')"><input type="radio" name="pay" checked/> 📱 UPI / QR Code</div>
+          <div class="pay-method" onclick="selectPay(this,'card')"><input type="radio" name="pay"/> 💳 Credit / Debit Card</div>
+          <div class="pay-method" onclick="selectPay(this,'netbanking')"><input type="radio" name="pay"/> 🏦 Net Banking</div>
+          <div class="pay-method" onclick="selectPay(this,'cod')"><input type="radio" name="pay"/> 💰 Cash on Delivery</div>
+        </div>
+        <p style="font-size:0.8rem;color:var(--mid)">🔒 All payments are 256-bit SSL encrypted and secure.</p>
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="success-section">
+      <div class="success-icon">🎉</div>
+      <h2>Order Placed Successfully!</h2>
+      <p>Thank you! Your gift is being packed with love 💕</p>
+      <div class="order-id-box" id="order-id-box">Order ID: GG-000000</div>
+      <p style="font-size:0.85rem">You'll receive a confirmation on your email shortly.</p>
+      <br>
+      <a class="btn-track" href="track.html">📦 Track Your Order</a>
+      <br><br>
+      <a href="index.html" style="font-size:0.9rem;color:var(--mid);text-decoration:none">← Continue Shopping</a>
+    </div>
+  </div>
+
+  <!-- RIGHT: SUMMARY -->
+  <div class="summary-card" id="summary-card">
+    <h3>Order Summary</h3>
+    <div id="summary-items"></div>
+    <div class="divider" style="height:1px;background:#eee;margin:16px 0"></div>
+    <div class="summary-row"><span>Subtotal</span><span id="s-subtotal">₹0</span></div>
+    <div class="summary-row discount-row" id="s-discount-row" style="display:none"><span>Discount (GIFT20)</span><span id="s-discount">−₹0</span></div>
+    <div class="summary-row"><span>Delivery</span><span id="s-delivery">Free</span></div>
+    <div class="summary-row total"><span>Total</span><span id="s-total">₹0</span></div>
+    <button class="btn-checkout" id="main-cta" onclick="handleCTA()">Proceed to Checkout →</button>
+    <div class="safe-badge"><div class="safe-icons">💳🏦📱💰</div>Secure payments • 7-day returns</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>© 2026 GiftGenius. All rights reserved.</footer>
+
+<script>
+  // Demo cart item if localStorage empty
+  const demoItem = [{ id:'luxury-hamper', name:'Luxury Hamper Box', price:499, img:'https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg', qty:1, customName:'Happy Birthday!', customMsg:'' }];
+  let cart = JSON.parse(localStorage.getItem('gg_cart')||'null') || demoItem;
+  let discount = 0;
+  let currentStep = 1;
+  let selectedPay = 'upi';
+
+  function saveCart(){ localStorage.setItem('gg_cart', JSON.stringify(cart)); }
+
+  function renderCart(){
+    const list = document.getElementById('cart-items-list');
+    if(!cart.length){
+      list.innerHTML = `<div class="empty-cart"><div class="empty-icon">🛒</div><h3>Your cart is empty</h3><p>Looks like you haven't added any gifts yet.</p><a class="btn-shop" href="index.html">Shop Gifts →</a></div>`;
+      document.getElementById('main-cta').disabled = true;
+      document.getElementById('main-cta').style.opacity = '0.5';
+    } else {
+      list.innerHTML = cart.map((item,i)=>`
+        <div class="cart-item">
+          <img class="item-img" src="${item.img}" alt="${item.name}"/>
+          <div class="item-body">
+            <div class="item-name">${item.name}</div>
+            <div class="item-meta">${item.customName ? '✏️ '+item.customName : 'Standard gift wrapping'}</div>
+            <div class="item-price">₹${(item.price*item.qty).toLocaleString('en-IN')}</div>
+            <div class="item-qty-row">
+              <button class="qty-btn" onclick="changeQty(${i},-1)">−</button>
+              <span class="item-qty-num">${item.qty}</span>
+              <button class="qty-btn" onclick="changeQty(${i},1)">+</button>
+              <button class="btn-remove" onclick="removeItem(${i})">✕ Remove</button>
+            </div>
+          </div>
+        </div>`).join('');
+    }
+    renderSummary();
+  }
+
+  function renderSummary(){
+    const subtotal = cart.reduce((s,i)=>s+i.price*i.qty,0);
+    const total = Math.max(0, subtotal - discount);
+    document.getElementById('s-subtotal').textContent = '₹'+subtotal.toLocaleString('en-IN');
+    document.getElementById('s-total').textContent = '₹'+total.toLocaleString('en-IN');
+    if(discount>0){ document.getElementById('s-discount-row').style.display='flex'; document.getElementById('s-discount').textContent='−₹'+discount; }
+    else document.getElementById('s-discount-row').style.display='none';
+    document.getElementById('summary-items').innerHTML = cart.map(i=>`<div class="summary-row"><span style="font-size:0.82rem">${i.name} ×${i.qty}</span><span>₹${(i.price*i.qty).toLocaleString('en-IN')}</span></div>`).join('');
+  }
+
+  function changeQty(idx,d){ cart[idx].qty=Math.max(1,cart[idx].qty+d); saveCart(); renderCart(); }
+  function removeItem(idx){ cart.splice(idx,1); saveCart(); renderCart(); showToast('Item removed'); }
+
+  function applyCoupon(){
+    const code = document.getElementById('coupon-inp').value.trim().toUpperCase();
+    const msg = document.getElementById('coupon-msg');
+    if(code==='GIFT20'){ discount=Math.round(cart.reduce((s,i)=>s+i.price*i.qty,0)*0.20); msg.className='coupon-msg success'; msg.textContent='✅ 20% discount applied!'; renderSummary(); }
+    else if(code==='WELCOME'){ discount=100; msg.className='coupon-msg success'; msg.textContent='✅ ₹100 off applied!'; renderSummary(); }
+    else { msg.className='coupon-msg error'; msg.textContent='❌ Invalid coupon code. Try GIFT20'; }
+  }
+
+  function handleCTA(){
+    if(currentStep===1){
+      // Move to checkout form
+      document.getElementById('cart-section').style.display='none';
+      document.getElementById('checkout-section').style.display='block';
+      document.getElementById('main-cta').textContent='✅ Place Order';
+      document.getElementById('cart-title') && (document.getElementById('cart-title').textContent='Checkout');
+      setStep(2);
+      currentStep=2;
+    } else if(currentStep===2){
+      placeOrder();
+    }
+  }
+
+  function placeOrder(){
+    const fname=document.getElementById('fname').value.trim();
+    const email=document.getElementById('email').value.trim();
+    const phone=document.getElementById('phone').value.trim();
+    const address=document.getElementById('address').value.trim();
+    if(!fname||!email||!phone||!address){ showToast('⚠️ Please fill all required fields'); return; }
+
+    // Simulate order placement
+    const orderId = 'GG-'+Math.floor(100000+Math.random()*900000);
+    localStorage.setItem('gg_last_order', JSON.stringify({ id:orderId, name:fname, items:cart, total: cart.reduce((s,i)=>s+i.price*i.qty,0)-discount }));
+    localStorage.removeItem('gg_cart');
+
+    document.getElementById('checkout-section').style.display='none';
+    document.getElementById('success-section').style.display='block';
+    document.getElementById('summary-card').style.display='none';
+    document.getElementById('order-id-box').textContent='Order ID: '+orderId;
+    setStep(4);
+  }
+
+  function setStep(n){
+    ['step1','step2','step3','step4'].forEach((id,i)=>{
+      const el=document.getElementById(id);
+      el.className='step';
+      if(i+1<n) el.classList.add('done');
+      else if(i+1===n) el.classList.add('active');
+    });
+  }
+
+  function selectPay(el,type){ selectedPay=type; document.querySelectorAll('.pay-method').forEach(e=>e.classList.remove('selected')); el.classList.add('selected'); }
+
+  function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+
+  renderCart();
+</script>
+</body>
+</html>

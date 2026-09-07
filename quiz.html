@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Gift Quiz — GiftGenius</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Outfit:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    /* ── Design tokens — exact copy from homepage styles.css ── */
+    :root {
+      --cream:       #E6F7FA;
+      --cream-dark:  #D0EFF5;
+      --parchment:   #C5E8F0;
+      --gold:        #B8791A;
+      --gold-light:  #D4AF37;
+      --gold-pale:   #FDF5E8;
+      --gold-dim:    rgba(212,175,55,0.12);
+      --ink:         #0F2225;
+      --charcoal:    #1A3035;
+      --warm-mid:    #3A5A60;
+      --warm-light:  #6A8A90;
+      --border:      rgba(110,198,207,0.35);
+      --border-soft: #B0DDE6;
+      --white:       #FFFFFF;
+      --danger:      #B83232;
+      --success:     #1A7A5E;
+      --teal:        #6EC6CF;
+      --teal-dark:   #3A8F98;
+      --teal-pale:   rgba(110,198,207,0.12);
+      --orange-acc:  #FFA726;
+      --font-serif:  'Cormorant Garamond', Georgia, serif;
+      --font-sans:   'Outfit', sans-serif;
+      --font-mono:   'DM Mono', monospace;
+      --radius:      14px;
+      --radius-sm:   8px;
+      --radius-xs:   5px;
+      --shadow-sm:   0 2px 16px rgba(26,22,18,0.07);
+      --shadow-md:   0 8px 36px rgba(26,22,18,0.12);
+      --trans:       0.28s cubic-bezier(.4,0,.2,1);
+      --bg:          var(--cream);
+      --surface:     var(--white);
+      --text:        var(--ink);
+      --text-muted:  var(--warm-mid);
+      --header-bg:   rgba(230,247,250,0.95);
+    }
+    [data-theme="dark"] {
+      --bg:          #0F1A1C;
+      --cream:       #e6f7fa;
+      --cream-dark:  #162428;
+      --parchment:   #1E2A2D;
+      --surface:     #1E2A2D;
+      --white:       #1E2A2D;
+      --text:        #F5F5F5;
+      --ink:         #F5F5F5;
+      --text-muted:  #8AABB0;
+      --warm-mid:    #8AABB0;
+      --charcoal:    #243035;
+      --border-soft: #263840;
+      --border:      rgba(110,198,207,0.25);
+      --gold-pale:   rgba(212,175,55,0.1);
+      --teal:        #4FB3BF;
+      --teal-pale:   rgba(79,179,191,0.12);
+      --header-bg:   rgba(15,26,28,0.97);
+      --shadow-sm:   0 2px 16px rgba(0,0,0,0.4);
+      --shadow-md:   0 8px 36px rgba(0,0,0,0.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-sans); background: var(--bg); color: var(--text); font-size: 15px; line-height: 1.65; transition: background 0.3s, color 0.3s; }
+    img { display: block; max-width: 100%; }
+    ul { list-style: none; }
+    button { font-family: var(--font-sans); cursor: pointer; }
+
+    /* ── HEADER — matches homepage exactly ── */
+    .site-header {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--header-bg);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-soft);
+      padding: 0 5%;
+      height: 68px;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      transition: background 0.3s;
+    }
+    .logo {
+      font-family: var(--font-serif);
+      font-size: 24px; font-weight: 700;
+      color: var(--text); text-decoration: none;
+      display: flex; align-items: center; gap: 9px;
+      letter-spacing: -0.01em;
+    }
+    .logo-mark {
+      width: 32px; height: 32px;
+      background: var(--ink); border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    [data-theme="dark"] .logo-mark { background: var(--parchment); }
+    .logo em { font-style: italic; color: var(--gold); }
+    .header-nav { display: flex; align-items: center; gap: 24px; }
+    .header-nav a {
+      font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); text-decoration: none;
+      letter-spacing: 0.01em;
+      transition: color var(--trans);
+    }
+    .header-nav a:hover { color: var(--gold); }
+    .header-nav a.active { color: var(--text); font-weight: 600; }
+    .theme-btn {
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--border-soft);
+      background: transparent; font-size: 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: var(--trans); color: var(--text);
+    }
+    .theme-btn:hover { border-color: var(--gold); background: var(--gold-dim); }
+
+    /* ── PAGE HERO — matches homepage eyebrow pattern ── */
+    .quiz-hero {
+      background: var(--charcoal);
+      padding: 56px 5% 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .quiz-hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(110,198,207,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .quiz-eyebrow {
+      display: inline-flex; align-items: center; gap: 10px;
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.15em;
+      color: var(--gold-light); text-transform: uppercase;
+      margin-bottom: 18px;
+    }
+    .eyebrow-line { width: 28px; height: 1px; background: var(--gold-light); opacity: 0.6; }
+    .quiz-hero h1 {
+      font-family: var(--font-serif);
+      font-size: clamp(2.2rem, 5vw, 3.4rem);
+      font-weight: 600; line-height: 1.1;
+      letter-spacing: -0.02em;
+      color: var(--cream); margin-bottom: 14px;
+    }
+    .quiz-hero h1 em { font-style: italic; color: var(--gold-light); }
+    .quiz-hero p {
+      font-size: 15px; color: rgba(230,247,250,0.65);
+      max-width: 460px; margin: 0 auto;
+      font-weight: 300;
+    }
+
+    /* ── PROGRESS ── */
+    .progress-wrap {
+      max-width: 720px; margin: 0 auto;
+      padding: 32px 24px 0;
+    }
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 10px;
+    }
+    .progress-label {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.08em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .progress-step {
+      font-family: var(--font-mono);
+      font-size: 11px; letter-spacing: 0.08em;
+      color: var(--gold); font-weight: 500;
+    }
+    .progress-bar {
+      background: var(--border-soft);
+      border-radius: 99px; height: 4px; overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--teal-dark), var(--gold-light));
+      border-radius: 99px;
+      transition: width 0.4s var(--trans);
+    }
+
+    /* ── QUIZ CONTAINER ── */
+    .quiz-container { max-width: 720px; margin: 28px auto 64px; padding: 0 24px; }
+
+    .question-card {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 40px 44px;
+      box-shadow: var(--shadow-sm);
+      display: none;
+      animation: qFadeIn 0.32s ease;
+    }
+    .question-card.active { display: block; }
+    @keyframes qFadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+    .q-number {
+      font-family: var(--font-mono);
+      font-size: 10.5px; font-weight: 500;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 10px;
+    }
+    .q-text {
+      font-family: var(--font-serif);
+      font-size: 1.55rem; font-weight: 600;
+      letter-spacing: -0.01em;
+      color: var(--text); margin-bottom: 28px; line-height: 1.3;
+    }
+
+    /* ── OPTION BUTTONS ── */
+    .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .option-btn {
+      border: 1.5px solid var(--border-soft);
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      text-align: left; cursor: pointer;
+      font-family: var(--font-sans);
+      font-size: 13.5px; color: var(--text);
+      font-weight: 400;
+      transition: all var(--trans);
+      display: flex; align-items: center; gap: 10px;
+      line-height: 1.3;
+    }
+    .opt-icon { font-size: 1.25rem; flex-shrink: 0; }
+    .option-btn:hover {
+      border-color: var(--teal);
+      background: var(--teal-pale);
+      color: var(--teal-dark);
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-sm);
+    }
+    [data-theme="dark"] .option-btn:hover { color: var(--teal); }
+    .option-btn.selected {
+      border-color: var(--gold);
+      background: var(--gold-dim);
+      color: var(--gold);
+      font-weight: 500;
+      box-shadow: 0 0 0 1px var(--gold);
+    }
+    [data-theme="dark"] .option-btn.selected { color: var(--gold-light); }
+
+    /* ── TEXTAREA ── */
+    .text-input {
+      width: 100%;
+      padding: 14px 18px;
+      border: 1.5px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      font-family: var(--font-sans);
+      font-size: 14px; color: var(--text);
+      outline: none; resize: vertical;
+      transition: border-color var(--trans);
+      line-height: 1.6;
+    }
+    .text-input:focus { border-color: var(--teal); }
+    .text-input::placeholder { color: var(--text-muted); }
+
+    /* ── NAV BUTTONS ── */
+    .nav-btns { display: flex; gap: 10px; margin-top: 28px; justify-content: flex-end; }
+    .btn-back {
+      padding: 11px 22px;
+      border: 1.5px solid var(--border-soft);
+      background: transparent;
+      border-radius: var(--radius-xs);
+      font-size: 13.5px; font-weight: 500;
+      color: var(--text-muted); cursor: pointer;
+      transition: all var(--trans);
+    }
+    .btn-back:hover { border-color: var(--text-muted); color: var(--text); }
+    .btn-next {
+      padding: 11px 26px;
+      background: var(--ink);
+      color: var(--cream);
+      border: none;
+      border-radius: var(--radius-xs);
+      font-size: 13.5px; font-weight: 500;
+      letter-spacing: 0.01em;
+      cursor: pointer;
+      transition: all var(--trans);
+    }
+    .btn-next:hover {
+      background: var(--gold);
+      color: var(--ink);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(184,121,26,0.3);
+    }
+    .btn-next:disabled {
+      opacity: 0.35; cursor: not-allowed;
+      transform: none; box-shadow: none;
+      background: var(--ink);
+      color: var(--cream);
+    }
+
+    /* ── RESULT SECTION ── */
+    #result-section { display: none; }
+
+    .result-header {
+      text-align: center;
+      padding: 36px 24px 24px;
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 20px;
+    }
+    .result-header h2 {
+      font-family: var(--font-serif);
+      font-size: 1.9rem; font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--text); margin-bottom: 8px;
+    }
+    .result-header p { color: var(--text-muted); font-size: 14px; }
+    .result-header p strong { color: var(--teal-dark); font-weight: 600; }
+    [data-theme="dark"] .result-header p strong { color: var(--teal); }
+
+    /* thinking state */
+    .thinking-box {
+      background: var(--surface);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius);
+      padding: 40px 24px;
+      box-shadow: var(--shadow-sm);
+      text-align: center; margin-bottom: 20px;
+    }
+    .thinking-dots { display: flex; gap: 8px; justify-content: center; margin-bottom: 16px; }
+    .thinking-dots span {
+      width: 10px; height: 10px; border-radius: 50%;
+      background: var(--teal);
+      animation: qdot 0.8s infinite;
+    }
+    .thinking-dots span:nth-child(2) { animation-delay: 0.15s; background: var(--gold-light); }
+    .thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes qdot { 0%,80%,100%{transform:scale(0.75);opacity:0.4} 40%{transform:scale(1.2);opacity:1} }
+    .thinking-box p { color: var(--text-muted); font-size: 14px; font-family: var(--font-mono); letter-spacing: 0.06em; }
+
+    /* ── RESULT CARDS GRID ── */
+    .results-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px; margin-bottom: 20px;
+    }
+    @media(max-width:540px){ .results-grid { grid-template-columns: 1fr; } }
+
+    .result-pcard {
+      background: var(--surface);
+      border: 1.5px solid var(--border-soft);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      display: flex; flex-direction: column;
+      transition: transform var(--trans), box-shadow var(--trans), border-color var(--trans);
+      animation: qFadeIn 0.4s ease both;
+    }
+    .result-pcard:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--teal);
+    }
+    [data-theme="dark"] .result-pcard:hover { border-color: var(--teal); }
+    .result-pcard:nth-child(1){ animation-delay:0.05s; }
+    .result-pcard:nth-child(2){ animation-delay:0.12s; }
+    .result-pcard:nth-child(3){ animation-delay:0.20s; }
+    .result-pcard:nth-child(4){ animation-delay:0.28s; }
+
+    .rpc-img-wrap { position: relative; }
+    .rpc-img {
+      width: 100%; height: 150px;
+      object-fit: cover; display: block;
+      background: var(--cream-dark);
+    }
+    .rpc-discount {
+      position: absolute; top: 10px; left: 10px;
+      background: linear-gradient(135deg, var(--gold), var(--gold-light));
+      color: var(--ink);
+      font-family: var(--font-mono);
+      font-size: 9.5px; font-weight: 500;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    [data-theme="dark"] .rpc-discount { color: #0F1A1C; }
+
+    .rpc-body { padding: 13px 14px 14px; display: flex; flex-direction: column; flex: 1; }
+    .rpc-cat {
+      font-family: var(--font-mono);
+      font-size: 9.5px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--teal-dark); margin-bottom: 4px;
+    }
+    [data-theme="dark"] .rpc-cat { color: var(--teal); }
+    .rpc-name {
+      font-family: var(--font-serif);
+      font-size: 1rem; font-weight: 600;
+      color: var(--text); margin-bottom: 5px; line-height: 1.3;
+    }
+    .rpc-desc {
+      font-size: 12px; color: var(--text-muted);
+      line-height: 1.5; margin-bottom: 8px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      flex: 1;
+    }
+    .rpc-reason {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-family: var(--font-mono);
+      font-size: 9px; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.06em;
+      color: var(--teal-dark);
+      background: var(--teal-pale);
+      border: 1px solid rgba(110,198,207,0.25);
+      padding: 3px 9px; border-radius: 20px;
+      margin-bottom: 10px; width: fit-content;
+    }
+    [data-theme="dark"] .rpc-reason { color: var(--teal); background: rgba(79,179,191,0.12); }
+    .rpc-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: auto; }
+    .rpc-prices { display: flex; flex-direction: column; }
+    .rpc-og { font-size: 11px; color: var(--text-muted); text-decoration: line-through; font-family: var(--font-mono); }
+    .rpc-now { font-family: var(--font-serif); font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    .rpc-add {
+      padding: 8px 14px;
+      background: var(--ink); color: var(--cream);
+      border: none; border-radius: var(--radius-xs);
+      font-size: 12.5px; font-weight: 500;
+      cursor: pointer; white-space: nowrap;
+      transition: all var(--trans); flex-shrink: 0;
+    }
+    .rpc-add:hover {
+      background: var(--gold); color: var(--ink);
+      transform: scale(1.04);
+      box-shadow: 0 4px 14px rgba(184,121,26,0.3);
+    }
+    [data-theme="dark"] .rpc-add { background: var(--teal-dark); }
+    [data-theme="dark"] .rpc-add:hover { background: var(--gold-light); color: #0F1A1C; }
+    .rpc-add:disabled {
+      background: var(--border-soft); color: var(--text-muted);
+      cursor: default; transform: none; box-shadow: none;
+    }
+
+    /* no results */
+    .no-results-box {
+      background: var(--surface); border: 1px solid var(--border-soft);
+      border-radius: var(--radius); padding: 36px;
+      text-align: center; box-shadow: var(--shadow-sm); margin-bottom: 20px;
+    }
+    .no-results-box h3 { font-family: var(--font-serif); font-size: 1.3rem; margin-bottom: 8px; color: var(--text); }
+    .no-results-box p { color: var(--text-muted); font-size: 13.5px; }
+
+    /* action buttons */
+    .result-actions { display: flex; flex-direction: column; gap: 10px; }
+    .shop-btn {
+      width: 100%; padding: 14px;
+      background: var(--ink); color: var(--cream);
+      border: none; border-radius: var(--radius-xs);
+      font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all var(--trans);
+      letter-spacing: 0.01em;
+    }
+    .shop-btn:hover { background: var(--gold); color: var(--ink); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(184,121,26,0.3); }
+    [data-theme="dark"] .shop-btn { background: var(--teal-dark); }
+    [data-theme="dark"] .shop-btn:hover { background: var(--gold-light); color: #0F1A1C; }
+    .restart-btn {
+      width: 100%; padding: 13px;
+      background: transparent;
+      border: 1.5px solid var(--border-soft);
+      color: var(--text-muted);
+      border-radius: var(--radius-xs);
+      font-size: 13.5px; font-weight: 500;
+      cursor: pointer; transition: all var(--trans);
+    }
+    .restart-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-dim); }
+
+    /* toast */
+    .quiz-toast {
+      position: fixed; bottom: 28px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: var(--charcoal); color: var(--cream);
+      padding: 12px 24px; border-radius: 40px;
+      font-size: 13.5px; font-weight: 500;
+      box-shadow: var(--shadow-md); z-index: 999;
+      opacity: 0; transition: all 0.35s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap; border: 1px solid var(--border-soft);
+    }
+    .quiz-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* footer */
+    footer {
+      text-align: center; padding: 32px 24px;
+      color: var(--text-muted); font-size: 13px;
+      border-top: 1px solid var(--border-soft);
+      background: var(--surface);
+      font-family: var(--font-mono); letter-spacing: 0.03em;
+    }
+
+    @media(max-width:600px){
+      .question-card { padding: 24px 20px; }
+      .options-grid { grid-template-columns: 1fr; }
+      .quiz-hero { padding: 40px 24px 32px; }
+      .header-nav a:not(.active) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ── -->
+<header class="site-header">
+  <a class="logo" href="index.html">
+    <div class="logo-mark">🎁</div>
+    Gift<em>Genius</em>
+  </a>
+  <nav class="header-nav">
+    <a href="index.html">Home</a>
+    <a href="quiz.html" class="active">Gift Quiz</a>
+    <a href="cart.html">Cart</a>
+    <button class="theme-btn" id="themeBtn" title="Toggle theme" aria-label="Toggle dark mode">🌙</button>
+  </nav>
+</header>
+
+<!-- ── HERO ── -->
+<section class="quiz-hero">
+  <div class="quiz-eyebrow">
+    <span class="eyebrow-line"></span>
+    Smart Recommendations
+    <span class="eyebrow-line"></span>
+  </div>
+  <h1>Find the <em>Perfect Gift</em><br>in 60 Seconds</h1>
+  <p>Answer a few quick questions and GiftGenius will match the best gifts from our curated catalog.</p>
+</section>
+
+<!-- ── PROGRESS ── -->
+<div class="progress-wrap">
+  <div class="progress-header">
+    <span class="progress-label" id="progress-label">Let's find the perfect gift</span>
+    <span class="progress-step" id="step-counter">01 / 06</span>
+  </div>
+  <div class="progress-bar">
+    <div class="progress-fill" id="progress-fill" style="width:16%"></div>
+  </div>
+</div>
+
+<!-- ── QUIZ ── -->
+<div class="quiz-container">
+
+  <!-- Q1: Recipient -->
+  <div class="question-card active" id="q1">
+    <div class="q-number">Question 01</div>
+    <div class="q-text">Who are you gifting? 🎁</div>
+    <div class="options-grid">
+      <button class="option-btn" onclick="selectOption(this,'recipient','parent')"><span class="opt-icon">👨‍👩‍👧</span> Mom / Dad</button>
+      <button class="option-btn" onclick="selectOption(this,'recipient','partner')"><span class="opt-icon">💑</span> Partner / Spouse</button>
+      <button class="option-btn" onclick="selectOption(this,'recipient','friend')"><span class="opt-icon">🤝</span> Best Friend</button>
+      <button class="option-btn" onclick="selectOption(this,'recipient','sibling')"><span class="opt-icon">👫</span> Sibling</button>
+      <button class="option-btn" onclick="selectOption(this,'recipient','colleague')"><span class="opt-icon">💼</span> Colleague / Boss</button>
+      <button class="option-btn" onclick="selectOption(this,'recipient','friend')"><span class="opt-icon">👶</span> Child / Baby</button>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-next" id="next1" onclick="nextQ(2)" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Q2: Occasion -->
+  <div class="question-card" id="q2">
+    <div class="q-number">Question 02</div>
+    <div class="q-text">What's the occasion? 🎉</div>
+    <div class="options-grid">
+      <button class="option-btn" onclick="selectOption(this,'occasion','birthday')"><span class="opt-icon">🎂</span> Birthday</button>
+      <button class="option-btn" onclick="selectOption(this,'occasion','anniversary')"><span class="opt-icon">💍</span> Anniversary</button>
+      <button class="option-btn" onclick="selectOption(this,'occasion','festival')"><span class="opt-icon">🪔</span> Festival / Diwali</button>
+      <button class="option-btn" onclick="selectOption(this,'occasion','anniversary')"><span class="opt-icon">💒</span> Wedding</button>
+      <button class="option-btn" onclick="selectOption(this,'occasion','graduation')"><span class="opt-icon">🎓</span> Graduation</button>
+      <button class="option-btn" onclick="selectOption(this,'occasion','birthday')"><span class="opt-icon">💌</span> Just Because</button>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevQ(1)">← Back</button>
+      <button class="btn-next" id="next2" onclick="nextQ(3)" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Q3: Interest -->
+  <div class="question-card" id="q3">
+    <div class="q-number">Question 03</div>
+    <div class="q-text">What are their interests? 🌟</div>
+    <div class="options-grid">
+      <button class="option-btn" onclick="selectOption(this,'interest','accessories')"><span class="opt-icon">👗</span> Fashion & Style</button>
+      <button class="option-btn" onclick="selectOption(this,'interest','food & sweets')"><span class="opt-icon">🍫</span> Food & Sweets</button>
+      <button class="option-btn" onclick="selectOption(this,'interest','personalized')"><span class="opt-icon">✍️</span> Books & Learning</button>
+      <button class="option-btn" onclick="selectOption(this,'interest','cultural')"><span class="opt-icon">🎨</span> Art & Culture</button>
+      <button class="option-btn" onclick="selectOption(this,'interest','accessories')"><span class="opt-icon">💻</span> Tech & Gadgets</button>
+      <button class="option-btn" onclick="selectOption(this,'interest','wellness')"><span class="opt-icon">🧘</span> Wellness & Self-Care</button>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevQ(2)">← Back</button>
+      <button class="btn-next" id="next3" onclick="nextQ(4)" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Q4: Personality -->
+  <div class="question-card" id="q4">
+    <div class="q-number">Question 04</div>
+    <div class="q-text">What's their vibe? ✨</div>
+    <div class="options-grid">
+      <button class="option-btn" onclick="selectOption(this,'personality','minimalist')"><span class="opt-icon">🤍</span> Minimalist & Elegant</button>
+      <button class="option-btn" onclick="selectOption(this,'personality','creative')"><span class="opt-icon">🎨</span> Fun & Quirky</button>
+      <button class="option-btn" onclick="selectOption(this,'personality','expressive')"><span class="opt-icon">💎</span> Luxury & Premium</button>
+      <button class="option-btn" onclick="selectOption(this,'personality','practical')"><span class="opt-icon">🌿</span> Eco & Conscious</button>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevQ(3)">← Back</button>
+      <button class="btn-next" id="next4" onclick="nextQ(5)" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Q5: Budget -->
+  <div class="question-card" id="q5">
+    <div class="q-number">Question 05</div>
+    <div class="q-text">What's your budget? 💰</div>
+    <div class="options-grid">
+      <button class="option-btn" onclick="selectOption(this,'budget',500)"><span class="opt-icon">🪙</span> Under ₹500</button>
+      <button class="option-btn" onclick="selectOption(this,'budget',1500)"><span class="opt-icon">💵</span> ₹500 – ₹1,500</button>
+      <button class="option-btn" onclick="selectOption(this,'budget',5000)"><span class="opt-icon">💳</span> ₹1,500 – ₹5,000</button>
+      <button class="option-btn" onclick="selectOption(this,'budget',9999)"><span class="opt-icon">💎</span> ₹5,000+</button>
+    </div>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevQ(4)">← Back</button>
+      <button class="btn-next" id="next5" onclick="nextQ(6)" disabled>Next →</button>
+    </div>
+  </div>
+
+  <!-- Q6: Extra details -->
+  <div class="question-card" id="q6">
+    <div class="q-number">Question 06</div>
+    <div class="q-text">Any extra details? <span style="font-size:0.9rem;font-weight:400;color:var(--text-muted)">(optional)</span></div>
+    <textarea class="text-input" id="extra-details" rows="4"
+      placeholder="e.g. She loves coffee, hates jewellery, recently started yoga…"
+      oninput="answers.extra=this.value"></textarea>
+    <div class="nav-btns">
+      <button class="btn-back" onclick="prevQ(5)">← Back</button>
+      <button class="btn-next" onclick="showResults()">✨ Find My Gifts</button>
+    </div>
+  </div>
+
+  <!-- ── RESULT SECTION ── -->
+  <div id="result-section">
+    <div class="result-header">
+      <div style="font-size:2.2rem;margin-bottom:14px">🎁</div>
+      <h2>Your Gift Matches</h2>
+      <p id="result-subtitle">Matched from our curated catalog</p>
+    </div>
+
+    <div class="thinking-box" id="thinking-box">
+      <div class="thinking-dots"><span></span><span></span><span></span></div>
+      <p>Scoring your matches…</p>
+    </div>
+
+    <div class="results-grid" id="results-grid" style="display:none"></div>
+
+    <div class="no-results-box" id="no-results-box" style="display:none">
+      <h3>No exact matches found</h3>
+      <p>Try increasing your budget or choosing a different occasion. We're always adding new products!</p>
+    </div>
+
+    <div class="result-actions">
+      <button class="shop-btn" onclick="window.location.href='index.html'">🛍️ Browse All Gifts →</button>
+      <button class="restart-btn" onclick="restartQuiz()">↺ Take Quiz Again</button>
+    </div>
+  </div>
+
+</div><!-- /quiz-container -->
+
+<div class="quiz-toast" id="quizToast"></div>
+
+<footer>© 2026 GiftGenius · Crafted for thoughtful gifters</footer>
+
+<!-- Load product catalog FIRST -->
+<script src="products.js"></script>
+
+<script>
+  /* ── Dark mode (syncs with homepage localStorage key) ── */
+  const savedTheme = localStorage.getItem('gg_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const themeBtn = document.getElementById('themeBtn');
+  themeBtn.textContent = savedTheme === 'dark' ? '☀️' : '🌙';
+  themeBtn.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('gg_theme', next);
+    themeBtn.textContent = next === 'dark' ? '☀️' : '🌙';
+  });
+
+  /* ── State ── */
+  const answers = { recipient:'', occasion:'', interest:'', personality:'', budget:0, extra:'' };
+  const totalQ = 6;
+
+  /* ── Quiz navigation ── */
+  function selectOption(el, key, value) {
+    answers[key] = value;
+    el.closest('.options-grid').querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    const qNum = el.closest('.question-card').id.replace('q','');
+    const nextBtn = document.getElementById('next' + qNum);
+    if (nextBtn) nextBtn.disabled = false;
+  }
+
+  function nextQ(num) {
+    document.querySelector('.question-card.active').classList.remove('active');
+    document.getElementById('q' + num).classList.add('active');
+    updateProgress(num);
+  }
+
+  function prevQ(num) {
+    document.querySelector('.question-card.active').classList.remove('active');
+    document.getElementById('q' + num).classList.add('active');
+    updateProgress(num);
+  }
+
+  function updateProgress(num) {
+    const pct = Math.round((num / totalQ) * 100);
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('step-counter').textContent = String(num).padStart(2,'0') + ' / ' + String(totalQ).padStart(2,'0');
+    const labels = ['','Who are you gifting?','What occasion?','Their interests?','Their vibe?','Your budget?','Any extra details?'];
+    document.getElementById('progress-label').textContent = labels[num] || '';
+  }
+
+  /* ── SCORING ENGINE ── */
+  function scoreProducts() {
+    return PRODUCTS.map(p => {
+      let score = 0;
+      const reasons = [];
+      if (answers.occasion && p.occasion.includes(answers.occasion)) { score += 30; reasons.push('Perfect for ' + answers.occasion); }
+      if (answers.budget > 0 && p.price <= answers.budget) {
+        score += 25;
+        if (p.price <= answers.budget * 0.8) { score += 10; reasons.push('Within your budget'); }
+      } else if (answers.budget > 0) { score -= 40; }
+      if (answers.recipient && p.relationship && p.relationship.includes(answers.recipient)) { score += 20; reasons.push('Great for a ' + answers.recipient); }
+      if (answers.interest && p.category === answers.interest) { score += 15; reasons.push('Matches their interest'); }
+      if (answers.personality && p.personality && p.personality.includes(answers.personality)) { score += 10; reasons.push('Matches their vibe'); }
+      score += Math.min((p.rating - 4.0) * 10, 10);
+      return { product: p, score, reasons };
+    })
+    .filter(r => r.score > 0)
+    .sort((a,b) => b.score - a.score)
+    .slice(0,4);
+  }
+
+  function getFallback() {
+    return [...PRODUCTS].sort((a,b) => b.rating - a.rating).slice(0,4)
+      .map(p => ({ product:p, score:0, reasons:['Top rated gift'] }));
+  }
+
+  /* ── Build one result card ── */
+  function buildResultCard(r) {
+    const p = r.product;
+    const reason = r.reasons[0] || 'Recommended for you';
+    const discount = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
+    return `
+      <div class="result-pcard">
+        <div class="rpc-img-wrap">
+          <img class="rpc-img" src="${p.image}" alt="${p.alt}" loading="lazy">
+          ${discount > 0 ? `<span class="rpc-discount">${discount}% off</span>` : ''}
+        </div>
+        <div class="rpc-body">
+          <p class="rpc-cat">${p.category}</p>
+          <h3 class="rpc-name">${p.name}</h3>
+          <p class="rpc-desc">${p.description}</p>
+          <span class="rpc-reason">✨ ${reason}</span>
+          <div class="rpc-foot">
+            <div class="rpc-prices">
+              <span class="rpc-og">₹${p.originalPrice.toLocaleString('en-IN')}</span>
+              <span class="rpc-now">₹${p.price.toLocaleString('en-IN')}</span>
+            </div>
+            <button class="rpc-add" onclick="addToCart(this,'${p.name.replace(/'/g,"\\'")}',${p.price},'${p.image}',${p.id})">+ Add</button>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  /* ── Cart (same localStorage key as homepage) ── */
+  function addToCart(btn, name, price, img, id) {
+    let cart = JSON.parse(localStorage.getItem('gg_cart') || '[]');
+    const existing = cart.find(i => i.id === id);
+    if (existing) { existing.qty = (existing.qty||1) + 1; }
+    else { cart.push({ id, name, price, img, qty:1 }); }
+    localStorage.setItem('gg_cart', JSON.stringify(cart));
+    btn.textContent = '✓ Added';
+    btn.disabled = true;
+    showToast(name + ' added to cart!');
+  }
+
+  function showToast(msg) {
+    const t = document.getElementById('quizToast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2800);
+  }
+
+  /* ── Show results ── */
+  function showResults() {
+    document.querySelector('.question-card.active')?.classList.remove('active');
+    document.getElementById('result-section').style.display = 'block';
+    document.getElementById('progress-fill').style.width = '100%';
+    document.getElementById('step-counter').textContent = '✓ Done';
+    document.getElementById('progress-label').textContent = 'Here are your matches';
+    window.scrollTo({ top: 0, behavior:'smooth' });
+
+    setTimeout(() => {
+      let results = scoreProducts();
+      if (results.length === 0) results = getFallback();
+
+      document.getElementById('thinking-box').style.display = 'none';
+      const grid = document.getElementById('results-grid');
+
+      if (results.length > 0) {
+        grid.innerHTML = results.map(buildResultCard).join('');
+        grid.style.display = 'grid';
+        const rl = { parent:'Mom / Dad', partner:'Partner', friend:'Friend', sibling:'Sibling', colleague:'Colleague' };
+        const recLabel = rl[answers.recipient] || 'your loved one';
+        document.getElementById('result-subtitle').innerHTML =
+          `<strong>${results.length} gifts</strong> matched for ${recLabel}` +
+          (answers.occasion ? ` · ${answers.occasion.charAt(0).toUpperCase()+answers.occasion.slice(1)}` : '') +
+          (answers.budget ? ` · Budget ₹${Number(answers.budget).toLocaleString('en-IN')}` : '');
+      } else {
+        document.getElementById('no-results-box').style.display = 'block';
+      }
+    }, 1200);
+  }
+
+  /* ── Restart ── */
+  function restartQuiz() {
+    Object.keys(answers).forEach(k => answers[k] = k === 'budget' ? 0 : '');
+    document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+    document.querySelectorAll('.btn-next[id]').forEach(b => b.disabled = true);
+    document.getElementById('extra-details').value = '';
+    document.getElementById('result-section').style.display = 'none';
+    document.getElementById('thinking-box').style.display = 'block';
+    document.getElementById('results-grid').style.display = 'none';
+    document.getElementById('results-grid').innerHTML = '';
+    document.getElementById('no-results-box').style.display = 'none';
+    document.getElementById('q1').classList.add('active');
+    updateProgress(1);
+    window.scrollTo({ top:0, behavior:'smooth' });
+  }
+</script>
+</body>
+</html>

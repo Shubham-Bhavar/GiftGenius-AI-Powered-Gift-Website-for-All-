@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Track Order — GiftGenius</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root { --rose:#e8637a; --rose-light:#fce8ec; --gold:#c9a84c; --dark:#1a1a2e; --mid:#4a4a6a; --light:#f9f4f5; --white:#fff; --shadow:0 4px 24px rgba(232,99,122,0.10); }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--light); color:var(--dark); }
+    nav { background:var(--white); padding:14px 32px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 12px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100; }
+    .nav-logo { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--rose); text-decoration:none; }
+    .nav-links { display:flex; gap:24px; list-style:none; }
+    .nav-links a { text-decoration:none; color:var(--mid); font-size:0.9rem; font-weight:500; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--rose); }
+
+    .hero { background:linear-gradient(135deg,#1a1a2e 0%,#2d1b4e 60%,#1a1a2e 100%); color:white; text-align:center; padding:48px 24px; }
+    .hero h1 { font-family:'Playfair Display',serif; font-size:clamp(1.8rem,4vw,2.6rem); margin-bottom:10px; }
+    .hero h1 span { color:var(--rose); }
+    .hero p { color:rgba(255,255,255,0.7); font-size:0.95rem; }
+
+    .page-wrap { max-width:800px; margin:36px auto 60px; padding:0 24px; }
+
+    /* SEARCH BOX */
+    .search-card { background:white; border-radius:20px; padding:32px; box-shadow:var(--shadow); margin-bottom:28px; }
+    .search-card h3 { font-family:'Playfair Display',serif; font-size:1.2rem; margin-bottom:18px; }
+    .search-row { display:flex; gap:10px; }
+    .search-input { flex:1; padding:13px 16px; border:2px solid #e8e0f0; border-radius:12px; font-family:'Inter',sans-serif; font-size:0.95rem; outline:none; transition:border-color 0.2s; }
+    .search-input:focus { border-color:var(--rose); }
+    .btn-track { padding:13px 24px; background:linear-gradient(135deg,var(--rose),#c44d65); border:none; color:white; border-radius:12px; font-family:'Inter',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 14px rgba(232,99,122,0.3); white-space:nowrap; }
+    .btn-track:hover { transform:translateY(-2px); }
+    .error-msg { color:var(--rose); font-size:0.85rem; margin-top:10px; }
+
+    /* RESULT HIDDEN BY DEFAULT */
+    #track-result { display:none; }
+
+    /* ORDER HEADER */
+    .order-header { background:white; border-radius:20px; padding:28px; box-shadow:var(--shadow); margin-bottom:20px; display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; }
+    .order-id-label { font-size:0.75rem; font-weight:700; color:var(--mid); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:4px; }
+    .order-id-val { font-size:1.2rem; font-weight:800; color:var(--dark); }
+    .status-pill { padding:7px 18px; border-radius:30px; font-size:0.85rem; font-weight:700; }
+    .status-pill.in-transit { background:#fff3e0; color:#e65100; }
+    .status-pill.delivered { background:#e6f7ee; color:#2e9e5b; }
+    .status-pill.processing { background:var(--rose-light); color:var(--rose); }
+
+    /* TIMELINE */
+    .timeline-card { background:white; border-radius:20px; padding:32px; box-shadow:var(--shadow); margin-bottom:20px; }
+    .timeline-card h3 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:24px; }
+    .timeline { position:relative; padding-left:32px; }
+    .timeline::before { content:''; position:absolute; left:11px; top:8px; bottom:8px; width:2px; background:#e8e0f0; }
+    .t-item { position:relative; margin-bottom:28px; }
+    .t-item:last-child { margin-bottom:0; }
+    .t-dot { position:absolute; left:-32px; width:24px; height:24px; border-radius:50%; border:3px solid #e8e0f0; background:white; display:flex; align-items:center; justify-content:center; font-size:0.7rem; transition:all 0.3s; }
+    .t-item.done .t-dot { border-color:var(--rose); background:var(--rose); color:white; }
+    .t-item.active .t-dot { border-color:var(--gold); background:var(--gold); color:white; animation:pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,168,76,0.4)} 50%{box-shadow:0 0 0 8px rgba(201,168,76,0)} }
+    .t-title { font-weight:700; font-size:0.95rem; margin-bottom:3px; }
+    .t-item.done .t-title { color:var(--dark); }
+    .t-item.active .t-title { color:var(--gold); }
+    .t-item:not(.done):not(.active) .t-title { color:#bbb; }
+    .t-desc { font-size:0.82rem; color:var(--mid); }
+    .t-time { font-size:0.78rem; color:#bbb; margin-top:2px; }
+
+    /* MAP PLACEHOLDER */
+    .map-card { background:white; border-radius:20px; overflow:hidden; box-shadow:var(--shadow); margin-bottom:20px; }
+    .map-header { padding:20px 24px 0; }
+    .map-header h3 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:4px; }
+    .map-header p { font-size:0.82rem; color:var(--mid); }
+    .map-visual { background:linear-gradient(135deg,#e8f4fd,#f0e8f8); height:180px; display:flex; align-items:center; justify-content:center; margin:16px 0 0; flex-direction:column; gap:8px; }
+    .map-visual .map-icon { font-size:3rem; }
+    .map-visual p { font-size:0.85rem; color:var(--mid); }
+
+    /* ORDER DETAILS */
+    .order-details-card { background:white; border-radius:20px; padding:28px; box-shadow:var(--shadow); margin-bottom:20px; }
+    .order-details-card h3 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:18px; }
+    .detail-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0; font-size:0.9rem; }
+    .detail-row:last-child { border-bottom:none; }
+    .detail-row .label { color:var(--mid); }
+    .detail-row .value { font-weight:600; }
+
+    /* ITEMS IN ORDER */
+    .order-items-card { background:white; border-radius:20px; padding:28px; box-shadow:var(--shadow); }
+    .order-items-card h3 { font-family:'Playfair Display',serif; font-size:1.1rem; margin-bottom:18px; }
+    .mini-item { display:flex; gap:14px; align-items:center; padding:10px 0; border-bottom:1px solid #f0f0f0; }
+    .mini-item:last-child { border-bottom:none; }
+    .mini-item img { width:56px; height:56px; border-radius:10px; object-fit:cover; }
+    .mini-item-name { font-weight:600; font-size:0.9rem; }
+    .mini-item-sub { font-size:0.8rem; color:var(--mid); }
+    .mini-item-price { margin-left:auto; font-weight:700; color:var(--rose); }
+
+    footer { text-align:center; padding:32px 24px; color:var(--mid); font-size:0.85rem; border-top:1px solid #eee; background:white; margin-top:32px; }
+    @media(max-width:540px){ .order-header { flex-direction:column; } .search-row { flex-direction:column; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">Gift<em>Genius</em></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="quiz.html">Gift Quiz</a></li>
+    <li><a href="cart.html">🛒 Cart</a></li>
+  </ul>
+</nav>
+
+<div class="hero">
+  <h1>Track Your <span>Gift</span> 📦</h1>
+  <p>Real-time updates on your order's journey</p>
+</div>
+
+<div class="page-wrap">
+
+  <!-- SEARCH -->
+  <div class="search-card">
+    <h3>Enter your Order ID</h3>
+    <div class="search-row">
+      <input class="search-input" type="text" id="order-input" placeholder="e.g. GG-482910" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn-track" onclick="trackOrder()">Track 🔍</button>
+    </div>
+    <div class="error-msg" id="track-error"></div>
+    <p style="font-size:0.78rem;color:var(--mid);margin-top:10px">💡 Tip: Your Order ID is in your email confirmation or on the order success page. Try <strong>GG-482910</strong> for a demo.</p>
+  </div>
+
+  <!-- RESULT -->
+  <div id="track-result">
+
+    <!-- ORDER HEADER -->
+    <div class="order-header">
+      <div>
+        <div class="order-id-label">Order ID</div>
+        <div class="order-id-val" id="r-orderid">GG-482910</div>
+        <div style="font-size:0.82rem;color:var(--mid);margin-top:4px" id="r-date">Placed on 9 Aug 2026</div>
+      </div>
+      <div>
+        <div class="order-id-label">Delivery Status</div>
+        <div class="status-pill in-transit" id="r-status">🚚 In Transit</div>
+      </div>
+    </div>
+
+    <!-- TIMELINE -->
+    <div class="timeline-card">
+      <h3>🗺️ Order Timeline</h3>
+      <div class="timeline">
+        <div class="t-item done">
+          <div class="t-dot">✓</div>
+          <div class="t-title">Order Placed</div>
+          <div class="t-desc">Your order was received and confirmed.</div>
+          <div class="t-time" id="t1-time">9 Aug 2026 · 10:15 AM</div>
+        </div>
+        <div class="t-item done">
+          <div class="t-dot">✓</div>
+          <div class="t-title">Payment Confirmed</div>
+          <div class="t-desc">Payment of ₹499 successfully processed.</div>
+          <div class="t-time">9 Aug 2026 · 10:17 AM</div>
+        </div>
+        <div class="t-item done">
+          <div class="t-dot">✓</div>
+          <div class="t-title">Packing & Gift Wrapping</div>
+          <div class="t-desc">Your gift is being lovingly packed with a personalised card.</div>
+          <div class="t-time">9 Aug 2026 · 11:30 AM</div>
+        </div>
+        <div class="t-item active">
+          <div class="t-dot">📦</div>
+          <div class="t-title">Out for Delivery</div>
+          <div class="t-desc">Your gift is with our delivery partner, on its way to you!</div>
+          <div class="t-time" id="r-eta">Expected by 7 PM today</div>
+        </div>
+        <div class="t-item">
+          <div class="t-dot">🎁</div>
+          <div class="t-title">Delivered</div>
+          <div class="t-desc">Your gift has arrived safely.</div>
+          <div class="t-time">Pending</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="map-card">
+      <div class="map-header">
+        <h3>📍 Live Location</h3>
+        <p>Your delivery partner is 3.2 km away</p>
+      </div>
+      <div class="map-visual">
+        <div class="map-icon">🗺️</div>
+        <p>Live tracking available in the GiftGenius app</p>
+      </div>
+    </div>
+
+    <!-- ORDER DETAILS -->
+    <div class="order-details-card">
+      <h3>Order Details</h3>
+      <div class="detail-row"><span class="label">Order Date</span><span class="value" id="d-date">9 Aug 2026, 10:15 AM</span></div>
+      <div class="detail-row"><span class="label">Delivery Address</span><span class="value" id="d-addr">Mumbai, Maharashtra</span></div>
+      <div class="detail-row"><span class="label">Delivery Partner</span><span class="value">Delhivery • DL8372991</span></div>
+      <div class="detail-row"><span class="label">Payment Method</span><span class="value" id="d-pay">UPI (Paid)</span></div>
+      <div class="detail-row"><span class="label">Order Total</span><span class="value" id="d-total">₹499</span></div>
+    </div>
+
+    <!-- ITEMS -->
+    <div class="order-items-card">
+      <h3>Items in This Order</h3>
+      <div id="order-items-list">
+        <div class="mini-item">
+          <img src="https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg" alt="Hamper"/>
+          <div>
+            <div class="mini-item-name">Luxury Hamper Box</div>
+            <div class="mini-item-sub">Qty: 1 · 🎀 Gift Wrapped</div>
+          </div>
+          <div class="mini-item-price">₹499</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /track-result -->
+</div>
+
+<footer>© 2026 GiftGenius. All rights reserved. | Need help? support@giftgenius.in</footer>
+
+<script>
+  // Auto-load if coming from order success
+  window.addEventListener('DOMContentLoaded', ()=>{
+    const last = JSON.parse(localStorage.getItem('gg_last_order')||'null');
+    if(last){
+      document.getElementById('order-input').value = last.id;
+      showResult(last.id, last);
+    }
+  });
+
+  const DEMO_ORDERS = {
+    'GG-482910': { status:'in-transit', date:'9 Aug 2026', total:'₹499', items:[{name:'Luxury Hamper Box',img:'https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg',qty:1,price:'₹499'}] },
+    'GG-123456': { status:'delivered', date:'8 Aug 2026', total:'₹1,299', items:[{name:'Engraved Timepiece',img:'https://etchcraftemporium.in/cdn/shop/files/ChatGPT_Image_Aug_14_2025_07_16_41_PM.png?v=1755179225&width=800',qty:1,price:'₹1,299'}] },
+    'GG-999999': { status:'processing', date:'9 Aug 2026', total:'₹599', items:[{name:'Classic Rose Bouquet',img:'https://www.uflowershop.com/1294-large_default/valentine-s-day-classic-red-rose-bouquet.webp',qty:1,price:'₹599'}] }
+  };
+
+  function trackOrder(){
+    const id = document.getElementById('order-input').value.trim();
+    const errEl = document.getElementById('track-error');
+    if(!id){ errEl.textContent='Please enter an Order ID'; return; }
+    errEl.textContent='';
+
+    // Check localStorage last order
+    const last = JSON.parse(localStorage.getItem('gg_last_order')||'null');
+    if(last && last.id===id){ showResult(id, last); return; }
+
+    // Check demo orders
+    if(DEMO_ORDERS[id]){ showResult(id, DEMO_ORDERS[id]); return; }
+
+    errEl.textContent='❌ Order not found. Please check your Order ID. Try GG-482910 for demo.';
+    document.getElementById('track-result').style.display='none';
+  }
+
+  function showResult(id, data){
+    document.getElementById('r-orderid').textContent = id;
+    document.getElementById('r-date').textContent = 'Placed on '+(data.date||'9 Aug 2026');
+    document.getElementById('d-date').textContent = (data.date||'9 Aug 2026')+', 10:15 AM';
+    document.getElementById('d-total').textContent = data.total||('₹'+(data.total||499));
+
+    const statusEl = document.getElementById('r-status');
+    const statusMap = {
+      'processing': ['🔄 Processing', 'processing'],
+      'in-transit': ['🚚 In Transit', 'in-transit'],
+      'delivered': ['✅ Delivered', 'delivered']
+    };
+    const [label, cls] = statusMap[data.status||'in-transit'];
+    statusEl.textContent = label;
+    statusEl.className = 'status-pill '+cls;
+
+    // Update timeline for delivered
+    if(data.status==='delivered'){
+      document.querySelectorAll('.t-item').forEach(el=>{el.classList.remove('active'); el.classList.add('done'); el.querySelector('.t-dot').textContent='✓';});
+      document.getElementById('r-eta').textContent='Delivered ✅';
+    }
+
+    // Items
+    if(data.items){
+      document.getElementById('order-items-list').innerHTML = data.items.map(i=>`
+        <div class="mini-item">
+          <img src="${i.img||''}" alt="${i.name}"/>
+          <div><div class="mini-item-name">${i.name}</div><div class="mini-item-sub">Qty: ${i.qty||1} · 🎀 Gift Wrapped</div></div>
+          <div class="mini-item-price">${i.price||''}</div>
+        </div>`).join('');
+    }
+
+    document.getElementById('track-result').style.display='block';
+    document.getElementById('track-result').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+</script>
+</body>
+</html>

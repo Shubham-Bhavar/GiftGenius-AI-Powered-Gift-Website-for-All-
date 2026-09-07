@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Luxury Hamper Box — GiftGenius</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --rose: #e8637a; --rose-light: #fce8ec; --gold: #c9a84c;
+      --dark: #1a1a2e; --mid: #4a4a6a; --light: #f9f4f5; --white: #ffffff;
+      --shadow: 0 4px 24px rgba(232,99,122,0.10);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:var(--light); color:var(--dark); }
+
+    nav { background:var(--white); padding:14px 32px; display:flex; align-items:center; justify-content:space-between; box-shadow:0 2px 12px rgba(0,0,0,0.06); position:sticky; top:0; z-index:100; }
+    .nav-logo { font-family:'Playfair Display',serif; font-size:1.5rem; color:var(--rose); text-decoration:none; }
+    .nav-links { display:flex; gap:24px; list-style:none; }
+    .nav-links a { text-decoration:none; color:var(--mid); font-size:0.9rem; font-weight:500; transition:color 0.2s; }
+    .nav-links a:hover { color:var(--rose); }
+
+    /* BREADCRUMB */
+    .breadcrumb { max-width:1100px; margin:0 auto; padding:16px 24px 0; font-size:0.82rem; color:var(--mid); }
+    .breadcrumb a { color:var(--mid); text-decoration:none; } .breadcrumb a:hover { color:var(--rose); }
+    .breadcrumb span { color:var(--rose); font-weight:500; }
+
+    /* PRODUCT LAYOUT */
+    .product-wrap { max-width:1100px; margin:24px auto 48px; padding:0 24px; display:grid; grid-template-columns:1fr 1fr; gap:40px; align-items:start; }
+
+    /* IMAGES */
+    .image-col {}
+    .main-image { border-radius:20px; overflow:hidden; aspect-ratio:1; background:#f0e8f0; position:relative; }
+    .main-image img { width:100%; height:100%; object-fit:cover; display:block; }
+    .badge-sale { position:absolute; top:16px; left:16px; background:var(--rose); color:white; font-size:0.75rem; font-weight:700; padding:5px 12px; border-radius:20px; }
+    .thumbs { display:flex; gap:10px; margin-top:12px; }
+    .thumb { width:72px; height:72px; border-radius:10px; overflow:hidden; border:2px solid transparent; cursor:pointer; transition:border-color 0.2s; }
+    .thumb.active { border-color:var(--rose); }
+    .thumb img { width:100%; height:100%; object-fit:cover; }
+
+    /* INFO */
+    .info-col { }
+    .category-tag { display:inline-block; background:var(--rose-light); color:var(--rose); font-size:0.75rem; font-weight:600; padding:4px 12px; border-radius:20px; margin-bottom:12px; }
+    .product-title { font-family:'Playfair Display',serif; font-size:2rem; line-height:1.2; margin-bottom:12px; }
+    .rating-row { display:flex; align-items:center; gap:12px; margin-bottom:18px; }
+    .stars { color:#f5a623; font-size:1rem; }
+    .rating-count { font-size:0.85rem; color:var(--mid); }
+    .price-row { display:flex; align-items:baseline; gap:12px; margin-bottom:24px; }
+    .price-current { font-size:2rem; font-weight:700; color:var(--dark); }
+    .price-original { font-size:1.1rem; color:#aaa; text-decoration:line-through; }
+    .price-off { font-size:0.9rem; font-weight:600; color:#2e9e5b; background:#e6f7ee; padding:3px 10px; border-radius:20px; }
+
+    .divider { height:1px; background:#eee; margin:20px 0; }
+
+    .section-label { font-size:0.8rem; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--mid); margin-bottom:10px; }
+
+    /* PERSONALIZATION */
+    .custom-input { width:100%; padding:12px 16px; border:2px solid #e8e0f0; border-radius:10px; font-family:'Inter',sans-serif; font-size:0.9rem; outline:none; transition:border-color 0.2s; margin-bottom:16px; }
+    .custom-input:focus { border-color:var(--rose); }
+
+    /* QUANTITY */
+    .qty-row { display:flex; align-items:center; gap:12px; margin-bottom:20px; }
+    .qty-btn { width:36px; height:36px; border:2px solid #e8e0f0; background:white; border-radius:8px; font-size:1.1rem; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; }
+    .qty-btn:hover { border-color:var(--rose); color:var(--rose); }
+    .qty-num { font-size:1.1rem; font-weight:600; min-width:24px; text-align:center; }
+
+    /* ACTIONS */
+    .btn-cart { width:100%; padding:15px; background:linear-gradient(135deg,var(--rose),#c44d65); border:none; color:white; border-radius:13px; font-family:'Inter',sans-serif; font-weight:700; font-size:1rem; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(232,99,122,0.3); margin-bottom:10px; }
+    .btn-cart:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(232,99,122,0.4); }
+    .btn-wishlist { width:100%; padding:14px; border:2px solid #e8e0f0; background:white; color:var(--dark); border-radius:13px; font-family:'Inter',sans-serif; font-weight:600; font-size:0.95rem; cursor:pointer; transition:all 0.2s; }
+    .btn-wishlist:hover { border-color:var(--rose); color:var(--rose); }
+
+    /* TRUST BADGES */
+    .trust-badges { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-top:20px; }
+    .trust-badge { text-align:center; padding:10px 6px; background:var(--rose-light); border-radius:10px; }
+    .trust-badge .icon { font-size:1.3rem; margin-bottom:4px; }
+    .trust-badge p { font-size:0.7rem; color:var(--mid); font-weight:500; line-height:1.3; }
+
+    /* TABS */
+    .tabs-wrap { max-width:1100px; margin:0 auto 48px; padding:0 24px; }
+    .tab-btns { display:flex; gap:0; border-bottom:2px solid #eee; margin-bottom:24px; }
+    .tab-btn { padding:12px 24px; background:none; border:none; font-family:'Inter',sans-serif; font-size:0.9rem; font-weight:600; color:var(--mid); cursor:pointer; position:relative; transition:color 0.2s; }
+    .tab-btn.active { color:var(--rose); }
+    .tab-btn.active::after { content:''; position:absolute; bottom:-2px; left:0; right:0; height:2px; background:var(--rose); }
+    .tab-content { display:none; background:white; border-radius:16px; padding:28px; box-shadow:var(--shadow); }
+    .tab-content.active { display:block; }
+    .tab-content p { color:var(--mid); line-height:1.8; font-size:0.95rem; margin-bottom:12px; }
+    .tab-content ul { color:var(--mid); line-height:2; padding-left:20px; font-size:0.95rem; }
+    .review-item { border-bottom:1px solid #eee; padding-bottom:20px; margin-bottom:20px; }
+    .review-item:last-child { border-bottom:none; margin-bottom:0; }
+    .review-name { font-weight:700; font-size:0.95rem; margin-bottom:4px; }
+    .review-text { color:var(--mid); font-size:0.9rem; line-height:1.7; }
+
+    /* RELATED */
+    .related-wrap { max-width:1100px; margin:0 auto 48px; padding:0 24px; }
+    .related-wrap h2 { font-family:'Playfair Display',serif; font-size:1.6rem; margin-bottom:20px; }
+    .related-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
+    .related-card { background:white; border-radius:14px; overflow:hidden; box-shadow:var(--shadow); cursor:pointer; transition:transform 0.2s; }
+    .related-card:hover { transform:translateY(-4px); }
+    .related-card img { width:100%; height:140px; object-fit:cover; }
+    .related-card-body { padding:12px; }
+    .related-card-title { font-weight:600; font-size:0.88rem; margin-bottom:4px; }
+    .related-card-price { color:var(--rose); font-weight:700; font-size:0.9rem; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px); background:#1a1a2e; color:white; padding:14px 28px; border-radius:40px; font-size:0.9rem; font-weight:600; box-shadow:0 8px 32px rgba(0,0,0,0.2); transition:transform 0.35s ease; z-index:999; white-space:nowrap; }
+    .toast.show { transform:translateX(-50%) translateY(0); }
+
+    footer { text-align:center; padding:32px 24px; color:var(--mid); font-size:0.85rem; border-top:1px solid #eee; background:white; }
+
+    @media(max-width:768px){
+      .product-wrap { grid-template-columns:1fr; }
+      .related-grid { grid-template-columns:1fr 1fr; }
+      .trust-badges { grid-template-columns:repeat(2,1fr); }
+    }
+    @media(max-width:480px){ .related-grid { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="index.html">Gift<em>Genius</em></a>
+  <ul class="nav-links">
+    <li><a href="index.html">Home</a></li>
+    <li><a href="quiz.html">Gift Quiz</a></li>
+    <li><a href="cart.html">🛒 Cart</a></li>
+  </ul>
+</nav>
+
+<div class="breadcrumb">
+  <a href="index.html">Home</a> › <a href="index.html#products">Gift Sets</a> › <span>Luxury Hamper Box</span>
+</div>
+
+<!-- PRODUCT -->
+<div class="product-wrap">
+  <!-- Images -->
+  <div class="image-col">
+    <div class="main-image">
+      <img id="main-img" src="https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg" alt="Luxury Hamper Box"/>
+      <div class="badge-sale">28% OFF</div>
+    </div>
+    <div class="thumbs">
+      <div class="thumb active" onclick="changeImg(this,'https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg')">
+        <img src="https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg" alt=""/>
+      </div>
+      <div class="thumb" onclick="changeImg(this,'https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80')">
+        <img src="https://images.unsplash.com/photo-1607082348824-0a96f2a4b9da?w=600&q=80" alt=""/>
+      </div>
+      <div class="thumb" onclick="changeImg(this,'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=80')">
+        <img src="https://images.unsplash.com/photo-1549465220-1a8b9238cd48?w=600&q=80" alt=""/>
+      </div>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div class="info-col">
+    <div class="category-tag">Gift Sets</div>
+    <h1 class="product-title">Luxury Hamper Box</h1>
+    <div class="rating-row">
+      <span class="stars">★★★★★</span>
+      <span style="font-weight:700">4.9</span>
+      <span class="rating-count">(182 reviews)</span>
+      <span style="color:#2e9e5b;font-size:0.85rem;font-weight:600">✓ In Stock</span>
+    </div>
+    <div class="price-row">
+      <span class="price-current">₹499</span>
+      <span class="price-original">₹699</span>
+      <span class="price-off">Save ₹200</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section-label">Personalise Your Gift</div>
+    <input class="custom-input" type="text" placeholder="Add a custom name (e.g. 'Happy Birthday Priya 🎂')" id="custom-name"/>
+    <input class="custom-input" type="text" placeholder="Add a heartfelt message (optional)" id="custom-msg"/>
+
+    <div class="section-label">Quantity</div>
+    <div class="qty-row">
+      <button class="qty-btn" onclick="changeQty(-1)">−</button>
+      <span class="qty-num" id="qty-display">1</span>
+      <button class="qty-btn" onclick="changeQty(1)">+</button>
+      <span style="font-size:0.85rem;color:var(--mid)">Max 10 per order</span>
+    </div>
+
+    <button class="btn-cart" onclick="addToCart()">🛒 Add to Cart</button>
+    <button class="btn-wishlist" onclick="addWishlist()">♡ Save to Wishlist</button>
+
+    <div class="trust-badges">
+      <div class="trust-badge"><div class="icon">🚀</div><p>Same-Day Delivery</p></div>
+      <div class="trust-badge"><div class="icon">🎀</div><p>Free Wrapping</p></div>
+      <div class="trust-badge"><div class="icon">🔄</div><p>7-Day Returns</p></div>
+      <div class="trust-badge"><div class="icon">✅</div><p>100% Authentic</p></div>
+    </div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs-wrap">
+  <div class="tab-btns">
+    <button class="tab-btn active" onclick="switchTab('description',this)">Description</button>
+    <button class="tab-btn" onclick="switchTab('contents',this)">What's Inside</button>
+    <button class="tab-btn" onclick="switchTab('reviews',this)">Reviews (182)</button>
+  </div>
+  <div class="tab-content active" id="tab-description">
+    <p>Our <strong>Luxury Hamper Box</strong> is the perfect gift for every occasion — birthdays, anniversaries, festivals, or just to show someone you care. Beautifully curated and presented in our signature rose-gold gift box.</p>
+    <p>Every item is hand-selected by our gifting experts for quality and presentation. The hamper arrives fully assembled, wrapped in tissue paper, sealed with a ribbon, and includes a personalised card printed with your message.</p>
+    <p><strong>Delivery:</strong> Same-day delivery available in Mumbai for orders placed before 2 PM. Pan-India delivery in 2–4 business days.</p>
+  </div>
+  <div class="tab-content" id="tab-contents">
+    <ul>
+      <li>🍫 Premium Belgian Chocolate Box (assorted, 150g)</li>
+      <li>🕯️ Scented Soy Candle — Rose & Oud fragrance</li>
+      <li>🧴 Luxury Hand & Body Lotion (100ml)</li>
+      <li>☕ Artisanal Masala Chai blend (50g tin)</li>
+      <li>📝 Personalised greeting card</li>
+      <li>🎀 Satin ribbon & tissue paper wrapping</li>
+      <li>🎁 Signature GiftGenius rose-gold gift box</li>
+    </ul>
+  </div>
+  <div class="tab-content" id="tab-reviews">
+    <div class="review-item">
+      <div class="stars" style="color:#f5a623;font-size:0.9rem">★★★★★</div>
+      <div class="review-name">Priya Rajan — Mumbai</div>
+      <div class="review-text">"Ordered this for my mom's birthday and she absolutely loved it. The packaging was stunning and the candle smelled divine. Will definitely order again!"</div>
+    </div>
+    <div class="review-item">
+      <div class="stars" style="color:#f5a623;font-size:0.9rem">★★★★★</div>
+      <div class="review-name">Arjun Kapoor — Pune</div>
+      <div class="review-text">"Great value for money. The hamper looks far more expensive than it is. Gifted it to my colleague and she was genuinely impressed."</div>
+    </div>
+    <div class="review-item">
+      <div class="stars" style="color:#f5a623;font-size:0.9rem">★★★★☆</div>
+      <div class="review-name">Sneha Mehta — Delhi</div>
+      <div class="review-text">"Beautiful gift, arrived on time and well packed. Chocolates were delicious. Minus one star because I wish the candle was slightly bigger."</div>
+    </div>
+  </div>
+</div>
+
+<!-- RELATED -->
+<div class="related-wrap">
+  <h2>You Might Also Love 💫</h2>
+  <div class="related-grid">
+    <div class="related-card" onclick="location.href='product.html'">
+      <img src="https://etchcraftemporium.in/cdn/shop/files/ChatGPT_Image_Aug_14_2025_07_16_41_PM.png?v=1755179225&width=800" alt="Engraved Watch"/>
+      <div class="related-card-body"><div class="related-card-title">Engraved Timepiece</div><div class="related-card-price">₹1,299</div></div>
+    </div>
+    <div class="related-card" onclick="location.href='product.html'">
+      <img src="https://images.stockcake.com/public/e/b/3/eb3d9618-4d24-4f60-bf9c-17168329eb84_large/elegant-perfume-bottle-stockcake.jpg" alt="Perfume"/>
+      <div class="related-card-body"><div class="related-card-title">Signature Perfume</div><div class="related-card-price">₹1,199</div></div>
+    </div>
+    <div class="related-card" onclick="location.href='product.html'">
+      <img src="https://www.uflowershop.com/1294-large_default/valentine-s-day-classic-red-rose-bouquet.webp" alt="Roses"/>
+      <div class="related-card-body"><div class="related-card-title">Classic Rose Bouquet</div><div class="related-card-price">₹599</div></div>
+    </div>
+    <div class="related-card" onclick="location.href='product.html'">
+      <img src="https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg" alt="Hamper"/>
+      <div class="related-card-body"><div class="related-card-title">Festive Hamper</div><div class="related-card-price">₹799</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<footer>© 2026 GiftGenius. All rights reserved.</footer>
+
+<script>
+  let qty = 1;
+  function changeQty(d){ qty = Math.max(1,Math.min(10,qty+d)); document.getElementById('qty-display').textContent=qty; }
+  function changeImg(el, src){ document.getElementById('main-img').src=src; document.querySelectorAll('.thumb').forEach(t=>t.classList.remove('active')); el.classList.add('active'); }
+  function switchTab(id,btn){ document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active')); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active')); document.getElementById('tab-'+id).classList.add('active'); btn.classList.add('active'); }
+
+  function addToCart(){
+    const cart = JSON.parse(localStorage.getItem('gg_cart')||'[]');
+    const existing = cart.find(i=>i.id==='luxury-hamper');
+    if(existing) existing.qty+=qty;
+    else cart.push({ id:'luxury-hamper', name:'Luxury Hamper Box', price:499, img:'https://t4.ftcdn.net/jpg/05/32/64/27/240_F_532642742_3lStpC5P0U4FrndE82prkwm61F5OnQgj.jpg', qty, customName:document.getElementById('custom-name').value, customMsg:document.getElementById('custom-msg').value });
+    localStorage.setItem('gg_cart',JSON.stringify(cart));
+    showToast('🛒 Added to cart!');
+  }
+  function addWishlist(){ showToast('♡ Saved to wishlist!'); }
+  function showToast(msg){ const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2800); }
+</script>
+</body>
+</html>
