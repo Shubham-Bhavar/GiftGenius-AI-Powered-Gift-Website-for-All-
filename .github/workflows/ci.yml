@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (unit + MySQL integration tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: giftgenius_test
+          MYSQL_USER: giftgenius
+          MYSQL_PASSWORD: ci-password
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports: ["3306:3306"]
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost -u root -pci-root-password --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build and test
+        env:
+          IT_DB_URL: jdbc:mysql://127.0.0.1:3306/giftgenius_test?serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+          IT_DB_USERNAME: giftgenius
+          IT_DB_PASSWORD: ci-password
+        run: mvn -B verify -Pintegration
+
+  frontend:
+    name: Frontend (lint, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    needs: [backend, frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build images
+        run: |
+          cp .env.example .env
+          docker compose build
+          docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
+        env:
+          DOMAIN: ci.example.com

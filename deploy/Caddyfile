@@ -1,0 +1,17 @@
+# TLS certificates are issued and renewed automatically for {$DOMAIN}.
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+
+	# Caddy replaces any client-sent X-Forwarded-For with the real client IP; nginx trusts only Caddy.
+	reverse_proxy frontend:80
+}
+
+# Redirect www to the bare domain.
+www.{$DOMAIN} {
+	redir https://{$DOMAIN}{uri} permanent
+}

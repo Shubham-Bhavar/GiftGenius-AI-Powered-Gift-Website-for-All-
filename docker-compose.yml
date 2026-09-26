@@ -1,0 +1,43 @@
+# GiftGenius: MySQL + Spring Boot API + nginx (React app and /api on one origin).
+#   Local:       cp .env.example .env  (fill it in)  &&  docker compose up --build   → http://localhost:8081
+#   Production:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: giftgenius
+      MYSQL_USER: ${DB_USERNAME:-giftgenius}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_unicode_ci"]
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/giftgenius?serverTimezone=UTC&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
+    # No ports: the API is reached only through nginx, which sets the trusted client-IP header.
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8081}:80"
+
+volumes:
+  mysql-data:

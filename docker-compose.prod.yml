@@ -1,0 +1,48 @@
+# Production overlay: automatic HTTPS (Caddy + Let's Encrypt) in front of nginx, and nightly MySQL backups.
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Needs DOMAIN in .env, and DNS for that domain pointing at this server (ports 80 and 443 open).
+services:
+  frontend:
+    ports: !reset []           # only Caddy is public
+    networks: [default, edge]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [frontend]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env for production}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+
+  backup:
+    image: mysql:8.4
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      MYSQL_PWD: ${MYSQL_ROOT_PASSWORD}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    volumes:
+      - ./deploy/backup.sh:/backup.sh:ro
+      - ./backups:/backups
+
+networks:
+  # nginx trusts X-Forwarded-For only from this subnet (see frontend/nginx.conf).
+  edge:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  caddy-data:
+  caddy-config:
