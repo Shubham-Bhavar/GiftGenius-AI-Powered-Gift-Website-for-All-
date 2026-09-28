@@ -4,6 +4,14 @@ const STORAGE_KEY = 'gg-entry-shown';
 const CONFETTI_COLORS = ['#D4AF37', '#6EC6CF', '#FFA726', '#fff', '#4FB3BF', '#FFD700', '#a8f0f5', '#ffd93d', '#B8791A'];
 const FIREWORK_POSITIONS = [{ x: 20, y: 25 }, { x: 80, y: 20 }, { x: 15, y: 70 }, { x: 85, y: 65 }, { x: 50, y: 15 }, { x: 50, y: 80 }];
 
+const prefersReducedMotion = () => {
+  try {
+    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
+  } catch {
+    return false;
+  }
+};
+
 function alreadyShown() {
   try {
     return !!sessionStorage.getItem(STORAGE_KEY);
@@ -31,8 +39,12 @@ function makeConfetti() {
   });
 }
 
-/** The homepage's gift-box entry animation: shown once per browser session. */
-export default function EntryAnimation() {
+/**
+ * The homepage's gift-box entry animation: shown once per browser session. `onFinish` is called once, as the
+ * overlay starts to fade (or straight away when it isn't shown), so the next step — the welcome screen — can
+ * cross-fade in. With prefers-reduced-motion the gift opens without confetti or fireworks and fades quickly.
+ */
+export default function EntryAnimation({ onFinish }) {
   const [visible, setVisible] = useState(() => !alreadyShown());
   const [opening, setOpening] = useState(false);
   const [popped, setPopped] = useState(false);
@@ -42,6 +54,16 @@ export default function EntryAnimation() {
   const [fireworks, setFireworks] = useState([]);
   const timers = useRef([]);
   const started = useRef(false);
+  const finished = useRef(false);
+  const giftRef = useRef(null);
+  const onFinishRef = useRef(onFinish);
+  useEffect(() => { onFinishRef.current = onFinish; }, [onFinish]);
+
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    finished.current = true;
+    onFinishRef.current?.();
+  }, []);
 
   const later = (fn, ms) => timers.current.push(setTimeout(fn, ms));
 
@@ -50,6 +72,17 @@ export default function EntryAnimation() {
     started.current = true;
     document.body.style.overflow = '';
     setOpening(true);
+    try {
+      sessionStorage.setItem(STORAGE_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+    if (prefersReducedMotion()) {
+      setPopped(true);
+      setBrand(true);
+      later(() => { setFading(true); finish(); later(() => setVisible(false), 300); }, 700);
+      return;
+    }
     setConfetti(makeConfetti());
     later(() => setPopped(true), 550);
     later(() => {
@@ -72,18 +105,20 @@ export default function EntryAnimation() {
     }, 1000);
     later(() => {
       setFading(true);
-      later(() => setVisible(false), 950);
-    }, 3400);
-    try {
-      sessionStorage.setItem(STORAGE_KEY, '1');
-    } catch {
-      /* ignore */
-    }
-  }, []);
+      finish();
+      later(() => setVisible(false), 800);
+    }, 2500);
+  }, [finish]);
+
+  // Not shown this time (already seen this session): hand over straight away.
+  useEffect(() => {
+    if (!visible) finish();
+  }, [visible, finish]);
 
   useEffect(() => {
     if (!visible) return undefined;
     document.body.style.overflow = 'hidden';
+    giftRef.current?.focus({ preventScroll: true });
     const onEnter = (e) => { if (e.key === 'Enter') openGift(); };
     document.addEventListener('keydown', onEnter);
     return () => {
@@ -98,7 +133,7 @@ export default function EntryAnimation() {
 
   if (!visible) return null;
   return (
-    <div id="entryOverlay" className={fading ? 'fade-out' : ''}>
+    <div id="entryOverlay" className={fading ? 'fade-out' : ''} role="dialog" aria-modal="true" aria-label="GiftGenius intro">
       <div className="confetti-container">
         {confetti.map((c) => <div key={c.id} className="confetti-piece" style={c.style} />)}
       </div>
@@ -117,7 +152,7 @@ export default function EntryAnimation() {
             <div className="hi-tail" />
           </div>
         </div>
-        <div className={`gift-box-scene ${opening ? 'opening' : ''}`} role="button" tabIndex={0}
+        <div ref={giftRef} className={`gift-box-scene ${opening ? 'opening' : ''}`} role="button" tabIndex={0}
           aria-label="Open the gift to enter GiftGenius" onClick={openGift}
           onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); openGift(); } }}>
           <div className="gift-box-bow">🎀</div>

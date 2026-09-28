@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
-import { renderApp } from './renderApp.jsx';
-import { db } from './setup.js';
+import { delay, http, HttpResponse } from 'msw';
+import { renderApp, seedGuestCart } from './renderApp.jsx';
+import { db, server } from './setup.js';
 
 describe('sign-in dialog modes', () => {
   it('names the dialog, form and heading after the current mode', async () => {
@@ -131,5 +132,122 @@ describe('forgot and reset password pages', () => {
     renderApp('/reset-password');
     expect(await screen.findByRole('heading', { level: 1, name: 'Reset Link Missing' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Request a New Link →' })).toHaveAttribute('href', '/forgot-password');
+  });
+});
+
+describe('sign-in and sign-up validation and errors', () => {
+  const API = 'http://localhost/api';
+
+  it('checks the sign-in form before calling the API', async () => {
+    const { user } = renderApp('/login');
+    await user.click(await screen.findByRole('button', { name: 'Sign In →' }));
+    const email = screen.getByLabelText('Email');
+    expect(email).toHaveAccessibleDescription('Enter your email address.');
+    expect(email).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription('Enter your password.');
+    await waitFor(() => expect(email).toHaveFocus());
+
+    await user.type(email, 'asha@');
+    await user.type(screen.getByLabelText('Password'), 'x');
+    await user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    expect(email).toHaveAccessibleDescription('Enter a valid email address, like name@example.com.');
+    expect(db.calls.filter((c) => c.url === '/api/auth/login')).toHaveLength(0);
+  });
+
+  it('shows a loading state, then a clear message for wrong credentials', async () => {
+    server.use(http.post(`${API}/auth/login`, async () => {
+      await delay(150);
+      return HttpResponse.json({ status: 401, detail: 'Incorrect email or password.' }, { status: 401 });
+    }));
+    const { user } = renderApp('/login');
+    await user.type(await screen.findByLabelText('Email'), 'asha@example.com');
+    await user.type(screen.getByLabelText('Password'), 'wrong-password');
+    await user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
+    expect(screen.getByRole('button', { name: 'Sign In →' })).toBeEnabled();
+  });
+
+  it('never shows raw server errors, and explains network failures', async () => {
+    server.use(http.post(`${API}/auth/login`, () => new HttpResponse('<html>java.lang.NullPointerException at com.giftgenius</html>',
+      { status: 500, headers: { 'Content-Type': 'text/html' } })));
+    const { user, unmount } = renderApp('/login');
+    await user.type(await screen.findByLabelText('Email'), 'asha@example.com');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Something went wrong. Please try again.');
+    expect(alert).not.toHaveTextContent(/Exception|html/);
+    unmount();
+
+    server.use(http.post(`${API}/auth/login`, () => HttpResponse.error()));
+    const again = renderApp('/login');
+    await again.user.type(await screen.findByLabelText('Email'), 'asha@example.com');
+    await again.user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await again.user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't reach GiftGenius. Check your connection and try again.");
+  });
+
+  it('validates sign-up (name, email, password rules, matching confirmation) with accessible errors', async () => {
+    const { user } = renderApp('/register');
+    await user.click(await screen.findByRole('button', { name: 'Create Account →' }));
+    expect(screen.getByLabelText('Full name')).toHaveAccessibleDescription('Enter your full name.');
+    expect(screen.getByLabelText('Email')).toHaveAccessibleDescription('Enter your email address.');
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription('Choose a password. At least 8 characters.');
+    expect(screen.getByLabelText('Confirm password')).toHaveAccessibleDescription('Re-enter your password.');
+
+    await user.type(screen.getByLabelText('Full name'), 'Riya Mehta');
+    await user.type(screen.getByLabelText('Email'), 'riya@example.com');
+    await user.type(screen.getByLabelText('Password'), 'short');
+    await user.type(screen.getByLabelText('Confirm password'), 'short');
+    await user.click(screen.getByRole('button', { name: 'Create Account →' }));
+    expect(screen.getByLabelText('Password')).toHaveAccessibleDescription('Use at least 8 characters. At least 8 characters.');
+
+    await user.clear(screen.getByLabelText('Password'));
+    await user.type(screen.getByLabelText('Password'), 'gift-lover-2026');
+    await user.clear(screen.getByLabelText('Confirm password'));
+    await user.type(screen.getByLabelText('Confirm password'), 'gift-lover-2025');
+    await user.click(screen.getByRole('button', { name: 'Create Account →' }));
+    expect(screen.getByLabelText('Confirm password')).toHaveAccessibleDescription("The passwords don't match.");
+    expect(db.calls.filter((c) => c.url === '/api/auth/register')).toHaveLength(0);
+  });
+
+  it('creates a customer account and confirms it', async () => {
+    const { user } = renderApp('/register');
+    await user.type(await screen.findByLabelText('Full name'), 'Riya Mehta');
+    await user.type(screen.getByLabelText('Email'), 'riya@example.com');
+    await user.type(screen.getByLabelText('Password'), 'gift-lover-2026');
+    await user.type(screen.getByLabelText('Confirm password'), 'gift-lover-2026');
+    await user.click(screen.getByRole('button', { name: 'Create Account →' }));
+
+    expect(await screen.findByText('Account created. Welcome to GiftGenius, Riya! 🎁')).toBeInTheDocument();
+    expect(db.users.find((u) => u.email === 'riya@example.com').role).toBe('CUSTOMER');
+    await user.click(screen.getByRole('button', { name: 'Account menu for Riya Mehta' }));
+    expect(screen.queryByRole('menuitem', { name: /Store Admin/ })).toBeNull();
+  });
+
+  it('shows the server message when the email is already registered', async () => {
+    const { user } = renderApp('/register');
+    await user.type(await screen.findByLabelText('Full name'), 'Asha Again');
+    await user.type(screen.getByLabelText('Email'), 'asha@example.com');
+    await user.type(screen.getByLabelText('Password'), 'gift-lover-2026');
+    await user.type(screen.getByLabelText('Confirm password'), 'gift-lover-2026');
+    await user.click(screen.getByRole('button', { name: 'Create Account →' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('An account with this email already exists. Sign in instead.');
+  });
+});
+
+describe('checkout sign-in prompt for guests', () => {
+  it('explains why, keeps the cart, and continues to checkout after signing in', async () => {
+    seedGuestCart([{ productId: 4, name: 'Signature Perfume', image: null, unitPrice: 1199, quantity: 1 }]);
+    const { user } = renderApp('/cart');
+    await user.click(await screen.findByRole('button', { name: 'Sign in to Checkout →' }));
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    expect(within(dialog).getByText('Sign in to check out. Your cart is saved and moves to your account.')).toBeInTheDocument();
+    await user.type(within(dialog).getByLabelText('Email'), 'asha@example.com');
+    await user.type(within(dialog).getByLabelText('Password'), 'correct-horse');
+    await user.click(within(dialog).getByRole('button', { name: 'Sign In →' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Delivery Details 📦' })).toBeInTheDocument();
+    await waitFor(() => expect(db.carts[1]).toEqual([expect.objectContaining({ productId: 4, quantity: 1 })]));
   });
 });

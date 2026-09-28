@@ -30,6 +30,8 @@ beforeEach(() => {
   sessionStorage.clear();
   // The gift-box entry animation plays once per session; tests start after it (entry.test covers it).
   sessionStorage.setItem('gg-entry-shown', '1');
+  // Likewise the first-visit welcome screen (welcome.test covers it).
+  sessionStorage.setItem('gg-welcome-answered', '1');
   __resetApiForTests();
 });
 

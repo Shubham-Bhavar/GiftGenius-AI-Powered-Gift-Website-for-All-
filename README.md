@@ -26,6 +26,10 @@ giftgenius/
 
 **Contact form**: messages are saved to the database and emailed to `ADMIN_EMAIL` (when SMTP is configured). The store owner reads and closes them in Store admin → Messages.
 
+**First visit**: the gift-box entry animation, then a welcome screen: **Log In**, **Sign Up** or **Continue without an account**. Guests shop with a cart and wishlist kept on their device (merged into the account whenever they sign in); the choice is remembered, and signed-in shoppers go straight to the shop. Visitors who prefer reduced motion get a short, confetti-free version. Checkout asks guests to sign in, keeping the cart, and then continues to checkout.
+
+**Delivery address**: at checkout, **📍 Use my current location** fills street, area, city, state and pincode. It asks for permission only when clicked, reads the position once (no tracking), sends only rounded coordinates (about 11 m) to our API, which looks them up through OpenStreetMap Nominatim and never stores or logs them. If permission is refused, the browser can't locate, or the lookup fails, shoppers simply type the address.
+
 **Store admin** (`/admin`): sales KPIs, low stock, order management (packed → shipped → delivered, notes shown to the customer, cancellations with automatic stock and coupon release), a product editor, coupon management and the contact-message inbox.
 
 **Store details** (support email, phone, city, social links, nav menu, and the end date on the homepage sale banner) live in one file: `frontend/src/config/site.js`.
@@ -40,6 +44,20 @@ docker compose up --build
 ```
 
 Open http://localhost:8081. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` and choose **Store admin** from the account menu.
+
+## Admin account
+
+`ADMIN_EMAIL` and `ADMIN_PASSWORD` (12+ characters) are checked on every startup:
+
+- no account with that email: an admin account is created;
+- the email already belongs to a **customer** account (for example, you signed up in the shop first): it is **promoted to admin and its password becomes `ADMIN_PASSWORD`**; its old sessions are signed out. (Sign-up doesn't prove email ownership, so taking over with the configured password makes sure only you, not whoever registered that email first, gets admin rights);
+- already an admin: nothing changes, so a password you change later in Account Settings isn't reset on the next deploy.
+
+Admin rights are enforced by the API (`/api/admin/**` requires the ADMIN role); the admin pages in the React app only mirror that.
+
+## Vercel + Railway
+
+The frontend ships a `frontend/vercel.json` that serves `index.html` for every app route (so links like `/product/3` or the password-reset link work when opened directly or refreshed) and adds basic security headers. Set `VITE_API_BASE` on Vercel to the Railway URL, and on Railway set `CORS_ALLOWED_ORIGINS` to the Vercel URL and `APP_PUBLIC_URL` to the Vercel URL (it's used in email links). Because the two are on different sites, the sign-in refresh cookie is a cross-site cookie: set `COOKIE_SAME_SITE=None` (with `COOKIE_SECURE=true`) on Railway so shoppers stay signed in across page reloads. Some browsers (Safari, or Chrome with third-party cookies blocked) still drop cross-site cookies; serving the API from the same site as the frontend (a custom domain for both, or a Vercel rewrite of `/api/*` to Railway) avoids that.
 
 ## Production deployment
 
@@ -82,9 +100,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (33)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (37)
-cd frontend && npm run lint && npm test   # 65 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (37)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (45)
+cd frontend && npm run lint && npm test   # 90 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -132,6 +150,7 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 | Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `GET /api/orders/track?orderNumber&email` |
 | AI | `POST /api/ai/recommendations`, `POST /api/ai/gift-message` |
 | Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
+| Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |
 | Other | `POST /api/contact`, `POST /api/newsletter/subscribe`, `POST /api/payments/razorpay/webhook` |
 
 ## Before you go live
@@ -139,6 +158,7 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 - [ ] Strong, unique `JWT_SECRET`, `DB_PASSWORD`, `MYSQL_ROOT_PASSWORD` and `ADMIN_PASSWORD`.
 - [ ] `DOMAIN` and `APP_PUBLIC_URL` set. Launch with the prod overlay (HTTPS).
 - [ ] SMTP configured and a test password reset received.
+- [ ] `ADMIN_EMAIL` / `ADMIN_PASSWORD` set, and you've signed in to `/admin` with them once.
 - [ ] Razorpay live keys and webhook configured, and a test payment made with test keys first.
 - [ ] Backups copied off the server, and a restore tried once.
 - [ ] Product photos: the seed catalog uses external image URLs for demo purposes. Replace them with photos you own (Store admin → Products).

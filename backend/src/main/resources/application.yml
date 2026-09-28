@@ -114,6 +114,13 @@ app:
     max-pending-per-user: ${MAX_PENDING_ORDERS:3}
   mail:
     from: ${MAIL_FROM:GiftGenius <no-reply@giftgenius.local>}
+  # Checkout "Use my current location": coordinates -> address, via OpenStreetMap Nominatim (no API key).
+  geo:
+    enabled: ${GEO_ENABLED:true}
+    base-url: ${GEOCODER_BASE_URL:https://nominatim.openstreetmap.org}
+    # Nominatim requires a User-Agent that identifies the app; defaults to "GiftGenius (+APP_PUBLIC_URL)".
+    user-agent: ${GEOCODER_USER_AGENT:}
+    timeout: ${GEOCODER_TIMEOUT:8s}
 
 ---
 spring:

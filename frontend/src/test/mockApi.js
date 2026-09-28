@@ -36,6 +36,8 @@ export function createDb() {
     nextLine: 100,
     aiSource: 'ai',
     resetToken: 'reset-token-1', // the link emailed by "forgot password"; works once
+    geoMode: 'ok', // /location/reverse: 'ok' | 'down' | 'abroad'
+    geoRequests: [],
   };
 }
 
@@ -237,6 +239,16 @@ export function handlers(db) {
         total: dto.total, itemCount: dto.items.reduce((n, i) => n + i.quantity, 0), lineCount: dto.items.length, firstItemName: dto.items[0].name, firstItemImage: dto.items[0].image, createdAt: dto.createdAt,
       }));
       return HttpResponse.json({ content, page: 0, size: 10, totalElements: content.length, totalPages: 1 });
+    })),
+
+    // Location
+    http.post(`${API}/location/reverse`, authed(async ({ request }) => {
+      const body = await request.json();
+      db.geoRequests.push(body);
+      if (db.geoMode === 'down') return problem(502, "We couldn't look up your location. Please enter your address manually.");
+      if (db.geoMode === 'abroad') return HttpResponse.json({ city: 'London', country: 'United Kingdom', countryCode: 'GB' });
+      return HttpResponse.json({ line: '14 Carter Road', area: 'Bandra West', city: 'Mumbai', state: 'Maharashtra',
+        postcode: '400050', country: 'India', countryCode: 'IN' });
     })),
 
     // AI

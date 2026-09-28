@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { api } from '../lib/api.js';
@@ -13,44 +13,85 @@ const COPY = {
 /** Accessible name for the sign-in card in a given mode ("Sign in", "Create account", "Forgot password"). */
 export const authLabel = (mode) => (COPY[mode] ?? COPY.login).label;
 
-function AuthField({ label, error, ...props }) {
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^[+0-9 ()-]{7,20}$/; // same rule as the API
+export const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 72;
+
+/** Checks the form before calling the API, with the same rules as the backend. Returns { field: message }. */
+export function validateAuthForm(mode, form) {
+  const errors = {};
+  if (mode === 'register' && !form.fullName.trim()) errors.fullName = 'Enter your full name.';
+  const email = form.email.trim();
+  if (!email) errors.email = 'Enter your email address.';
+  else if (!EMAIL_RE.test(email)) errors.email = 'Enter a valid email address, like name@example.com.';
+  if (mode === 'register' && form.phone.trim() && !PHONE_RE.test(form.phone.trim())) {
+    errors.phone = 'Enter a valid phone number, like +91 98765 43210.';
+  }
+  if (mode === 'login' && !form.password) errors.password = 'Enter your password.';
+  if (mode === 'register') {
+    if (!form.password) errors.password = 'Choose a password.';
+    else if (form.password.length < PASSWORD_MIN) errors.password = `Use at least ${PASSWORD_MIN} characters.`;
+    else if (form.password.length > PASSWORD_MAX) errors.password = `Use ${PASSWORD_MAX} characters or fewer.`;
+    if (!form.confirm) errors.confirm = 'Re-enter your password.';
+    else if (!errors.password && form.confirm !== form.password) errors.confirm = "The passwords don't match.";
+  }
+  return errors;
+}
+
+function AuthField({ label, error, hint, ...props }) {
   const id = useId();
+  const describedBy = [error ? `${id}-e` : null, hint ? `${id}-h` : null].filter(Boolean).join(' ') || undefined;
   return (
     <div className="auth-field">
       <label htmlFor={id}>{label}</label>
-      <input id={id} aria-invalid={!!error} aria-describedby={error ? `${id}-e` : undefined} {...props} />
+      <input id={id} aria-invalid={!!error} aria-describedby={describedBy} {...props} />
       {error && <small id={`${id}-e`} className="auth-error">{error}</small>}
+      {hint && <small id={`${id}-h`} className="auth-hint">{hint}</small>}
     </div>
   );
 }
 
+const firstName = (u) => (u.fullName || '').split(' ')[0] || 'there';
+
 /**
  * The homepage's sign-in card (👤 avatar, serif heading, mono labels, ink→teal button),
  * wired to the real API. Used in the header modal and on the /login, /register and /forgot-password pages.
+ * `note` explains why sign-in is being asked for (e.g. at checkout).
  */
-export default function AuthCard({ mode, onModeChange, onDone, pageHeading = false }) {
+export default function AuthCard({ mode, onModeChange, onDone, pageHeading = false, note }) {
   const Title = pageHeading ? 'h1' : 'h2';
   const { login, register } = useAuth();
   const toast = useToast();
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', phone: '' });
+  const formRef = useRef(null);
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirm: '', phone: '' });
   const [state, setState] = useState({ busy: false, error: null, errors: {}, sent: false });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const c = COPY[mode];
   const titleId = useId();
   const subId = useId();
 
+  const focusFirstError = () => setTimeout(() => formRef.current?.querySelector('[aria-invalid="true"]')?.focus(), 0);
+
   const submit = async (e) => {
     e.preventDefault();
+    if (state.busy) return;
+    const errors = validateAuthForm(mode, form);
+    if (Object.keys(errors).length) {
+      setState({ busy: false, error: null, errors, sent: false });
+      focusFirstError();
+      return;
+    }
     setState({ busy: true, error: null, errors: {}, sent: false });
     try {
       if (mode === 'login') {
         const u = await login(form.email.trim(), form.password);
-        toast(`Welcome back, ${u.fullName.split(' ')[0]}! 🎁`);
+        toast(`Welcome back, ${firstName(u)}! 🎁`);
         onDone?.(u);
       } else if (mode === 'register') {
         const u = await register({ fullName: form.fullName.trim(), email: form.email.trim(), password: form.password,
           phone: form.phone.trim() || undefined });
-        toast(`Welcome to GiftGenius, ${u.fullName.split(' ')[0]}! 🎁`);
+        toast(`Account created. Welcome to GiftGenius, ${firstName(u)}! 🎁`);
         onDone?.(u);
       } else {
         await api.forgotPassword(form.email.trim());
@@ -59,17 +100,20 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
       }
       setState({ busy: false, error: null, errors: {}, sent: false });
     } catch (err) {
+      // ApiError messages are written for shoppers (server `detail`, or a friendly network/server fallback).
       setState({ busy: false, error: err, errors: err.errors || {}, sent: false });
+      if (err.errors && Object.keys(err.errors).length) focusFirstError();
     }
   };
 
   const er = state.errors;
   return (
-    <form className="auth-card" onSubmit={submit} aria-label={c.label}>
+    <form className="auth-card" onSubmit={submit} aria-label={c.label} noValidate ref={formRef}>
       <div className="auth-head">
         <div className="auth-avatar" aria-hidden="true">👤</div>
         <Title className="auth-title" id={titleId}>{c.title}</Title>
         <p className="auth-sub" id={subId}>{c.sub}</p>
+        {note && <p className="auth-context">{note}</p>}
       </div>
 
       {state.sent ? (
@@ -80,22 +124,27 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
         // Moving between modes swaps these fields; the group name/description tells screen readers which mode they are in.
         <div className="auth-fields" role="group" aria-labelledby={titleId} aria-describedby={subId}>
           {mode === 'register' && (
-            <AuthField label="Full name" required maxLength={120} autoComplete="name" value={form.fullName}
+            <AuthField label="Full name" maxLength={120} autoComplete="name" value={form.fullName}
               onChange={set('fullName')} error={er.fullName} placeholder="Priya Rajan" />
           )}
-          <AuthField label="Email" type="email" required autoComplete="email" value={form.email} onChange={set('email')}
+          <AuthField label="Email" type="email" inputMode="email" autoComplete="email" value={form.email} onChange={set('email')}
             error={er.email} placeholder="you@example.com" />
           {mode === 'register' && (
             <AuthField label="Phone (optional)" type="tel" autoComplete="tel" value={form.phone} onChange={set('phone')}
               error={er.phone} placeholder="+91 98765 43210" />
           )}
           {mode !== 'forgot' && (
-            <AuthField label="Password" type="password" required minLength={mode === 'register' ? 8 : undefined} maxLength={72}
+            <AuthField label="Password" type="password" maxLength={PASSWORD_MAX}
               autoComplete={mode === 'register' ? 'new-password' : 'current-password'} value={form.password}
-              onChange={set('password')} error={er.password} placeholder="••••••••" />
+              onChange={set('password')} error={er.password} placeholder="••••••••"
+              hint={mode === 'register' ? `At least ${PASSWORD_MIN} characters.` : undefined} />
+          )}
+          {mode === 'register' && (
+            <AuthField label="Confirm password" type="password" maxLength={PASSWORD_MAX} autoComplete="new-password"
+              value={form.confirm} onChange={set('confirm')} error={er.confirm} placeholder="••••••••" />
           )}
           {state.error && !Object.keys(er).length && <p className="auth-error auth-error--block" role="alert">{state.error.message}</p>}
-          <button type="submit" className="auth-submit" disabled={state.busy}>{state.busy ? c.busy : c.cta}</button>
+          <button type="submit" className="auth-submit" disabled={state.busy} aria-busy={state.busy}>{state.busy ? c.busy : c.cta}</button>
         </div>
       )}
 

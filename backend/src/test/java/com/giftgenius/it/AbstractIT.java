@@ -58,6 +58,13 @@ public abstract class AbstractIT {
     private static final AtomicInteger RZP_SEQ = new AtomicInteger();
     private static final HttpServer RAZORPAY = startFakeRazorpay();
 
+    /** Fake Nominatim on the same local server: GET /reverse. Mode: "ok", "down" (500) or "empty" (no address). */
+    protected static final java.util.concurrent.atomic.AtomicReference<String> GEO_MODE =
+            new java.util.concurrent.atomic.AtomicReference<>("ok");
+    /** The last /reverse request seen by the fake: query string and User-Agent. */
+    protected static final java.util.concurrent.atomic.AtomicReference<String[]> GEO_LAST_REQUEST =
+            new java.util.concurrent.atomic.AtomicReference<>();
+
     @Autowired
     protected MockMvc mvc;
 
@@ -85,6 +92,8 @@ public abstract class AbstractIT {
         r.add("app.payment.razorpay-key-secret", () -> RZP_KEY_SECRET);
         r.add("app.payment.razorpay-webhook-secret", () -> RZP_WEBHOOK_SECRET);
         r.add("app.payment.razorpay-base-url", () -> "http://127.0.0.1:" + RAZORPAY.getAddress().getPort());
+        r.add("app.geo.enabled", () -> "true");
+        r.add("app.geo.base-url", () -> "http://127.0.0.1:" + RAZORPAY.getAddress().getPort());
         // Rate limiting is covered by unit tests; every request here comes from 127.0.0.1.
         r.add("app.rate-limit.ai-per-minute", () -> "100000");
         r.add("app.rate-limit.auth-per-minute", () -> "100000");
@@ -120,6 +129,19 @@ public abstract class AbstractIT {
                 String body = JSON.writeValueAsString(Map.of("id", "order_IT" + RZP_SEQ.incrementAndGet(),
                         "amount", req.path("amount").asLong(), "currency", "INR"));
                 respond(exchange, 200, body);
+            });
+            server.createContext("/reverse", exchange -> {
+                GEO_LAST_REQUEST.set(new String[] { exchange.getRequestURI().getRawQuery(),
+                        exchange.getRequestHeaders().getFirst("User-Agent") });
+                switch (GEO_MODE.get()) {
+                    case "down" -> respond(exchange, 500, "{}");
+                    case "empty" -> respond(exchange, 200, "{\"error\":\"Unable to geocode\"}");
+                    default -> respond(exchange, 200, """
+                            {"display_name":"12, MG Road, Shivajinagar, Pune, Maharashtra, 411005, India",
+                             "address":{"house_number":"12","road":"MG Road","suburb":"Shivajinagar","city":"Pune",
+                               "state_district":"Pune District","state":"Maharashtra","postcode":"411 005",
+                               "country":"India","country_code":"in"}}""");
+                }
             });
             server.start();
             return server;
@@ -197,7 +219,7 @@ public abstract class AbstractIT {
     }
 
     protected static Map<String, Object> shipping(String email) {
-        return Map.of("fullName", "Shubham Bhavar", "email", "shubhambhavar7447@gmail.com", "phone", "+91 9371522737",
-                "addressLine", "Sangamner", "city", "Ahilyanagar", "state", "Maharashtra", "pincode", "422605");
+        return Map.of("fullName", "Asha Rao", "email", email, "phone", "+91 98765 43210",
+                "addressLine", "12 MG Road", "city", "Pune", "state", "Maharashtra", "pincode", "411001");
     }
 }

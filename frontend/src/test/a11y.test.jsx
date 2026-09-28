@@ -90,12 +90,21 @@ describe('accessibility (axe-core)', () => {
     expect(await violations()).toEqual([]);
   });
 
+  it('the first-visit welcome screen', async () => {
+    sessionStorage.removeItem('gg-welcome-answered');
+    renderApp('/');
+    await screen.findByRole('dialog', { name: 'Welcome to GiftGenius' });
+    await screen.findByRole('heading', { name: 'Luxury Hamper Box' });
+    expect(await violations()).toEqual([]);
+  });
+
   it('keeps closed overlays out of the tab order and returns focus when one closes', async () => {
     const { user } = renderApp('/');
     await screen.findByRole('button', { name: 'Add Signature Perfume to cart' });
     expect(document.getElementById('cartSide')).toHaveAttribute('inert');
     expect(document.querySelector('.quickview-modal:not(.gf-modal)')).toHaveAttribute('inert');
     expect(document.querySelector('.auth-overlay')).toHaveAttribute('inert');
+    expect(document.querySelector('.welcome-overlay')).toHaveAttribute('inert');
 
     const cartButton = screen.getByRole('button', { name: /Open cart/ });
     await user.click(cartButton);

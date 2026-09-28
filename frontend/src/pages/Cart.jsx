@@ -33,7 +33,10 @@ export default function Cart() {
 
   const q = quote.data;
   const blocked = cart.items.some((i) => i.available === false) || (q?.warnings?.length ?? 0) > 0;
-  const proceed = () => (user ? navigate('/checkout') : openAuth('login'));
+  const proceed = () => (user ? navigate('/checkout') : openAuth('login', {
+    next: '/checkout',
+    note: 'Sign in to check out. Your cart is saved and moves to your account.',
+  }));
 
   return (
     <>

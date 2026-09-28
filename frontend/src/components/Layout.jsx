@@ -4,6 +4,7 @@ import AuthModal from './AuthModal.jsx';
 import CartSidebar from './CartSidebar.jsx';
 import GiftFinderModal from './GiftFinderModal.jsx';
 import QuickView from './QuickView.jsx';
+import WelcomeGate from './WelcomeGate.jsx';
 import { Announcement, Header } from './Header.jsx';
 import { Footer } from './Footer.jsx';
 import { Spinner } from './ui.jsx';
@@ -37,6 +38,7 @@ export default function Layout() {
       <QuickView />
       <GiftFinderModal />
       <AuthModal />
+      <WelcomeGate />
       <ScrollRestoration />
     </>
   );

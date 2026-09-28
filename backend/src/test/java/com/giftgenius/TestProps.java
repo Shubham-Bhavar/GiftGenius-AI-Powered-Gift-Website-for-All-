@@ -22,7 +22,7 @@ public final class TestProps {
     public static AppProperties withSecurity(AppProperties.Security security) {
         return new AppProperties("http://localhost:5173", security, null, null, shipping(), null,
                 new AppProperties.RateLimit(10, 20, 30), new AppProperties.Orders(Duration.ofMinutes(30), 3),
-                new AppProperties.Mail("test@giftgenius.local"));
+                new AppProperties.Mail("test@giftgenius.local"), null);
     }
 
     public static AppProperties defaults() {

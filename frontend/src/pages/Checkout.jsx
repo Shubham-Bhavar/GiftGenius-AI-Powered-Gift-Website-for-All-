@@ -7,13 +7,23 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useCart } from '../context/CartContext.jsx';
 import { useCheckoutOptions, useCheckoutPrefs, useQuote } from '../hooks/useCheckout.js';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
+import { useCurrentLocation } from '../hooks/useCurrentLocation.js';
 import { usePayment } from '../hooks/usePayment.js';
 import { api } from '../lib/api.js';
 import { inr, newIdempotencyKey } from '../lib/format.js';
 
-const STATES = ['Andhra Pradesh', 'Assam', 'Bihar', 'Chandigarh', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat', 'Haryana',
-  'Himachal Pradesh', 'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra', 'Odisha',
-  'Puducherry', 'Punjab', 'Rajasthan', 'Tamil Nadu', 'Telangana', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+// All 28 states and 8 union territories.
+const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh',
+  'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
+  'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra',
+  'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
+  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+
+const normalize = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/national capital territory of /, '')
+  .replace(/[^a-z]/g, '');
+/** The dropdown entry for a state name from the address lookup ("NCT of Delhi" → "Delhi"), or ''. */
+const matchState = (name) => STATES.find((st) => normalize(st) === normalize(name)) ?? '';
+const PINCODE_RE = /^[1-9][0-9]{5}$/;
 
 // Online methods all open Razorpay Checkout, which offers UPI, cards and net banking.
 const PAY_METHODS = [
@@ -41,7 +51,7 @@ export default function Checkout() {
   const name = splitName(user.fullName);
   const [f, setF] = useState({
     firstName: name.first, lastName: name.last, email: user.email, phone: user.phone ?? '',
-    addressLine: '', city: '', state: '', pincode: '',
+    addressLine: '', area: '', city: '', state: '', pincode: '',
   });
   const onlineEnabled = options.data?.onlinePaymentEnabled;
   const [payKey, setPayKey] = useState(onlineEnabled ? 'upi' : 'cod');
@@ -50,6 +60,7 @@ export default function Checkout() {
   const [fieldErrors, setFieldErrors] = useState({});
   // One key per checkout attempt: a double-click or network retry returns the same order.
   const idempotencyKey = useRef(newIdempotencyKey());
+  const location = useCurrentLocation();
 
   if (cart.loading) return <Spinner label="Loading your cart…" />;
   if (cart.items.length === 0 && !busy) return <Navigate to="/cart" replace />;
@@ -59,6 +70,21 @@ export default function Checkout() {
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const err = (k) => fieldErrors[`shipping.${k}`];
 
+  // Fills the address from the device location, only when the shopper asks. A street they already typed is kept.
+  const fillFromLocation = async () => {
+    const a = await location.locate();
+    if (!a) return;
+    setF((s) => ({
+      ...s,
+      addressLine: s.addressLine.trim() ? s.addressLine : (a.line ?? ''),
+      area: a.area ?? s.area,
+      city: a.city ?? s.city,
+      state: matchState(a.state) || s.state,
+      pincode: PINCODE_RE.test(a.postcode ?? '') ? a.postcode : s.pincode,
+    }));
+  };
+  const locationTone = { success: 'ok', locating: 'info' }[location.status] ?? 'warn';
+
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
@@ -67,7 +93,8 @@ export default function Checkout() {
     try {
       const shipping = {
         fullName: `${f.firstName} ${f.lastName}`.trim(), email: f.email, phone: f.phone,
-        addressLine: f.addressLine, city: f.city, state: f.state, pincode: f.pincode,
+        addressLine: [f.addressLine.trim(), f.area.trim()].filter(Boolean).join(', '),
+        city: f.city, state: f.state, pincode: f.pincode,
       };
       const order = await api.placeOrder(
         { shipping, deliveryType: prefs.deliveryType, paymentMethod: effectiveMethod, couponCode: prefs.couponCode || undefined },
@@ -106,9 +133,26 @@ export default function Checkout() {
               <Field label="Phone" required type="tel" pattern="[+0-9 \(\)\-]{10,20}" autoComplete="tel" placeholder="+91 98765 43210"
                 value={f.phone} onChange={set('phone')} error={err('phone')} />
             </div>
+            <div className="co-locate">
+              <button type="button" className="co-locate-btn" onClick={fillFromLocation} disabled={location.status === 'locating'}
+                aria-describedby="co-locate-status">
+                <span aria-hidden="true">📍</span> {location.status === 'locating' ? 'Locating you…' : 'Use my current location'}
+              </button>
+              <p id="co-locate-status" className={`co-locate-status co-locate-status--${locationTone}`} role="status">
+                {location.status === 'locating' ? <span className="sr-only">{location.message}</span> : location.message}
+                {location.status === 'success' && (
+                  <span className="co-locate-credit"> Address data © <a href="https://www.openstreetmap.org/copyright"
+                    target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</span>
+                )}
+              </p>
+            </div>
             <div className="co-form-row full">
-              <Field label="Address" required maxLength={300} autoComplete="street-address" placeholder="Flat / House No., Street, Landmark"
+              <Field label="Address" required maxLength={196} autoComplete="address-line1" placeholder="Flat / House No., Street, Landmark"
                 value={f.addressLine} onChange={set('addressLine')} error={err('addressLine')} />
+            </div>
+            <div className="co-form-row full">
+              <Field label="Area / Locality (optional)" maxLength={100} autoComplete="address-line2" placeholder="e.g. Bandra West"
+                value={f.area} onChange={set('area')} />
             </div>
             <div className="co-form-row co-form-row--3">
               <Field label="City" required maxLength={80} autoComplete="address-level2" placeholder="Mumbai" value={f.city} onChange={set('city')} error={err('city')} />
@@ -118,6 +162,9 @@ export default function Checkout() {
               </Field>
               <Field label="Pincode" required inputMode="numeric" pattern="[1-9][0-9]{5}" maxLength={6} autoComplete="postal-code" placeholder="400001"
                 value={f.pincode} onChange={set('pincode')} error={err('pincode')} />
+            </div>
+            <div className="co-form-row full">
+              <Field label="Country" value="India" readOnly autoComplete="country-name" hint="We currently deliver within India." />
             </div>
             <div className="co-form-row full">
               <Field label="Delivery Option" as="select" value={prefs.deliveryType} onChange={(e) => setPrefs({ deliveryType: e.target.value })}>

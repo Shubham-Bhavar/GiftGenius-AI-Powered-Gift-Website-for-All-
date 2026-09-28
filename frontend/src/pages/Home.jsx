@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import EntryAnimation from '../components/EntryAnimation.jsx';
@@ -7,10 +7,13 @@ import { Newsletter } from '../components/Footer.jsx';
 import { CategoryIcon, OCCASION_CARDS } from '../components/occasions.jsx';
 import { ErrorNote } from '../components/ui.jsx';
 import { SITE } from '../config/site.js';
+import { useAuth } from '../context/AuthContext.jsx';
 import { useSearch } from '../context/SearchContext.jsx';
+import { useUi } from '../context/UiContext.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { useReveal } from '../hooks/useReveal.js';
 import { api } from '../lib/api.js';
+import { shouldShowWelcome } from '../lib/welcome.js';
 
 /* Fuzzy search from the original homepage: all query characters appear in order. */
 function fuzzyMatch(str, query) {
@@ -38,6 +41,12 @@ const MARQUEE = ['Birthday Gifts', 'Anniversary Surprises', 'Festival Hampers', 
 export default function Home() {
   useDocumentTitle(null);
   const { query } = useSearch();
+  const { user } = useAuth();
+  const { openWelcome } = useUi();
+  // Entry animation → welcome screen (Log In / Sign Up / Continue without an account) for first-time visitors.
+  const onEntryFinished = useCallback(() => {
+    if (shouldShowWelcome(user)) openWelcome();
+  }, [user, openWelcome]);
   const [filter, setFilter] = useState('all');
   const [sort, setSort] = useState('default');
   const [debounced, setDebounced] = useState(query);
@@ -62,7 +71,7 @@ export default function Home() {
 
   return (
     <>
-      <EntryAnimation />
+      <EntryAnimation onFinish={onEntryFinished} />
 
       <section className="hero" aria-label="Welcome to GiftGenius">
         <div className="hero-left">

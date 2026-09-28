@@ -188,6 +188,10 @@ export const api = {
   recommend: (body) => request('/ai/recommendations', { method: 'POST', body }),
   giftMessages: (body) => request('/ai/gift-message', { method: 'POST', body }),
 
+  // Location (checkout "Use my current location"): rounded coordinates in the body, address parts back.
+  reverseGeocode: (latitude, longitude) =>
+    request('/location/reverse', { method: 'POST', body: { latitude, longitude } }),
+
   // Other
   subscribe: (email) => request('/newsletter/subscribe', { method: 'POST', body: { email }, auth: false }),
   contact: (body) => request('/contact', { method: 'POST', body }),

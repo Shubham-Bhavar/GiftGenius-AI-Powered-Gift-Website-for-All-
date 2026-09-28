@@ -17,7 +17,8 @@ public record AppProperties(
         Admin admin,
         RateLimit rateLimit,
         Orders orders,
-        Mail mail) {
+        Mail mail,
+        Geo geo) {
 
     public record Security(
             String jwtSecret,
@@ -59,5 +60,12 @@ public record AppProperties(
     }
 
     public record Mail(String from) {
+    }
+
+    /**
+     * Reverse geocoding for the checkout's "Use my current location" button. The default provider is
+     * OpenStreetMap's public Nominatim service (no key; at most 1 request per second, identified by User-Agent).
+     */
+    public record Geo(boolean enabled, String baseUrl, String userAgent, Duration timeout) {
     }
 }
