@@ -36,7 +36,8 @@ class LocationIT extends AbstractIT {
                 .andExpect(jsonPath("$.latitude").doesNotExist());
 
         String[] upstream = GEO_LAST_REQUEST.get();
-        assertThat(upstream[0]).contains("lat=18.5304").contains("lon=73.8475").doesNotContain("18.53041");
+        // Rounded to 5 decimals (about 1 m) before leaving the server; the device's full precision never does.
+        assertThat(upstream[0]).contains("lat=18.53041").contains("lon=73.8475").doesNotContain("18.530412");
         assertThat(upstream[1]).startsWith("GiftGenius/");
     }
 

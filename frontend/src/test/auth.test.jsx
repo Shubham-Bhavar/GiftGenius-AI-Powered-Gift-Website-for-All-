@@ -164,7 +164,7 @@ describe('sign-in and sign-up validation and errors', () => {
     await user.type(screen.getByLabelText('Password'), 'wrong-password');
     await user.click(screen.getByRole('button', { name: 'Sign In →' }));
     expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled();
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.');
     expect(screen.getByRole('button', { name: 'Sign In →' })).toBeEnabled();
   });
 
@@ -176,7 +176,7 @@ describe('sign-in and sign-up validation and errors', () => {
     await user.type(screen.getByLabelText('Password'), 'correct-horse');
     await user.click(screen.getByRole('button', { name: 'Sign In →' }));
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent('Something went wrong. Please try again.');
+    expect(alert).toHaveTextContent('Something went wrong on our side. Please try again.');
     expect(alert).not.toHaveTextContent(/Exception|html/);
     unmount();
 
@@ -185,7 +185,27 @@ describe('sign-in and sign-up validation and errors', () => {
     await again.user.type(await screen.findByLabelText('Email'), 'asha@example.com');
     await again.user.type(screen.getByLabelText('Password'), 'correct-horse');
     await again.user.click(screen.getByRole('button', { name: 'Sign In →' }));
-    expect(await screen.findByRole('alert')).toHaveTextContent("We couldn't reach GiftGenius. Check your connection and try again.");
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to connect. Please try again.');
+  });
+
+  it('explains a blocked account and rate limiting without server wording', async () => {
+    server.use(http.post(`${API}/auth/login`, () => HttpResponse.json(
+      { status: 403, detail: 'Forbidden: account flag ENABLED=0 (users.enabled)' }, { status: 403 })));
+    const { user, unmount } = renderApp('/login');
+    await user.type(await screen.findByLabelText('Email'), 'asha@example.com');
+    await user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent("This account can't sign in right now. Please contact support.");
+    expect(alert).not.toHaveTextContent(/users\.enabled|Forbidden/);
+    unmount();
+
+    server.use(http.post(`${API}/auth/login`, () => HttpResponse.json({ status: 429, detail: 'Too many requests.' }, { status: 429 })));
+    const again = renderApp('/login');
+    await again.user.type(await screen.findByLabelText('Email'), 'asha@example.com');
+    await again.user.type(screen.getByLabelText('Password'), 'correct-horse');
+    await again.user.click(screen.getByRole('button', { name: 'Sign In →' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many attempts. Please wait a minute and try again.');
   });
 
   it('validates sign-up (name, email, password rules, matching confirmation) with accessible errors', async () => {

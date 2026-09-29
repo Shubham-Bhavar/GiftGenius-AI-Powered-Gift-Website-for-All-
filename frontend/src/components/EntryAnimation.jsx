@@ -115,18 +115,21 @@ export default function EntryAnimation({ onFinish }) {
     if (!visible) finish();
   }, [visible, finish]);
 
+  // While the gift is showing: lock scrolling, focus it, and open it with Enter from anywhere.
   useEffect(() => {
     if (!visible) return undefined;
     document.body.style.overflow = 'hidden';
     giftRef.current?.focus({ preventScroll: true });
     const onEnter = (e) => { if (e.key === 'Enter') openGift(); };
     document.addEventListener('keydown', onEnter);
-    return () => {
-      document.removeEventListener('keydown', onEnter);
-      document.body.style.overflow = '';
-    };
-    // Only on mount: once opened, the overlay unmounts itself.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Removed as soon as the overlay is gone (openGift has already released the scroll lock; the welcome
+    // screen may hold its own by then).
+    return () => document.removeEventListener('keydown', onEnter);
+  }, [visible, openGift]);
+
+  // Leaving the page before opening the gift must not leave scrolling locked.
+  useEffect(() => () => {
+    if (!started.current) document.body.style.overflow = '';
   }, []);
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);

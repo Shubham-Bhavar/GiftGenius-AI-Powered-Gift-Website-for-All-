@@ -13,7 +13,7 @@ describe('first visit: entry animation → welcome screen', () => {
 
   it('plays the entry animation, then offers Log In, Sign Up or continuing without an account', async () => {
     sessionStorage.removeItem('gg-entry-shown');
-    renderApp('/');
+    const { user } = renderApp('/');
     const intro = screen.getByRole('dialog', { name: 'GiftGenius intro' });
     expect(within(intro).getByRole('button', { name: 'Open the gift to enter GiftGenius' })).toHaveFocus();
     expect(welcome()).toBeNull();
@@ -27,7 +27,15 @@ describe('first visit: entry animation → welcome screen', () => {
     expect(within(dialog).getByRole('button', { name: 'Log In' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Sign Up' })).toBeInTheDocument();
     expect(within(dialog).getByRole('button', { name: 'Continue without an account' })).toBeInTheDocument();
-    await waitFor(() => expect(within(dialog).getByRole('button', { name: 'Log In' })).toHaveFocus());
+    // Focus starts on the heading, so the Enter used to open the gift can't start signing in by accident.
+    const heading = within(dialog).getByRole('heading', { name: 'Welcome to GiftGenius' });
+    await waitFor(() => expect(heading).toHaveFocus());
+    await user.keyboard('{Enter}');
+    expect(welcome()).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Sign in' })).toBeNull();
+    expect(sessionStorage.getItem('gg-welcome-answered')).toBeNull();
+    await user.tab();
+    expect(within(dialog).getByRole('button', { name: 'Log In' })).toHaveFocus();
   });
 
   describe('with reduced motion', () => {

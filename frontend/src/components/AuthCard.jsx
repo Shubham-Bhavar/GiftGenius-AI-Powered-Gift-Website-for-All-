@@ -1,7 +1,7 @@
 import { useId, useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
-import { api } from '../lib/api.js';
+import { ApiError, api } from '../lib/api.js';
 
 // `label` is what assistive tech announces for each mode (dialog and form name); `title` is the visible heading.
 const COPY = {
@@ -52,6 +52,20 @@ function AuthField({ label, error, hint, ...props }) {
   );
 }
 
+/**
+ * The message shown for a failed request. Chosen by HTTP status, so server wording never leaks through for
+ * sign-in failures, rate limits or server errors; 400/409 details are written for shoppers and shown as-is.
+ */
+export function authErrorMessage(mode, err) {
+  if (!(err instanceof ApiError)) return 'Something went wrong. Please try again.';
+  if (err.status === 0) return 'Unable to connect. Please try again.';
+  if (err.status === 401 && mode === 'login') return 'Invalid email or password.';
+  if (err.status === 403) return "This account can't sign in right now. Please contact support.";
+  if (err.status === 429) return 'Too many attempts. Please wait a minute and try again.';
+  if (err.status >= 500 || err.status === 401) return 'Something went wrong on our side. Please try again.';
+  return err.message;
+}
+
 const firstName = (u) => (u.fullName || '').split(' ')[0] || 'there';
 
 /**
@@ -100,7 +114,6 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
       }
       setState({ busy: false, error: null, errors: {}, sent: false });
     } catch (err) {
-      // ApiError messages are written for shoppers (server `detail`, or a friendly network/server fallback).
       setState({ busy: false, error: err, errors: err.errors || {}, sent: false });
       if (err.errors && Object.keys(err.errors).length) focusFirstError();
     }
@@ -143,7 +156,9 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
             <AuthField label="Confirm password" type="password" maxLength={PASSWORD_MAX} autoComplete="new-password"
               value={form.confirm} onChange={set('confirm')} error={er.confirm} placeholder="••••••••" />
           )}
-          {state.error && !Object.keys(er).length && <p className="auth-error auth-error--block" role="alert">{state.error.message}</p>}
+          {state.error && !Object.keys(er).length && (
+            <p className="auth-error auth-error--block" role="alert">{authErrorMessage(mode, state.error)}</p>
+          )}
           <button type="submit" className="auth-submit" disabled={state.busy} aria-busy={state.busy}>{state.busy ? c.busy : c.cta}</button>
         </div>
       )}

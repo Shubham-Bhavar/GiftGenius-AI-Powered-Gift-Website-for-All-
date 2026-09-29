@@ -90,8 +90,9 @@ export function QuantityStepper({ value, onChange, min = 1, max = 10, disabled, 
 }
 
 /** Label + input + error, in the homepage form style (mono uppercase label). */
-export function Field({ label, error, hint, as = 'input', className = '', children, ...props }) {
-  const id = useId();
+export function Field({ label, error, hint, as = 'input', className = '', children, id: idProp, ...props }) {
+  const autoId = useId();
+  const id = idProp || autoId; // an explicit id (e.g. to focus the field) still labels the input
   const describedBy = [error ? `${id}-err` : null, hint ? `${id}-hint` : null].filter(Boolean).join(' ') || undefined;
   const common = { id, 'aria-invalid': !!error, 'aria-describedby': describedBy, className: 'gg-input', ...props };
   return (

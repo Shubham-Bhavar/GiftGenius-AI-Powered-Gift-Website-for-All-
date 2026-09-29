@@ -24,7 +24,7 @@ import tools.jackson.databind.JsonNode;
 /**
  * Turns coordinates into address parts using a Nominatim-compatible service (OpenStreetMap by default).
  *
- * <p>Privacy: coordinates are rounded to 4 decimals (about 11 m) before leaving the server, are never
+ * <p>Privacy: coordinates are rounded to 5 decimals (about 1 m) before leaving the server, are never
  * logged or stored, and only the resulting address parts are cached (by rounded coordinate, in memory).
  * Usage policy: at most one upstream request per second, a User-Agent that identifies the app, and results
  * reused from the cache.
@@ -70,8 +70,8 @@ public class ReverseGeocoder {
         if (!isEnabled()) {
             throw ApiException.unavailable("Location lookup isn't available right now. Please enter your address manually.");
         }
-        double lat = round4(latitude);
-        double lon = round4(longitude);
+        double lat = round5(latitude);
+        double lon = round5(longitude);
         String key = lat + "," + lon;
         Address cached = fromCache(key);
         if (cached != null) {
@@ -111,15 +111,40 @@ public class ReverseGeocoder {
         return address;
     }
 
-    /** Maps a Nominatim {@code jsonv2} response to address parts; null when there is no address. */
+    /**
+     * Maps a Nominatim {@code jsonv2} response to address parts; null when there is no address.
+     *
+     * <p>Indian addresses come back at different administrative levels, e.g. (real responses):
+     * <ul>
+     *   <li>city: {@code suburb=Shivajinagar, city=Pune, county="Pune City Subdistrict", state_district="Pune District"}</li>
+     *   <li>town: {@code town=Sangamner, county=Sangamner, state_district="Ahilyanagar District"}</li>
+     *   <li>village: {@code road=SH46, village=Dhandharphal, county=Sangamner, state_district="Ahilyanagar District"}</li>
+     * </ul>
+     * So the city is the city/town/municipality when there is one; for a village the village is the locality
+     * and the city is its taluka ("county"), else its district. Only fields that are present are used.
+     */
     static Address toAddress(JsonNode body) {
         JsonNode a = body == null ? null : body.get("address");
         if (a == null || !a.isObject()) {
             return null;
         }
-        String line = join(text(a, "house_number"), text(a, "road"));
-        String city = first(a, "city", "town", "village", "municipality", "county", "state_district");
-        String area = first(a, "suburb", "neighbourhood", "quarter", "city_district", "residential", "hamlet");
+        String line = join(text(a, "house_number"), first(a, "road", "pedestrian", "footway"));
+        String cityLike = first(a, "city", "town", "municipality");
+        String village = first(a, "village", "hamlet");
+        String locality = first(a, "suburb", "neighbourhood", "quarter", "city_district", "residential");
+        String adminArea = firstNonNull(withoutSuffix(text(a, "county")), withoutSuffix(text(a, "state_district")));
+        String city;
+        String area;
+        if (cityLike != null) {
+            city = cityLike;
+            area = locality != null ? locality : village;
+        } else if (village != null) {
+            city = adminArea != null ? adminArea : village;
+            area = village;
+        } else {
+            city = adminArea;
+            area = locality;
+        }
         if (area != null && area.equalsIgnoreCase(city)) {
             area = null;
         }
@@ -171,8 +196,22 @@ public class ReverseGeocoder {
         }
     }
 
-    static double round4(double v) {
-        return Math.round(v * 10_000d) / 10_000d;
+    /** About 1 m: precise enough for the right street, without passing on the device's full precision. */
+    static double round5(double v) {
+        return Math.round(v * 100_000d) / 100_000d;
+    }
+
+    /** "Pune City Subdistrict" → "Pune City", "Ahilyanagar District" → "Ahilyanagar". */
+    static String withoutSuffix(String s) {
+        if (s == null) {
+            return null;
+        }
+        String cleaned = s.replaceFirst("(?i)\\s+(sub-?district|taluka|tehsil|tahsil|district)$", "").trim();
+        return cleaned.isEmpty() ? null : cleaned;
+    }
+
+    private static String firstNonNull(String a, String b) {
+        return a != null ? a : b;
     }
 
     private static String text(JsonNode node, String field) {

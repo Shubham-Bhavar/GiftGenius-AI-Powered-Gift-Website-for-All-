@@ -18,12 +18,14 @@ const focusPageIfLost = () => setTimeout(() => {
  */
 export default function WelcomeGate() {
   const { welcomeOpen: open, closeWelcome, openAuth } = useUi();
-  const primary = useRef(null);
+  const heading = useRef(null);
 
   useRestoreFocus(open);
   useEffect(() => {
     if (!open) return undefined;
-    const t = setTimeout(() => primary.current?.focus(), 60);
+    // Focus the heading, not "Log In": shoppers open the gift with Enter, and a second Enter must not start
+    // signing in. Screen readers still announce the dialog; Tab reaches "Log In" first.
+    const t = setTimeout(() => heading.current?.focus({ preventScroll: true }), 60);
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
       markWelcomeAnswered();
@@ -50,12 +52,12 @@ export default function WelcomeGate() {
       <section className="welcome-card" role="dialog" aria-modal="true" aria-labelledby="welcome-title"
         aria-describedby="welcome-desc" onKeyDown={trapFocus}>
         <p className="welcome-eyebrow" aria-hidden="true"><span className="welcome-rule" />Curated with love<span className="welcome-rule" /></p>
-        <h2 id="welcome-title" className="welcome-title">Welcome to <em>GiftGenius</em></h2>
+        <h2 id="welcome-title" className="welcome-title" tabIndex={-1} ref={heading}>Welcome to <em>GiftGenius</em></h2>
         <p id="welcome-desc" className="welcome-desc">
           Find thoughtful gifts, discover curated collections, and let GiftGenius help you choose something meaningful.
         </p>
         <div className="welcome-actions">
-          <button ref={primary} type="button" className="welcome-btn welcome-btn--primary" onClick={() => signIn('login')}>Log In</button>
+          <button type="button" className="welcome-btn welcome-btn--primary" onClick={() => signIn('login')}>Log In</button>
           <button type="button" className="welcome-btn welcome-btn--secondary" onClick={() => signIn('register')}>Sign Up</button>
         </div>
         <button type="button" className="welcome-guest" onClick={continueAsGuest}>

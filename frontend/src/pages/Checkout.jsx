@@ -71,19 +71,29 @@ export default function Checkout() {
   const err = (k) => fieldErrors[`shipping.${k}`];
 
   // Fills the address from the device location, only when the shopper asks. A street they already typed is kept.
-  const fillFromLocation = async () => {
-    const a = await location.locate();
-    if (!a) return;
+  // Location → detected address → the shopper confirms (or types it) → only then are the fields filled.
+  const detected = location.result?.address;
+  const detectedState = detected ? matchState(detected.state) : '';
+  const detectedPin = detected && PINCODE_RE.test(detected.postcode ?? '') ? detected.postcode : '';
+  const focusAddress = () => setTimeout(() => document.getElementById('co-address')?.focus(), 0);
+  const useDetectedAddress = () => {
     setF((s) => ({
       ...s,
-      addressLine: s.addressLine.trim() ? s.addressLine : (a.line ?? ''),
-      area: a.area ?? s.area,
-      city: a.city ?? s.city,
-      state: matchState(a.state) || s.state,
-      pincode: PINCODE_RE.test(a.postcode ?? '') ? a.postcode : s.pincode,
+      addressLine: s.addressLine.trim() ? s.addressLine : (detected.line || ''), // keep what they typed
+      area: detected.area || s.area,
+      city: detected.city || s.city,
+      state: detectedState || s.state,
+      pincode: detectedPin || s.pincode,
     }));
+    location.markApplied();
+    focusAddress();
   };
-  const locationTone = { success: 'ok', locating: 'info' }[location.status] ?? 'warn';
+  const editManually = () => {
+    location.dismiss();
+    focusAddress();
+  };
+  const locationTone = { found: 'ok', applied: 'ok', locating: 'info', idle: 'info' }[location.status] ?? 'warn';
+  const approxKm = location.result?.accuracy ? Math.max(1, Math.round(location.result.accuracy / 1000)) : null;
 
   const submit = async (e) => {
     e.preventDefault();
@@ -134,20 +144,45 @@ export default function Checkout() {
                 value={f.phone} onChange={set('phone')} error={err('phone')} />
             </div>
             <div className="co-locate">
-              <button type="button" className="co-locate-btn" onClick={fillFromLocation} disabled={location.status === 'locating'}
+              <button type="button" className="co-locate-btn" onClick={location.locate} disabled={location.status === 'locating'}
                 aria-describedby="co-locate-status">
                 <span aria-hidden="true">📍</span> {location.status === 'locating' ? 'Locating you…' : 'Use my current location'}
               </button>
               <p id="co-locate-status" className={`co-locate-status co-locate-status--${locationTone}`} role="status">
                 {location.status === 'locating' ? <span className="sr-only">{location.message}</span> : location.message}
-                {location.status === 'success' && (
-                  <span className="co-locate-credit"> Address data © <a href="https://www.openstreetmap.org/copyright"
-                    target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>.</span>
-                )}
               </p>
             </div>
+            {detected && (
+              <div className="co-detected" role="group" aria-labelledby="co-detected-title">
+                <p id="co-detected-title" className="co-detected-title">Detected address</p>
+                {location.result.approximate && (
+                  <p className="co-detected-warn">
+                    {approxKm
+                      ? `Your browser could only estimate your location (to within about ${approxKm} km), so this may not be your address.`
+                      : 'Your browser could only estimate your location, so this may not be your address.'}
+                    {' '}Please check it before using it.
+                  </p>
+                )}
+                <dl className="co-detected-list">
+                  {detected.line && <div><dt>Street</dt><dd>{detected.line}</dd></div>}
+                  <div><dt>Area</dt><dd>{detected.area || <span className="co-detected-missing">Not found</span>}</dd></div>
+                  <div><dt>City</dt><dd>{detected.city || <span className="co-detected-missing">Not found</span>}</dd></div>
+                  <div><dt>State</dt><dd>{detectedState || detected.state || <span className="co-detected-missing">Not found</span>}</dd></div>
+                  <div><dt>PIN</dt><dd>{detectedPin || <span className="co-detected-missing">Not found. Please add it.</span>}</dd></div>
+                </dl>
+                {detected.line && f.addressLine.trim() && (
+                  <p className="co-detected-note">Your street address stays as you typed it.</p>
+                )}
+                <div className="co-detected-actions">
+                  <button type="button" className="co-detected-use" onClick={useDetectedAddress}>Use this address</button>
+                  <button type="button" className="co-detected-edit" onClick={editManually}>Edit manually</button>
+                </div>
+                <p className="co-locate-credit">Address data © <a href="https://www.openstreetmap.org/copyright"
+                  target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a></p>
+              </div>
+            )}
             <div className="co-form-row full">
-              <Field label="Address" required maxLength={196} autoComplete="address-line1" placeholder="Flat / House No., Street, Landmark"
+              <Field label="Address" id="co-address" required maxLength={196} autoComplete="address-line1" placeholder="Flat / House No., Street, Landmark"
                 value={f.addressLine} onChange={set('addressLine')} error={err('addressLine')} />
             </div>
             <div className="co-form-row full">

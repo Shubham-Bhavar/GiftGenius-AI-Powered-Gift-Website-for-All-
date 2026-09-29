@@ -61,10 +61,10 @@ describe('cart, sign-in and checkout', () => {
     expect(screen.getByRole('dialog', { name: 'Sign in' })).toBeInTheDocument();
   });
 
-  it('shows the server message for a wrong password', async () => {
+  it('shows a clear message for a wrong password', async () => {
     const { user } = renderApp('/login');
     await signIn(user, 'asha@example.com', 'nope');
-    expect(await screen.findByRole('alert')).toHaveTextContent('Incorrect email or password.');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Invalid email or password.');
   });
 
   it('signs in from the header 👤 modal and merges the guest cart and wishlist exactly once', async () => {
