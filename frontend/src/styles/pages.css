@@ -988,6 +988,8 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 .welcome-title em { font-style: italic; color: var(--gold-text); }
 /* The heading takes focus when the screen opens (so a stray Enter can't start signing in); it isn't interactive. */
 .welcome-title:focus { outline: none; }
+/* The entry gift takes focus on load so Enter/Space open it; the on-screen hint says so, no focus ring needed. */
+.gift-box-scene:focus, .gift-box-scene:focus-visible { outline: none; }
 .welcome-desc { font-size: 15px; line-height: 1.65; color: var(--text-muted); margin: 0 auto 28px; max-width: 34ch; }
 .welcome-actions { display: grid; gap: 10px; }
 .welcome-btn {
