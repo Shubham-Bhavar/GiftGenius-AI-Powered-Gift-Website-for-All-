@@ -816,6 +816,9 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 
 /* ─── Store admin ─── */
 .adm-page { max-width: 1240px; margin: 0 auto; padding: var(--sp-4) 5% var(--sp-9); display: grid; gap: 20px; }
+/* Grid children may shrink below their content's width: a wide table inside a card scrolls in its own box
+   instead of widening the whole page on phones. */
+.adm-page > *, .sel-grid > * { min-width: 0; }
 .adm-tabs {
   display: flex; gap: 4px; padding: 5px; overflow-x: auto; width: fit-content; max-width: 100%;
   background: linear-gradient(135deg, #1a1410 0%, #2a1f14 100%); border: 1px solid rgba(212,175,55,0.3); border-radius: 999px;
