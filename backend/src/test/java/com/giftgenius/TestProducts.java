@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import com.giftgenius.catalog.ProductDtos.ProductDto;
+import com.giftgenius.catalog.ProductStatus;
 
 public final class TestProducts {
 
@@ -15,7 +16,7 @@ public final class TestProducts {
         return new ProductDto(id, "p-" + id, name, category, BigDecimal.valueOf(price), BigDecimal.valueOf(price + 200),
                 BigDecimal.valueOf(rating), 10, "★★★★★", "https://img/" + id, name, null, List.of(),
                 occasions, List.of(), personalities, relationships, name + " description", null, false, false,
-                20, true, true);
+                20, true, true, null, ProductStatus.APPROVED, null, null);
     }
 
     public static List<ProductDto> catalog() {

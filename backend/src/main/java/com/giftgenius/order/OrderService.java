@@ -3,14 +3,19 @@ package com.giftgenius.order;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
+import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -21,6 +26,7 @@ import org.springframework.util.StringUtils;
 import com.giftgenius.cart.Cart;
 import com.giftgenius.cart.CartItem;
 import com.giftgenius.cart.CartService;
+import com.giftgenius.catalog.ProductDtos.SellerRef;
 import com.giftgenius.catalog.ProductRepository;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.common.PageResponse;
@@ -45,6 +51,8 @@ import com.giftgenius.pricing.PricingDtos.Quote;
 import com.giftgenius.pricing.PricingDtos.QuoteLine;
 import com.giftgenius.pricing.PricingDtos.QuoteLineRequest;
 import com.giftgenius.pricing.PricingService;
+import com.giftgenius.seller.SellerProfile;
+import com.giftgenius.seller.SellerProfileRepository;
 import com.giftgenius.user.UserRepository;
 
 import tools.jackson.databind.JsonNode;
@@ -56,6 +64,7 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final char[] ORDER_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789".toCharArray();
+    private static final String GIFTGENIUS = "GiftGenius";
 
     /** Result of the first checkout transaction. */
     private record Placement(Long orderId, String orderNumber, BigDecimal total, boolean needsPayment, OrderDto dto) {
@@ -68,6 +77,7 @@ public class OrderService {
     private final CouponRepository coupons;
     private final RazorpayClient razorpay;
     private final UserRepository users;
+    private final SellerProfileRepository sellers;
     private final ObjectMapper json;
     private final Mailer mailer;
     private final TransactionTemplate tx;
@@ -76,8 +86,8 @@ public class OrderService {
 
     public OrderService(OrderRepository orders, CartService carts, PricingService pricing,
             ProductRepository products, CouponRepository coupons, RazorpayClient razorpay,
-            UserRepository users, ObjectMapper json, Mailer mailer, PlatformTransactionManager txManager,
-            AppProperties properties) {
+            UserRepository users, SellerProfileRepository sellers, ObjectMapper json, Mailer mailer,
+            PlatformTransactionManager txManager, AppProperties properties) {
         this.orders = orders;
         this.carts = carts;
         this.pricing = pricing;
@@ -85,6 +95,7 @@ public class OrderService {
         this.coupons = coupons;
         this.razorpay = razorpay;
         this.users = users;
+        this.sellers = sellers;
         this.json = json;
         this.mailer = mailer;
         this.tx = new TransactionTemplate(txManager);
@@ -192,8 +203,14 @@ public class OrderService {
 
         for (CartItem ci : cart.getItems()) {
             BigDecimal unit = priced.get(ci.getProduct().getId()).unitPrice();
+            SellerProfile seller = ci.getProduct().getSeller();
             OrderItem oi = new OrderItem();
             oi.setProductId(ci.getProduct().getId());
+            if (seller != null) {
+                // Ownership is fixed at purchase time from the product row, never taken from the request.
+                oi.setSellerId(seller.getUserId());
+                oi.setFulfillment(FulfillmentStatus.NEW, null);
+            }
             oi.setProductName(ci.getProduct().getName());
             oi.setImageUrl(ci.getProduct().getImageUrl());
             oi.setUnitPrice(unit);
@@ -224,6 +241,7 @@ public class OrderService {
         if (!needsPayment) {
             notifyCustomer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
                     "Thank you! Your order is confirmed and we're getting it ready.");
+            notifySellers(order);
         }
         return new Placement(order.getId(), order.getOrderNumber(), order.getTotal(), needsPayment,
                 needsPayment ? null : toDto(order));
@@ -257,6 +275,10 @@ public class OrderService {
                     ? "This order is already cancelled."
                     : "This order has already shipped, so it can't be cancelled.");
         }
+        if (o.getItems().stream().anyMatch(i -> i.getFulfillmentStatus() != null && i.getFulfillmentStatus().hasShipped())) {
+            throw ApiException.conflict("Part of this order has already shipped, so it can't be cancelled. "
+                    + "Contact us and we'll help.");
+        }
         doCancel(o, "Cancelled by you");
         notifyCustomer(o, "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
                 o.getPaymentStatus() == PaymentStatus.REFUND_PENDING
@@ -267,8 +289,8 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PageResponse<OrderSummaryDto> mine(Long userId, int page, int size) {
-        return PageResponse.of(orders.findByUserIdOrderByCreatedAtDesc(userId,
-                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50))).map(OrderService::toSummary));
+        return summaries(orders.findByUserIdOrderByCreatedAtDesc(userId,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50))));
     }
 
     @Transactional(readOnly = true)
@@ -285,7 +307,8 @@ public class OrderService {
                         "No order matches that order ID and email. Check both and try again."));
         return new TrackingDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
                 o.getDeliveryType(),
-                o.getTotal(), firstName(o), o.getShipping().getCity(), items(o), timeline(o), o.getCreatedAt());
+                o.getTotal(), firstName(o), o.getShipping().getCity(), items(o, sellerRefs(List.of(o))), timeline(o),
+                o.getCreatedAt());
     }
 
     // ── Payments (webhook) ─────────────────────────────────
@@ -345,7 +368,7 @@ public class OrderService {
         PageRequest pr = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         var result = statuses == null || statuses.isEmpty() ? orders.findAllByOrderByCreatedAtDesc(pr)
                 : orders.findByStatusInOrderByCreatedAtDesc(statuses, pr);
-        return PageResponse.of(result.map(OrderService::toSummary));
+        return summaries(result);
     }
 
     @Transactional(readOnly = true)
@@ -366,6 +389,49 @@ public class OrderService {
             throw ApiException.conflict("Can't move an order from " + o.getStatus() + " to " + next + ".");
         }
         String note = StringUtils.hasText(req.note()) ? req.note().trim() : defaultNote(next);
+        applyStatus(o, next, note);
+        if (next == OrderStatus.DELIVERED) {
+            // Delivered means every parcel arrived, sellers' lines included.
+            o.getItems().stream()
+                    .filter(i -> i.getFulfillmentStatus() != null && i.getFulfillmentStatus() != FulfillmentStatus.CANCELLED
+                            && i.getFulfillmentStatus() != FulfillmentStatus.DELIVERED)
+                    .forEach(i -> i.setFulfillment(FulfillmentStatus.DELIVERED, null));
+        }
+        return toDto(o);
+    }
+
+    /**
+     * When every line of an order is sold by marketplace sellers, the order follows the slowest seller: packed,
+     * shipped and delivered once all of them are. Orders with GiftGenius's own lines are moved on by admins.
+     */
+    void rollUpFulfilment(Order o, String sellerNote) {
+        if (o.getItems().stream().anyMatch(i -> i.getSellerId() == null)) {
+            return;
+        }
+        FulfillmentStatus slowest = o.getItems().stream().map(OrderItem::getFulfillmentStatus)
+                .filter(f -> f != FulfillmentStatus.CANCELLED).min(Comparator.naturalOrder()).orElse(null);
+        OrderStatus target = slowest == null ? null : switch (slowest) {
+            case PACKED -> OrderStatus.PACKED;
+            case SHIPPED -> OrderStatus.SHIPPED;
+            case DELIVERED -> OrderStatus.DELIVERED;
+            default -> null;
+        };
+        if (target == null) {
+            return;
+        }
+        for (OrderStatus step : List.of(OrderStatus.PACKED, OrderStatus.SHIPPED, OrderStatus.DELIVERED)) {
+            if (step.ordinal() > target.ordinal()) {
+                break;
+            }
+            if (o.getStatus().canMoveTo(step)) {
+                boolean last = step == target;
+                applyStatus(o, step, last && StringUtils.hasText(sellerNote) ? sellerNote : sellerStepNote(step));
+            }
+        }
+    }
+
+    /** Records a (validated) status change, releases stock on cancel, and emails the customer. */
+    private void applyStatus(Order o, OrderStatus next, String note) {
         if (next == OrderStatus.CANCELLED) {
             doCancel(o, note);
         } else {
@@ -387,7 +453,6 @@ public class OrderService {
         if (headline != null && next != OrderStatus.PACKED) {
             notifyCustomer(o, "Update on your GiftGenius order " + o.getOrderNumber(), headline);
         }
-        return toDto(o);
     }
 
     /** Called by {@link PendingOrderReaper} in its own transaction per order. */
@@ -411,6 +476,7 @@ public class OrderService {
                 o.getItems().stream().map(OrderItem::getProductId).collect(Collectors.toSet()));
         notifyCustomer(o, "Payment received: GiftGenius order " + o.getOrderNumber() + " is confirmed",
                 "Thank you! We've received your payment and your order is confirmed.");
+        notifySellers(o);
     }
 
     private void doCancel(Order o, String note) {
@@ -423,7 +489,29 @@ public class OrderService {
         if (o.getPaymentStatus() == PaymentStatus.PAID) {
             o.setPaymentStatus(PaymentStatus.REFUND_PENDING);
         }
+        o.getItems().stream().filter(i -> i.getSellerId() != null)
+                .forEach(i -> i.setFulfillment(FulfillmentStatus.CANCELLED, null));
         o.recordStatus(OrderStatus.CANCELLED, note);
+    }
+
+    /** Emails each seller with lines in a newly confirmed order: what to send, not who the customer is. */
+    private void notifySellers(Order o) {
+        Map<Long, List<OrderItem>> bySeller = o.getItems().stream().filter(i -> i.getSellerId() != null)
+                .collect(Collectors.groupingBy(OrderItem::getSellerId, LinkedHashMap::new, Collectors.toList()));
+        if (bySeller.isEmpty()) {
+            return;
+        }
+        for (SellerProfile seller : sellers.findAllById(bySeller.keySet())) {
+            StringBuilder body = new StringBuilder();
+            body.append("Hi ").append(seller.getStoreName()).append(",\n\nYou have a new order to fulfil: ")
+                    .append(o.getOrderNumber()).append("\n\n");
+            for (OrderItem i : bySeller.get(seller.getUserId())) {
+                body.append("  • ").append(i.getProductName()).append(" × ").append(i.getQuantity()).append('\n');
+            }
+            body.append("\nDelivery details and status updates: ").append(publicUrl).append("/seller/orders/")
+                    .append(o.getOrderNumber()).append("\n\n— GiftGenius Seller Center\n");
+            mailer.send(seller.getUser().getEmail(), "New GiftGenius order " + o.getOrderNumber(), body.toString());
+        }
     }
 
     private void notifyCustomer(Order o, String subject, String headline) {
@@ -484,6 +572,15 @@ public class OrderService {
         return a;
     }
 
+    private static String sellerStepNote(OrderStatus s) {
+        return switch (s) {
+            case PACKED -> "Packed by the seller";
+            case SHIPPED -> "Shipped by the seller";
+            case DELIVERED -> "Delivered";
+            default -> null;
+        };
+    }
+
     private static String defaultNote(OrderStatus s) {
         return switch (s) {
             case PACKED -> "Gift wrapped and packed";
@@ -495,10 +592,27 @@ public class OrderService {
         };
     }
 
-    private static List<OrderItemDto> items(Order o) {
+    private static List<OrderItemDto> items(Order o, Map<Long, SellerRef> refs) {
         return o.getItems().stream().map(i -> new OrderItemDto(i.getProductId(), i.getProductName(),
                 i.getImageUrl(), i.getUnitPrice(), i.getQuantity(), i.getLineTotal(), i.getCustomName(),
-                i.getCustomMessage())).toList();
+                i.getCustomMessage(), i.getSellerId() == null ? null : refs.get(i.getSellerId()),
+                i.getFulfillmentStatus(), i.getFulfillmentNote())).toList();
+    }
+
+    /** Store names for the sellers in these orders, in one query. */
+    private Map<Long, SellerRef> sellerRefs(Collection<Order> list) {
+        Set<Long> ids = list.stream().flatMap(o -> o.getItems().stream()).map(OrderItem::getSellerId)
+                .filter(Objects::nonNull).collect(Collectors.toSet());
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        return sellers.findAllById(ids).stream()
+                .collect(Collectors.toMap(SellerProfile::getUserId, SellerRef::from));
+    }
+
+    private PageResponse<OrderSummaryDto> summaries(Page<Order> page) {
+        Map<Long, SellerRef> refs = sellerRefs(page.getContent());
+        return PageResponse.of(page.map(o -> toSummary(o, refs)));
     }
 
     private static List<StatusEventDto> timeline(Order o) {
@@ -519,15 +633,20 @@ public class OrderService {
                 o.getCouponCode(),
                 new ShippingDto(s.getFullName(), s.getEmail(), s.getPhone(), s.getAddressLine(), s.getCity(),
                         s.getState(), s.getPincode()),
-                items(o), timeline(o), o.getCreatedAt(), pay);
+                items(o, sellerRefs(List.of(o))), timeline(o), o.getCreatedAt(), pay);
     }
 
-    private static OrderSummaryDto toSummary(Order o) {
+    private static OrderSummaryDto toSummary(Order o, Map<Long, SellerRef> refs) {
         OrderItem first = o.getItems().isEmpty() ? null : o.getItems().get(0);
         int count = o.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
+        // Who sells the lines, in order: marketplace stores by name, GiftGenius for its own lines.
+        List<String> storeNames = o.getItems().stream()
+                .map(i -> i.getSellerId() == null ? GIFTGENIUS
+                        : refs.containsKey(i.getSellerId()) ? refs.get(i.getSellerId()).storeName() : null)
+                .filter(Objects::nonNull).distinct().toList();
         return new OrderSummaryDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
                 o.getTotal(), count, o.getItems().size(),
                 first == null ? null : first.getProductName(), first == null ? null : first.getImageUrl(),
-                o.getCreatedAt(), o.getShipping().getEmail());
+                o.getCreatedAt(), o.getShipping().getEmail(), storeNames);
     }
 }

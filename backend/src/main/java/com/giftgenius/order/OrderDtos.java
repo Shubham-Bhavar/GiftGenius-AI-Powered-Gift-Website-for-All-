@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 
+import com.giftgenius.catalog.ProductDtos.SellerRef;
 import com.giftgenius.pricing.DeliveryType;
 
 import jakarta.validation.Valid;
@@ -46,8 +47,10 @@ public final class OrderDtos {
     public record StatusUpdateRequest(@NotNull OrderStatus status, @Size(max = 255) String note) {
     }
 
+    /** seller and fulfilment are set only for a line sold by a marketplace seller. */
     public record OrderItemDto(Long productId, String name, String image, BigDecimal unitPrice, int quantity,
-            BigDecimal lineTotal, String customName, String customMessage) {
+            BigDecimal lineTotal, String customName, String customMessage, SellerRef seller,
+            FulfillmentStatus fulfillmentStatus, String fulfillmentNote) {
     }
 
     public record StatusEventDto(OrderStatus status, String note, Instant at) {
@@ -86,9 +89,12 @@ public final class OrderDtos {
             List<OrderItemDto> items, List<StatusEventDto> timeline, Instant createdAt) {
     }
 
-    /** itemCount is the total quantity; lineCount is the number of different products in the order. */
+    /**
+     * itemCount is the total quantity; lineCount is the number of different products in the order;
+     * sellers names who sells its lines: marketplace stores, and "GiftGenius" for GiftGenius's own lines.
+     */
     public record OrderSummaryDto(String orderNumber, OrderStatus status, PaymentMethod paymentMethod,
             PaymentStatus paymentStatus, BigDecimal total, int itemCount, int lineCount, String firstItemName,
-            String firstItemImage, Instant createdAt, String customerEmail) {
+            String firstItemImage, Instant createdAt, String customerEmail, List<String> sellers) {
     }
 }

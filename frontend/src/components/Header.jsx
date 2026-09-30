@@ -135,7 +135,7 @@ function SearchBox() {
 }
 
 function AccountButton() {
-  const { user, isAdmin, logout } = useAuth();
+  const { user, isAdmin, isSeller, logout } = useAuth();
   const { openAuth } = useUi();
   const toast = useToast();
   const navigate = useNavigate();
@@ -164,10 +164,28 @@ function AccountButton() {
       {open && (
         <div className="account-dropdown" role="menu">
           <p className="account-who">{user.fullName}<small>{user.email}</small></p>
+          <button role="menuitem" type="button" onClick={() => go('/account')}>👤 My Account</button>
           <button role="menuitem" type="button" onClick={() => go('/account/orders')}>📦 My Orders</button>
           <button role="menuitem" type="button" onClick={() => go('/wishlist')}>❤️ Wishlist</button>
-          <button role="menuitem" type="button" onClick={() => go('/account')}>⚙️ Account Settings</button>
-          {isAdmin && <button role="menuitem" type="button" onClick={() => go('/admin')}>🛡️ Store Admin</button>}
+          <button role="menuitem" type="button" onClick={() => go('/cart')}>🛒 Cart</button>
+          {isSeller && (
+            <div role="group" aria-labelledby="account-seller-h" className="account-group">
+              <p id="account-seller-h" className="account-group-h">Seller Center</p>
+              <button role="menuitem" type="button" onClick={() => go('/seller')}>🏪 Dashboard</button>
+              <button role="menuitem" type="button" onClick={() => go('/seller/products')}>🎁 My Products</button>
+              <button role="menuitem" type="button" onClick={() => go('/seller/products/new')}>➕ Add Product</button>
+              <button role="menuitem" type="button" onClick={() => go('/seller/orders')}>📦 Seller Orders</button>
+              <button role="menuitem" type="button" onClick={() => go('/seller/analytics')}>📈 Analytics</button>
+              <button role="menuitem" type="button" onClick={() => go('/seller/settings')}>⚙️ Store Settings</button>
+            </div>
+          )}
+          {isAdmin && (
+            <div role="group" aria-labelledby="account-admin-h" className="account-group">
+              <p id="account-admin-h" className="account-group-h">Store Admin</p>
+              <button role="menuitem" type="button" onClick={() => go('/admin')}>🛡️ Store Admin</button>
+              <button role="menuitem" type="button" onClick={() => go('/admin/sellers')}>🏪 Seller Management</button>
+            </div>
+          )}
           <button role="menuitem" type="button" className="account-signout" onClick={async () => {
             setOpen(false);
             navigate('/', { replace: true });

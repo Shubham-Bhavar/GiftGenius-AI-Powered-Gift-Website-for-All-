@@ -32,6 +32,13 @@ giftgenius/
 
 **Store admin** (`/admin`): sales KPIs, low stock, order management (packed → shipped → delivered, notes shown to the customer, cancellations with automatic stock and coupon release), a product editor, coupon management and the contact-message inbox.
 
+**Marketplace sellers**: GiftGenius is also a marketplace. There are three roles: **customer**, **seller** and **admin**.
+- **Becoming a seller.** Anyone can sign up as a seller (Sign Up → Seller, with store details), or a customer can open a store from Account → *Sell on GiftGenius* and keep their account.
+- **Store review.** Every new store starts **pending** until an admin approves it (Store admin → Sellers). An admin can also reject a store with a reason, or suspend and reactivate it.
+- **Seller Center** (`/seller`). A dashboard with real figures, product management, the seller's own order lines with fulfilment updates, sales analytics, and store settings. There is also a public storefront at `/store/{slug}`.
+- **Product review.** A seller's products are drafts until submitted. Only an admin's approval (Store admin → Products → *Awaiting approval*) lists them in the shop. Changing an approved product's name, descriptions, category or image sends it back for review; price and stock changes apply at once.
+- **Orders.** A cart can mix GiftGenius and seller products, and still produces one customer order. Each order line remembers its seller. A seller sees only their own lines, their share of the money and the delivery address, and moves their part through packed → shipped → delivered. When every line of an order belongs to sellers, the customer's order status follows the slowest seller.
+
 **Store details** (support email, phone, city, social links, nav menu, and the end date on the homepage sale banner) live in one file: `frontend/src/config/site.js`.
 
 ## Quick start (Docker)
@@ -53,7 +60,18 @@ Open http://localhost:8081. Sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD` and ch
 - the email already belongs to a **customer** account (for example, you signed up in the shop first): it is **promoted to admin and its password becomes `ADMIN_PASSWORD`**; its old sessions are signed out. (Sign-up doesn't prove email ownership, so taking over with the configured password makes sure only you, not whoever registered that email first, gets admin rights);
 - already an admin: nothing changes, so a password you change later in Account Settings isn't reset on the next deploy.
 
-Admin rights are enforced by the API (`/api/admin/**` requires the ADMIN role); the admin pages in the React app only mirror that.
+Admin rights are enforced by the API (`/api/admin/**` requires the ADMIN role); the admin pages in the React app only mirror that. An `ADMIN_EMAIL` that belongs to a seller account is never promoted (a warning is logged): use a separate email for the admin.
+
+## Sellers and ownership
+
+- **Roles** are `CUSTOMER`, `SELLER` and `ADMIN`, stored on the user and carried in the signed access token. `/api/seller/**` requires SELLER, and `/api/admin/**` requires ADMIN. Registration can create a customer or a pending seller, never an admin.
+- **Ownership.** A seller's store (`seller_profiles`) shares the seller's user id. `products.seller_id` is set once, from the signed-in seller, when a product is created; request bodies can't set or change it.
+- **Access checks.** Every seller product operation loads the product and checks its owner: another seller's product is a 403 and a missing one a 404. Seller order queries are filtered by `order_items.seller_id` in the database.
+- **Store status.** What a seller may do also depends on their store's status (pending: drafts only; rejected or suspended: no product changes). It is read from the database on every request, not from the token.
+- **Listing rule.** A product is listed in the shop only while it is approved and its store is active. The database enforces the first half with a `CHECK` constraint (`active = FALSE OR status = 'APPROVED'`).
+- **Existing catalogue.** The original 20 products have no seller (sold by GiftGenius) and stay `APPROVED`.
+- **Store text** (names, descriptions, notes) must not contain `<` or `>`, and images must be `https://` links. There's no file upload yet: products use an image link, so real object storage can be added behind the same field later.
+- **Notifications.** Emails go out for seller applications (to `ADMIN_EMAIL`), store and product decisions (to the seller), new orders (to each seller) and shipments (to the customer). They use the same SMTP settings as everything else; without SMTP they are logged, and nothing fails.
 
 ## Vercel + Railway
 
@@ -100,9 +118,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (37)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (45)
-cd frontend && npm run lint && npm test   # 90 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (49)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (63)
+cd frontend && npm run lint && npm test   # 124 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -112,6 +130,16 @@ The **integration tests** start the whole application against a real MySQL datab
 - **Payments:** Razorpay signature verification, webhooks (including duplicates and forged signatures), Razorpay outages, and the cap on unpaid orders.
 - **AI:** rule fallback, AI re-ranking that discards invented product ids, prompt-injection delimiting, card messages and budget limits.
 - **Contact:** validation, the admin inbox and its access rules, and that the sender is never emailed (so the form can't be used to spam people).
+- **Marketplace:**
+  - seller sign-up and store review;
+  - role checks, including a seller editing their own token to claim ADMIN;
+  - product ownership: another seller's product can't be read, edited, submitted or archived, and owner fields in the body are ignored;
+  - validation;
+  - product approval and the listing rule, including the database constraint;
+  - suspension hiding a store's products;
+  - split orders, where each seller sees only their own lines;
+  - fulfilment and the order roll-up, and cancelled orders not counting as sales;
+  - the original 20 products unchanged.
 
 The **frontend tests** render the real app, with its router, providers and pages, against an in-memory API built on MSW. They cover:
 - the original homepage: hero, occasions, filter pills, sort, live header search, Quick View, the "+ Add → ✓ Added" feedback, the cart sidebar, the newsletter and the once-per-session entry animation;
@@ -119,6 +147,13 @@ The **frontend tests** render the real app, with its router, providers and pages
 - the sign-in dialog's modes (sign in, create account, forgot password: each named correctly for screen readers), and the reset-password page: validation, one-time links and missing links;
 - the checkout idempotency key, including a retry after a network failure;
 - the gift-finder quiz, order tracking and the admin gate;
+- the marketplace:
+  - seller sign-up (and a customer opening a store);
+  - sign-in landing by role;
+  - the Seller Center's dashboard, product list, editor, orders, analytics and settings;
+  - the "Sellers only" and "Admins only" gates;
+  - the storefront and store bylines;
+  - admin seller and product review;
 - output escaping, the image fallback, and the session-refresh rules;
 - accessibility with axe-core (WCAG 2.x A/AA and best practices) on all 18 public pages, the signed-in and admin pages, and every overlay while open, plus keyboard behaviour: focus trapping and return, closed overlays kept out of the tab order, and the product tabs' arrow keys.
 
@@ -151,6 +186,10 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 | AI | `POST /api/ai/recommendations`, `POST /api/ai/gift-message` |
 | Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
 | Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |
+| Seller (SELLER role) | `GET /api/seller/me · dashboard · analytics`, `PUT /api/seller/profile`, `POST /api/seller/profile/reapply`, `GET/POST /api/seller/products`, `GET/PUT/DELETE /api/seller/products/{id}`, `POST /api/seller/products/{id}/submit`, `GET /api/seller/orders`, `GET /api/seller/orders/{n}`, `PATCH /api/seller/orders/{n}/status` |
+| Becoming a seller | `POST /api/auth/register` with a `seller` object, or `POST /api/auth/seller-application` (signed-in customer) |
+| Stores | `GET /api/stores/{slug}` (public), `GET /api/products?store={slug}` |
+| Admin: marketplace | `GET /api/admin/sellers?status&q`, `GET /api/admin/sellers/{id}`, `PATCH /api/admin/sellers/{id}/approve · reject · suspend · reactivate`, `GET /api/admin/products?status&owner`, `GET /api/admin/products/{id}`, `PATCH /api/admin/products/{id}/approve · reject` |
 | Other | `POST /api/contact`, `POST /api/newsletter/subscribe`, `POST /api/payments/razorpay/webhook` |
 
 ## Before you go live

@@ -89,6 +89,7 @@ export function Footer() {
           <h2>Company</h2>
           <ul>
             <li><Link to="/about">About Us</Link></li>
+            <li><Link to="/sell">Sell on GiftGenius</Link></li>
             <li><Link to="/collections">Collections</Link></li>
             <li><Link to="/gift-finder">Gift Guide</Link></li>
             <li><Link to="/privacy">Privacy Policy</Link></li>

@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { api } from '../lib/api.js';
+import { homeFor } from '../lib/marketplace.js';
 
 /** Only allow same-site relative redirects after sign-in (no open redirects). */
 export function safeNext(raw) {
@@ -20,6 +21,7 @@ export function AuthPage({ mode }) {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const next = safeNext(params.get('next'));
+  const askedFor = params.has('next');
   const [done, setDone] = useState(false);
 
   if (user && !done && mode !== 'forgot') return <Navigate to={next} replace />;
@@ -29,8 +31,9 @@ export function AuthPage({ mode }) {
       <AuthCard
         pageHeading
         mode={mode}
+        initialAccountType={params.get('type') === 'seller' ? 'seller' : 'customer'}
         onModeChange={(m) => navigate(`${PATHS[m]}${query}`, { replace: true })}
-        onDone={() => { setDone(true); navigate(next, { replace: true }); }}
+        onDone={(u) => { setDone(true); navigate(askedFor ? next : homeFor(u) ?? '/', { replace: true }); }}
       />
     </div>
   );

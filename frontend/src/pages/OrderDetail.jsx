@@ -10,6 +10,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { usePayment } from '../hooks/usePayment.js';
 import { api } from '../lib/api.js';
 import { CANCELLABLE, DELIVERY_LABEL, dateTime, inr } from '../lib/format.js';
+import { FULFILMENT_STATUS } from '../lib/marketplace.js';
 
 export function OrderItems({ items }) {
   return (
@@ -20,6 +21,13 @@ export function OrderItems({ items }) {
           <div>
             <Link to={`/product/${i.productId}`} className="od-mini-name">{i.name}</Link>
             <div className="od-mini-sub">Qty: {i.quantity} · 🎀 Gift Wrapped</div>
+            {i.seller && (
+              <div className="od-mini-sub">
+                Sold by <Link to={`/store/${encodeURIComponent(i.seller.slug)}`}>{i.seller.storeName}</Link>
+                {i.fulfillmentStatus && <> · <StatusPill status={i.fulfillmentStatus} labels={FULFILMENT_STATUS} /></>}
+              </div>
+            )}
+            {i.fulfillmentNote && <div className="od-mini-sub">🚚 {i.fulfillmentNote}</div>}
             {i.customName && <div className="od-mini-sub">✍️ {i.customName}</div>}
             {i.customMessage && <div className="od-mini-sub">💌 “{i.customMessage}”</div>}
           </div>
@@ -153,10 +161,17 @@ export default function OrderDetail() {
         </div>
 
         {CANCELLABLE.has(o.status) && (
-          <div className="od-cancel">
-            <button type="button" className="btn-outline" disabled={busy} onClick={cancel}>Cancel order</button>
-            <p className="co-muted">Free cancellation until your gift ships.</p>
-          </div>
+          // Once a seller has sent their part, the order can't be cancelled any more (the API refuses too).
+          o.items.some((i) => ['SHIPPED', 'DELIVERED'].includes(i.fulfillmentStatus)) ? (
+            <div className="od-cancel">
+              <p className="co-muted">Part of this order has already shipped, so it can&apos;t be cancelled online. <Link to="/contact">Contact us</Link> and we&apos;ll help.</p>
+            </div>
+          ) : (
+            <div className="od-cancel">
+              <button type="button" className="btn-outline" disabled={busy} onClick={cancel}>Cancel order</button>
+              <p className="co-muted">Free cancellation until your gift ships.</p>
+            </div>
+          )
         )}
       </div>
     </>

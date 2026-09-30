@@ -67,11 +67,19 @@ export default function ProductCard({ product: p, reason }) {
       <div className="pcard-body">
         <p className="pcard-cat">{p.category}</p>
         <h3 className="pcard-name"><Link to={`/product/${p.id}`} onClick={(e) => e.stopPropagation()}>{p.name}</Link></h3>
+        {/* Only marketplace sellers' products name their store; GiftGenius's own don't need a byline. */}
+        {p.seller && (
+          <p className="pcard-seller">by <Link to={`/store/${encodeURIComponent(p.seller.slug)}`} onClick={(e) => e.stopPropagation()}>{p.seller.storeName}</Link></p>
+        )}
         {reason && <p className="pcard-reason">✨ {reason}</p>}
-        <div className="pcard-rating" role="img" aria-label={`Rated ${Number(p.rating).toFixed(1)} out of 5 from ${p.reviewCount} reviews`}>
-          <span className="stars" aria-hidden="true">{p.starsDisplay}</span>
-          <span>{Number(p.rating).toFixed(1)} ({p.reviewCount})</span>
-        </div>
+        {p.reviewCount > 0 ? (
+          <div className="pcard-rating" role="img" aria-label={`Rated ${Number(p.rating).toFixed(1)} out of 5 from ${p.reviewCount} reviews`}>
+            <span className="stars" aria-hidden="true">{p.starsDisplay}</span>
+            <span>{Number(p.rating).toFixed(1)} ({p.reviewCount})</span>
+          </div>
+        ) : (
+          <div className="pcard-rating"><span>New · no reviews yet</span></div>
+        )}
         <div className="pcard-foot">
           <div className="pcard-price">
             {Number(p.originalPrice) > Number(p.price) && (

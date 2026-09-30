@@ -92,6 +92,21 @@ class AdminBootstrapIT extends AbstractIT {
     }
 
     @Test
+    void neverTurnsASellerAccountIntoAnAdmin() throws Exception {
+        String email = uniqueEmail("store-owner");
+        mvc.perform(postJson("/api/auth/register", Map.of("fullName", "Store Owner", "email", email,
+                "password", "seller-password-1", "seller", Map.of("storeName", "Owner Store " + email.substring(12, 20),
+                        "businessCategory", "gift sets", "phone", "+91 98765 43210", "addressLine", "1 MG Road",
+                        "city", "Pune", "state", "Maharashtra", "pincode", "411001"))))
+                .andExpect(status().isOk());
+
+        bootstrap(email, NEW_ADMIN_PASSWORD);
+
+        assertThat(users.findByEmailIgnoreCase(email).orElseThrow().getRole().name()).isEqualTo("SELLER");
+        login(email, "seller-password-1"); // the seller's own password is untouched
+    }
+
+    @Test
     void refusesAShortAdminPassword() throws Exception {
         String email = uniqueEmail("weak");
         register(email);

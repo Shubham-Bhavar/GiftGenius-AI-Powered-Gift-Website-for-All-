@@ -32,10 +32,11 @@ public class ProductController {
             @RequestParam(required = false) String occasion,
             @RequestParam(required = false) BigDecimal minPrice,
             @RequestParam(required = false) BigDecimal maxPrice,
+            @RequestParam(required = false) String store,
             @RequestParam(defaultValue = "featured") String sort,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
-        return service.search(new ProductQuery(q, category, tag, occasion, minPrice, maxPrice, sort), page, size);
+        return service.search(new ProductQuery(q, category, tag, occasion, minPrice, maxPrice, sort, store), page, size);
     }
 
     @GetMapping("/categories")

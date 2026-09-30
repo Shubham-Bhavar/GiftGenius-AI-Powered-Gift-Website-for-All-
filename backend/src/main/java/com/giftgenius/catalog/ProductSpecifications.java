@@ -6,6 +6,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.util.StringUtils;
 
 import jakarta.persistence.criteria.Join;
+import jakarta.persistence.criteria.JoinType;
 
 final class ProductSpecifications {
 
@@ -55,6 +56,41 @@ final class ProductSpecifications {
             }
             return cb.between(root.get("price"), min, max);
         };
+    }
+
+    /** Products of one store, by its public slug. */
+    static Specification<Product> fromStore(String storeSlug) {
+        if (!StringUtils.hasText(storeSlug)) {
+            return Specification.unrestricted();
+        }
+        return (root, q, cb) -> cb.equal(root.join("seller", JoinType.INNER).get("slug"), storeSlug.trim().toLowerCase());
+    }
+
+    /** Products owned by one seller (their user id): the ownership filter for every seller-side query. */
+    static Specification<Product> ownedBy(Long sellerId) {
+        return (root, q, cb) -> cb.equal(root.get("seller").get("userId"), sellerId);
+    }
+
+    /** "platform": GiftGenius's own products; "marketplace": sellers' products; anything else: all. */
+    static Specification<Product> ownerType(String owner) {
+        if ("platform".equals(owner)) {
+            return (root, q, cb) -> cb.isNull(root.get("seller"));
+        }
+        if ("marketplace".equals(owner)) {
+            return (root, q, cb) -> cb.isNotNull(root.get("seller"));
+        }
+        return Specification.unrestricted();
+    }
+
+    static Specification<Product> withStatus(ProductStatus status) {
+        if (status == null) {
+            return Specification.unrestricted();
+        }
+        return (root, q, cb) -> cb.equal(root.get("status"), status);
+    }
+
+    static Specification<Product> outOfStock() {
+        return (root, q, cb) -> cb.equal(root.get("stock"), 0);
     }
 
     private static Specification<Product> memberOf(String collection, String value) {

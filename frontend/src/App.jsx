@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createBrowserRouter, createMemoryRouter } from 'react-router';
 import Layout from './components/Layout.jsx';
-import { RequireAuth, RouteError } from './components/guards.jsx';
+import { RequireAuth, RouteError, SellEntry } from './components/guards.jsx';
 import { Spinner } from './components/ui.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { CartProvider } from './context/CartContext.jsx';
@@ -24,6 +24,7 @@ import { AuthPage, ResetPassword } from './pages/Auth.jsx';
 import { About, Collections, Contact, Help, NotFound, Privacy, Terms } from './pages/Info.jsx';
 
 const admin = () => import('./pages/admin/Admin.jsx');
+const seller = () => import('./pages/seller/Seller.jsx');
 
 export const routes = [
   {
@@ -52,6 +53,22 @@ export const routes = [
       { path: 'account', element: <RequireAuth><Account /></RequireAuth> },
       { path: 'account/orders', element: <RequireAuth><Orders /></RequireAuth> },
       { path: 'account/orders/:number', element: <RequireAuth><OrderDetail /></RequireAuth> },
+      { path: 'sell', element: <SellEntry /> },
+      { path: 'store/:slug', lazy: () => import('./pages/Store.jsx').then((m) => ({ Component: m.default })) },
+      {
+        path: 'seller',
+        lazy: () => seller().then((m) => ({ Component: m.SellerLayout })),
+        children: [
+          { index: true, lazy: () => seller().then((m) => ({ Component: m.SellerDashboard })) },
+          { path: 'products', lazy: () => seller().then((m) => ({ Component: m.SellerProducts })) },
+          { path: 'products/new', lazy: () => seller().then((m) => ({ Component: m.SellerProductEditor })) },
+          { path: 'products/:id/edit', lazy: () => seller().then((m) => ({ Component: m.SellerProductEditor })) },
+          { path: 'orders', lazy: () => seller().then((m) => ({ Component: m.SellerOrders })) },
+          { path: 'orders/:number', lazy: () => seller().then((m) => ({ Component: m.SellerOrderDetail })) },
+          { path: 'analytics', lazy: () => seller().then((m) => ({ Component: m.SellerAnalytics })) },
+          { path: 'settings', lazy: () => seller().then((m) => ({ Component: m.SellerSettings })) },
+        ],
+      },
       {
         path: 'admin',
         lazy: () => admin().then((m) => ({ Component: m.AdminLayout })),
@@ -61,6 +78,8 @@ export const routes = [
           { path: 'products', lazy: () => admin().then((m) => ({ Component: m.AdminProducts })) },
           { path: 'coupons', lazy: () => admin().then((m) => ({ Component: m.AdminCoupons })) },
           { path: 'messages', lazy: () => admin().then((m) => ({ Component: m.AdminMessages })) },
+          { path: 'sellers', lazy: () => admin().then((m) => ({ Component: m.AdminSellers })) },
+          { path: 'sellers/:id', lazy: () => admin().then((m) => ({ Component: m.AdminSellerDetail })) },
         ],
       },
       { path: '*', element: <NotFound /> },

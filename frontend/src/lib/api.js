@@ -145,6 +145,10 @@ export const api = {
       setSession(null);
     }
   },
+  /** A signed-in customer opens a store; the fresh session carries the SELLER role. */
+  async becomeSeller(body) {
+    return setSession(await request('/auth/seller-application', { method: 'POST', body }));
+  },
   me: () => request('/auth/me'),
   updateProfile: (body) => request('/auth/me', { method: 'PATCH', body }),
   async changePassword(currentPassword, newPassword) {
@@ -159,6 +163,7 @@ export const api = {
   product: (id) => request(`/products/${encodeURIComponent(id)}`),
   related: (id, limit = 4) => request(`/products/${encodeURIComponent(id)}/related${qs({ limit })}`),
   categories: () => request('/products/categories'),
+  store: (slug) => request(`/stores/${encodeURIComponent(slug)}`),
 
   // Cart & wishlist (signed-in)
   cart: () => request('/cart'),
@@ -196,6 +201,25 @@ export const api = {
   subscribe: (email) => request('/newsletter/subscribe', { method: 'POST', body: { email }, auth: false }),
   contact: (body) => request('/contact', { method: 'POST', body }),
 
+  // Seller Center (SELLER accounts; the API scopes everything to the signed-in seller)
+  seller: {
+    me: () => request('/seller/me'),
+    dashboard: () => request('/seller/dashboard'),
+    analytics: () => request('/seller/analytics'),
+    updateStore: (body) => request('/seller/profile', { method: 'PUT', body }),
+    reapply: () => request('/seller/profile/reapply', { method: 'POST' }),
+    products: (params) => request(`/seller/products${qs(params)}`),
+    product: (id) => request(`/seller/products/${encodeURIComponent(id)}`),
+    createProduct: (body) => request('/seller/products', { method: 'POST', body }),
+    updateProduct: (id, body) => request(`/seller/products/${encodeURIComponent(id)}`, { method: 'PUT', body }),
+    submitProduct: (id) => request(`/seller/products/${encodeURIComponent(id)}/submit`, { method: 'POST' }),
+    archiveProduct: (id) => request(`/seller/products/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    orders: (params) => request(`/seller/orders${qs(params)}`),
+    order: (number) => request(`/seller/orders/${encodeURIComponent(number)}`),
+    updateOrder: (number, status, note) =>
+      request(`/seller/orders/${encodeURIComponent(number)}/status`, { method: 'PATCH', body: { status, note } }),
+  },
+
   // Admin
   admin: {
     stats: () => request('/admin/stats'),
@@ -204,6 +228,7 @@ export const api = {
     updateStatus: (number, status, note) =>
       request(`/admin/orders/${encodeURIComponent(number)}/status`, { method: 'PATCH', body: { status, note } }),
     products: (params) => request(`/admin/products${qs(params)}`),
+    product: (id) => request(`/admin/products/${id}`),
     createProduct: (body) => request('/admin/products', { method: 'POST', body }),
     updateProduct: (id, body) => request(`/admin/products/${id}`, { method: 'PUT', body }),
     deactivateProduct: (id) => request(`/admin/products/${id}`, { method: 'DELETE' }),
@@ -212,6 +237,14 @@ export const api = {
     updateCoupon: (id, body) => request(`/admin/coupons/${id}`, { method: 'PUT', body }),
     messages: (params) => request(`/admin/messages${qs(params)}`),
     markMessageHandled: (id, handled) => request(`/admin/messages/${id}`, { method: 'PATCH', body: { handled } }),
+    approveProduct: (id) => request(`/admin/products/${id}/approve`, { method: 'PATCH' }),
+    rejectProduct: (id, reason) => request(`/admin/products/${id}/reject`, { method: 'PATCH', body: { reason } }),
+    sellers: (params) => request(`/admin/sellers${qs(params)}`),
+    seller: (id) => request(`/admin/sellers/${id}`),
+    approveSeller: (id) => request(`/admin/sellers/${id}/approve`, { method: 'PATCH' }),
+    rejectSeller: (id, reason) => request(`/admin/sellers/${id}/reject`, { method: 'PATCH', body: { reason } }),
+    suspendSeller: (id, reason) => request(`/admin/sellers/${id}/suspend`, { method: 'PATCH', body: { reason } }),
+    reactivateSeller: (id) => request(`/admin/sellers/${id}/reactivate`, { method: 'PATCH' }),
   },
 };
 

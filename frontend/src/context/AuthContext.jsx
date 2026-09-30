@@ -33,6 +33,7 @@ export function AuthProvider({ children }) {
       qc.removeQueries({ queryKey: ['wishlist'] });
       qc.removeQueries({ queryKey: ['orders'] });
       qc.removeQueries({ queryKey: ['admin'] });
+      qc.removeQueries({ queryKey: ['seller'] });
     }
   }, [user, qc]);
 
@@ -41,7 +42,8 @@ export function AuthProvider({ children }) {
   const logout = useCallback(() => api.logout(), []);
 
   const value = useMemo(
-    () => ({ user, ready, isAdmin: user?.role === 'ADMIN', login, register, logout, setUser }),
+    // Role flags only choose what to show; the API enforces every role on every request.
+    () => ({ user, ready, isAdmin: user?.role === 'ADMIN', isSeller: user?.role === 'SELLER', login, register, logout, setUser }),
     [user, ready, login, register, logout],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

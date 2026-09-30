@@ -28,6 +28,32 @@ export function RequireAdmin({ children }) {
   return children;
 }
 
+/** Seller Center pages. Customers are pointed to "Start selling"; the API refuses them either way. */
+export function RequireSeller({ children }) {
+  const { user, isSeller } = useAuth();
+  const location = useLocation();
+  if (!user) return <Navigate to={`/login?next=${encodeURIComponent(location.pathname)}`} replace />;
+  if (!isSeller) {
+    return (
+      <div className="gg-page">
+        <EmptyState level={1} icon="🏪" title="Sellers only"
+          action={<Link to="/account#sell" className="btn-primary">Start Selling on GiftGenius →</Link>}>
+          The Seller Center is for GiftGenius sellers. You can open a store from your account.
+        </EmptyState>
+      </div>
+    );
+  }
+  return children;
+}
+
+/** "Sell on GiftGenius": sellers go to their Seller Center, customers open a store from their account, guests sign up. */
+export function SellEntry() {
+  const { user, isSeller } = useAuth();
+  if (isSeller) return <Navigate to="/seller" replace />;
+  if (user) return <Navigate to="/account#sell" replace />;
+  return <Navigate to="/register?type=seller" replace />;
+}
+
 /** Router-level error page (a crash inside a page, or an unknown lazy route). */
 export function RouteError() {
   const error = useRouteError();

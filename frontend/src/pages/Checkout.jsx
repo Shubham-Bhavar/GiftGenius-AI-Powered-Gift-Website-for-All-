@@ -11,13 +11,9 @@ import { useCurrentLocation } from '../hooks/useCurrentLocation.js';
 import { usePayment } from '../hooks/usePayment.js';
 import { api } from '../lib/api.js';
 import { inr, newIdempotencyKey } from '../lib/format.js';
+import { INDIAN_STATES } from '../lib/india.js';
 
-// All 28 states and 8 union territories.
-const STATES = ['Andaman and Nicobar Islands', 'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chandigarh',
-  'Chhattisgarh', 'Dadra and Nagar Haveli and Daman and Diu', 'Delhi', 'Goa', 'Gujarat', 'Haryana', 'Himachal Pradesh',
-  'Jammu and Kashmir', 'Jharkhand', 'Karnataka', 'Kerala', 'Ladakh', 'Lakshadweep', 'Madhya Pradesh', 'Maharashtra',
-  'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Puducherry', 'Punjab', 'Rajasthan', 'Sikkim', 'Tamil Nadu',
-  'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal'];
+const STATES = INDIAN_STATES;
 
 const normalize = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/national capital territory of /, '')
   .replace(/[^a-z]/g, '');

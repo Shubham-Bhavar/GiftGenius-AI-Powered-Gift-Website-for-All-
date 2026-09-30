@@ -11,8 +11,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.giftgenius.catalog.ProductRepository;
+import com.giftgenius.catalog.ProductStatus;
 import com.giftgenius.order.OrderRepository;
 import com.giftgenius.order.OrderStatus;
+import com.giftgenius.seller.SellerProfileRepository;
+import com.giftgenius.seller.SellerStatus;
 
 @RestController
 @RequestMapping("/api/admin/stats")
@@ -22,15 +25,17 @@ public class AdminStatsController {
     }
 
     public record Stats(long ordersLast30Days, BigDecimal paidRevenueLast30Days, long awaitingDispatch,
-            long awaitingPayment, List<LowStock> lowStock) {
+            long awaitingPayment, List<LowStock> lowStock, long sellersAwaitingReview, long productsAwaitingApproval) {
     }
 
     private final OrderRepository orders;
     private final ProductRepository products;
+    private final SellerProfileRepository sellers;
 
-    public AdminStatsController(OrderRepository orders, ProductRepository products) {
+    public AdminStatsController(OrderRepository orders, ProductRepository products, SellerProfileRepository sellers) {
         this.orders = orders;
         this.products = products;
+        this.sellers = sellers;
     }
 
     @GetMapping
@@ -41,6 +46,7 @@ public class AdminStatsController {
                 .map(p -> new LowStock(p.getId(), p.getName(), p.getStock())).toList();
         return new Stats(orders.countSince(since), orders.revenueSince(since),
                 orders.countByStatus(OrderStatus.CONFIRMED) + orders.countByStatus(OrderStatus.PACKED),
-                orders.countByStatus(OrderStatus.PENDING_PAYMENT), low);
+                orders.countByStatus(OrderStatus.PENDING_PAYMENT), low, sellers.countByStatus(SellerStatus.PENDING),
+                products.countByStatus(ProductStatus.PENDING_APPROVAL));
     }
 }

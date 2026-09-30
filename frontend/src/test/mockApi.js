@@ -11,7 +11,20 @@ const product = (id, name, category, price, extra = {}) => ({
   rating: 4.8, reviewCount: 120, starsDisplay: '★★★★★', image: `https://img.test/${id}.jpg`, alt: name, badge: null,
   tags: [], occasion: ['birthday'], forWhom: [], personality: [], relationship: ['friend'],
   description: `${name} description`, longDescription: null, isCultural: false, isFestival: false,
-  stock: 20, inStock: true, active: true, ...extra,
+  stock: 20, inStock: true, active: true, status: 'APPROVED', createdAt: '2026-09-01T10:00:00Z', ...extra,
+});
+
+const SANA = { slug: 'sanas-candles', storeName: "Sana's Candles" };
+const MEERA = { slug: 'meera-brass', storeName: 'Meera Brass' };
+/** A seller's product: not listed until approved. sellerId stays in the mock only (the API never sends it). */
+const sellerProduct = (id, name, sellerId, seller, status, extra = {}) => product(id, name, 'home decor', 450, {
+  seller, sellerId, status, active: status === 'APPROVED', rating: 0, reviewCount: 0, starsDisplay: '☆☆☆☆☆', originalPrice: 450,
+  occasion: ['birthday'], relationship: [], description: `${name}, hand-poured in Pune.`, ...extra,
+});
+const store = (slug, storeName, status, extra = {}) => ({
+  slug, storeName, description: 'Hand-poured soy candles, made to order.', businessCategory: 'home decor', phone: '+91 98765 43210',
+  supportEmail: null, addressLine: '7 FC Road', city: 'Pune', state: 'Maharashtra', pincode: '411004', logoUrl: null, bannerUrl: null,
+  status, statusReason: null, createdAt: '2026-09-01T10:00:00Z', reviewedAt: null, ...extra,
 });
 
 export function createDb() {
@@ -22,10 +35,40 @@ export function createDb() {
       product(4, 'Signature Perfume', 'fragrance', 1199, { occasion: ['anniversary'], tags: ['for-her', 'premium'], rating: 4.9 }),
       product(6, 'Artisan Chocolate Box', 'food & sweets', 299, { tags: ['budget'] }),
       product(9, '<img src=x onerror=alert(1)> Mug', 'home decor', 350, { tags: ['for-him'] }),
+      // Marketplace sellers' products that aren't listed (so the shop pages show exactly the five above).
+      sellerProduct(21, 'Lavender Soy Candle', 3, SANA, 'PENDING_APPROVAL'),
+      sellerProduct(22, 'Cedar Wood Candle', 3, SANA, 'DRAFT', { createdAt: '2026-09-02T10:00:00Z' }),
+      sellerProduct(23, 'Rose Petal Candle', 3, SANA, 'REJECTED', { rejectionReason: 'Use a photo of the actual candle.' }),
+      sellerProduct(30, 'Brass Diya Set', 5, MEERA, 'DRAFT'),
     ],
     users: [
       { id: 1, email: 'asha@example.com', password: 'correct-horse', fullName: 'Asha Rao', phone: null, role: 'CUSTOMER' },
       { id: 2, email: 'admin@example.com', password: 'admin-password', fullName: 'Store Admin', phone: null, role: 'ADMIN' },
+      { id: 3, email: 'sana@example.com', password: 'seller-password', fullName: 'Sana Kulkarni', phone: '+91 98765 43210', role: 'SELLER' },
+      { id: 4, email: 'ravi@example.com', password: 'seller-password', fullName: 'Ravi Pending', phone: null, role: 'SELLER' },
+      { id: 5, email: 'meera@example.com', password: 'seller-password', fullName: 'Meera Iyer', phone: null, role: 'SELLER' },
+    ],
+    stores: {
+      3: store('sanas-candles', "Sana's Candles", 'APPROVED', { reviewedAt: '2026-09-02T10:00:00Z' }),
+      4: store('ravis-rakhis', "Ravi's Rakhis", 'PENDING', { businessCategory: 'cultural' }),
+      5: store('meera-brass', 'Meera Brass', 'APPROVED'),
+    },
+    // Seller views of orders: only that seller's lines (the API filters them; the mock stores them that way).
+    sellerOrders: [
+      {
+        sellerId: 3, orderNumber: 'GG-SELL0001', orderStatus: 'CONFIRMED', fulfillmentStatus: 'NEW', paymentMethod: 'COD',
+        deliveryType: 'STANDARD', sellerTotal: 900, createdAt: '2026-09-20T10:00:00Z',
+        shipping: { fullName: 'Asha Rao', phone: '+91 98765 11111', addressLine: '12 MG Road', city: 'Mumbai', state: 'Maharashtra', pincode: '400001' },
+        items: [{ productId: 24, name: 'Vanilla Candle', image: 'https://img.test/24.jpg', unitPrice: 450, quantity: 2, lineTotal: 900,
+          customName: 'Priya', customMessage: null, fulfillmentStatus: 'NEW', fulfillmentNote: null, fulfillmentUpdatedAt: null }],
+      },
+      {
+        sellerId: 5, orderNumber: 'GG-SELL0002', orderStatus: 'CONFIRMED', fulfillmentStatus: 'NEW', paymentMethod: 'COD',
+        deliveryType: 'STANDARD', sellerTotal: 650, createdAt: '2026-09-21T10:00:00Z',
+        shipping: { fullName: 'Kiran', phone: '+91 98765 22222', addressLine: '3 Park St', city: 'Kolkata', state: 'West Bengal', pincode: '700016' },
+        items: [{ productId: 31, name: 'Brass Bell', image: null, unitPrice: 650, quantity: 1, lineTotal: 650,
+          customName: null, customMessage: null, fulfillmentStatus: 'NEW', fulfillmentNote: null, fulfillmentUpdatedAt: null }],
+      },
     ],
     carts: {},
     wishlists: {},
@@ -42,7 +85,10 @@ export function createDb() {
 }
 
 const problem = (status, detail, errors) => HttpResponse.json({ status, detail, errors }, { status });
-const userDto = ({ password, ...u }) => u;
+const userDto = (db, { password, ...u }) => (db.stores[u.id] ? { ...u, sellerStatus: db.stores[u.id].status } : u);
+/** A product as the API sends it: the mock-only owner id removed. */
+const productDto = ({ sellerId, ...p }) => p;
+const page = (content, size = 20) => HttpResponse.json({ content, page: 0, size, totalElements: content.length, totalPages: 1 });
 
 function cartDto(db, userId) {
   const items = (db.carts[userId] ?? []).map((l) => {
@@ -98,7 +144,7 @@ export function handlers(db) {
     const token = `tok-${user.id}-${Math.random().toString(36).slice(2)}`;
     db.tokens[token] = user.id;
     db.cookieUser = user.id;
-    return { accessToken: token, expiresIn: 900, user: userDto(user) };
+    return { accessToken: token, expiresIn: 900, user: userDto(db, user) };
   };
   const authed = (fn) => async ({ request, params }) => {
     const user = session(request);
@@ -121,8 +167,14 @@ export function handlers(db) {
       const body = await request.json();
       if (db.users.some((u) => u.email === body.email)) return problem(409, 'An account with this email already exists. Sign in instead.');
       if (!body.password || body.password.length < 8) return problem(400, 'Some fields need attention.', { password: 'Use 8 to 72 characters' });
-      const user = { id: db.users.length + 1, role: 'CUSTOMER', phone: null, ...body };
+      const { seller, ...account } = body;
+      if (seller && Object.values(db.stores).some((st) => st.storeName.toLowerCase() === seller.storeName.toLowerCase())) {
+        return problem(409, 'A store with that name already exists. Choose another name.');
+      }
+      const user = { id: db.users.length + 1, phone: null, ...account, role: seller ? 'SELLER' : 'CUSTOMER' };
       db.users.push(user);
+      if (seller) db.stores[user.id] = store(seller.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), seller.storeName, 'PENDING', seller);
+      db.lastRegistration = body;
       return HttpResponse.json(issue(user));
     }),
     http.post(`${API}/auth/refresh`, ({ request }) => {
@@ -143,20 +195,32 @@ export function handlers(db) {
       return new HttpResponse(null, { status: 204 });
     }),
     http.post(`${API}/auth/logout`, () => { db.cookieUser = null; return new HttpResponse(null, { status: 204 }); }),
-    http.get(`${API}/auth/me`, authed(({ user }) => HttpResponse.json(userDto(user)))),
+    http.get(`${API}/auth/me`, authed(({ user }) => HttpResponse.json(userDto(db, user)))),
 
     // Catalog
     http.get(`${API}/products/categories`, () =>
       HttpResponse.json([...new Set(db.products.map((p) => p.category))].map((category) => ({ category, count: 1 })))),
     http.get(`${API}/products/:id/related`, ({ params }) => HttpResponse.json(db.products.filter((p) => p.id !== Number(params.id)).slice(0, 2))),
     http.get(`${API}/products/:id`, ({ params }) => {
-      const p = db.products.find((x) => x.id === Number(params.id));
-      return p ? HttpResponse.json(p) : problem(404, "We couldn't find that gift.");
+      const p = db.products.find((x) => x.id === Number(params.id) && x.active);
+      return p ? HttpResponse.json(productDto(p)) : problem(404, "We couldn't find that gift.");
     }),
     http.get(`${API}/products`, ({ request }) => {
-      const q = new URL(request.url).searchParams.get('q')?.toLowerCase();
-      const content = q ? db.products.filter((p) => p.name.toLowerCase().includes(q)) : db.products;
-      return HttpResponse.json({ content, page: 0, size: 24, totalElements: content.length, totalPages: 1 });
+      const sp = new URL(request.url).searchParams;
+      const q = sp.get('q')?.toLowerCase();
+      let content = db.products.filter((p) => p.active);
+      if (q) content = content.filter((p) => p.name.toLowerCase().includes(q));
+      if (sp.get('store')) content = content.filter((p) => p.seller?.slug === sp.get('store'));
+      if (sp.get('category')) content = content.filter((p) => p.category === sp.get('category'));
+      return HttpResponse.json({ content: content.map(productDto), page: 0, size: 24, totalElements: content.length, totalPages: 1 });
+    }),
+    http.get(`${API}/stores/:slug`, ({ params }) => {
+      const [id, st] = Object.entries(db.stores).find(([, x]) => x.slug === params.slug) ?? [];
+      if (!st || st.status !== 'APPROVED') return problem(404, "We couldn't find that store.");
+      const listed = db.products.filter((p) => p.sellerId === Number(id) && p.active);
+      return HttpResponse.json({ slug: st.slug, storeName: st.storeName, description: st.description, businessCategory: st.businessCategory,
+        logoUrl: st.logoUrl, bannerUrl: st.bannerUrl, memberSince: st.createdAt, productCount: listed.length,
+        categories: [...new Set(listed.map((p) => p.category))] });
     }),
 
     // Cart & wishlist
@@ -275,9 +339,213 @@ export function handlers(db) {
       return HttpResponse.json({ status: 'received' }, { status: 202 });
     }),
 
+    // Seller Center: every handler acts on the signed-in seller only, as the API does.
+    http.post(`${API}/auth/seller-application`, authed(async ({ request, user }) => {
+      if (user.role !== 'CUSTOMER') return problem(409, user.role === 'SELLER' ? 'You already have a store.' : "Admin accounts can't open a store.");
+      const body = await request.json();
+      user.role = 'SELLER';
+      db.stores[user.id] = store(body.storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-'), body.storeName, 'PENDING', body);
+      db.lastApplication = body;
+      return HttpResponse.json(issue(user));
+    })),
+    ...sellerHandlers(db, authed),
+
     // Admin
     http.get(`${API}/admin/stats`, authed(({ user }) => (user.role !== 'ADMIN' ? problem(403, "You don't have access to this.")
       : HttpResponse.json({ ordersLast30Days: 12, paidRevenueLast30Days: 15400, awaitingDispatch: 3, awaitingPayment: 1,
-        lowStock: [{ id: 4, name: 'Signature Perfume', stock: 2 }] })))),
+        lowStock: [{ id: 4, name: 'Signature Perfume', stock: 2 }], sellersAwaitingReview: 1, productsAwaitingApproval: 1 })))),
+    ...adminMarketplaceHandlers(db, authed),
+  ];
+}
+
+const sellerOnly = (authed, fn) => authed(async (ctx) => (ctx.user.role !== 'SELLER' ? problem(403, "You don't have access to this.") : fn(ctx)));
+const adminOnly = (authed, fn) => authed(async (ctx) => (ctx.user.role !== 'ADMIN' ? problem(403, "You don't have access to this.") : fn(ctx)));
+
+function sellerStats(db, sellerId) {
+  const mine = db.products.filter((p) => p.sellerId === sellerId);
+  const count = (st) => mine.filter((p) => p.status === st).length;
+  const orders = db.sellerOrders.filter((o) => o.sellerId === sellerId && o.fulfillmentStatus !== 'CANCELLED');
+  const gross = orders.reduce((n, o) => n + o.sellerTotal, 0);
+  return {
+    totalProducts: mine.length, listedProducts: mine.filter((p) => p.active).length, pendingProducts: count('PENDING_APPROVAL'),
+    draftProducts: count('DRAFT'), rejectedProducts: count('REJECTED'), outOfStockProducts: mine.filter((p) => p.status === 'APPROVED' && p.stock === 0).length,
+    orders: orders.length, unitsSold: orders.reduce((n, o) => n + o.items.reduce((m, i) => m + i.quantity, 0), 0), grossSales: gross,
+    averageOrderValue: orders.length ? gross / orders.length : 0, cancelledOrders: 0,
+    ordersToFulfil: orders.filter((o) => ['NEW', 'PACKED'].includes(o.fulfillmentStatus)).length,
+  };
+}
+
+const orderSummary = (o) => ({
+  orderNumber: o.orderNumber, orderStatus: o.orderStatus, fulfillmentStatus: o.fulfillmentStatus,
+  itemCount: o.items.reduce((n, i) => n + i.quantity, 0), lineCount: o.items.length, sellerTotal: o.sellerTotal,
+  firstItemName: o.items[0].name, firstItemImage: o.items[0].image, shipCity: o.shipping.city, createdAt: o.createdAt,
+});
+const NEXT = { NEW: ['PACKED', 'SHIPPED'], PACKED: ['SHIPPED'], SHIPPED: ['DELIVERED'], DELIVERED: [], CANCELLED: [] };
+const orderDto = ({ sellerId, ...o }) => ({ ...o, nextSteps: o.orderStatus === 'CANCELLED' ? [] : NEXT[o.fulfillmentStatus] });
+
+function sellerHandlers(db, authed) {
+  const S = (fn) => sellerOnly(authed, fn);
+  /** The product if the seller owns it: 404 if there's none, 403 if it's someone else's (as the API answers). */
+  const owned = (user, id) => {
+    const p = db.products.find((x) => x.id === Number(id));
+    if (!p) return [null, problem(404, 'Product not found.')];
+    if (p.sellerId !== user.id) return [null, problem(403, 'You can only manage your own products.')];
+    return [p, null];
+  };
+  const apply = (p, body) => Object.assign(p, {
+    name: body.name, description: body.description, longDescription: body.longDescription, category: body.category,
+    occasion: body.occasion ?? [], tags: body.tags ?? [], price: body.price, originalPrice: body.compareAtPrice ?? body.price,
+    stock: body.stock, inStock: body.stock > 0, image: body.image, alt: body.alt ?? body.name,
+  });
+  const list = (p) => { p.active = p.status === 'APPROVED'; };
+  db.sellerRequests = [];
+
+  return [
+    http.get(`${API}/seller/me`, S(({ user }) => HttpResponse.json(db.stores[user.id]))),
+    http.put(`${API}/seller/profile`, S(async ({ request, user }) => {
+      const body = await request.json();
+      db.sellerRequests.push({ type: 'profile', body });
+      Object.assign(db.stores[user.id], body);
+      return HttpResponse.json(db.stores[user.id]);
+    })),
+    http.post(`${API}/seller/profile/reapply`, S(({ user }) => {
+      Object.assign(db.stores[user.id], { status: 'PENDING', statusReason: null });
+      return HttpResponse.json(db.stores[user.id]);
+    })),
+    http.get(`${API}/seller/dashboard`, S(({ user }) => HttpResponse.json({
+      store: db.stores[user.id], stats: sellerStats(db, user.id),
+      recentOrders: db.sellerOrders.filter((o) => o.sellerId === user.id).map(orderSummary),
+      recentProducts: db.products.filter((p) => p.sellerId === user.id).slice(0, 5).map(productDto),
+    }))),
+    http.get(`${API}/seller/analytics`, S(({ user }) => {
+      const top = db.sellerOrders.filter((o) => o.sellerId === user.id).flatMap((o) => o.items)
+        .map((i) => ({ productId: i.productId, name: i.name, unitsSold: i.quantity, sales: i.lineTotal }));
+      return HttpResponse.json({ stats: sellerStats(db, user.id), topProducts: top });
+    })),
+    http.get(`${API}/seller/products`, S(({ request, user }) => {
+      const sp = new URL(request.url).searchParams;
+      let content = db.products.filter((p) => p.sellerId === user.id);
+      const q = sp.get('q')?.toLowerCase();
+      if (q) content = content.filter((p) => p.name.toLowerCase().includes(q));
+      if (sp.get('status')) content = content.filter((p) => p.status === sp.get('status'));
+      if (sp.get('category')) content = content.filter((p) => p.category === sp.get('category'));
+      return page(content.map(productDto));
+    })),
+    http.post(`${API}/seller/products`, S(async ({ request, user }) => {
+      const body = await request.json();
+      db.sellerRequests.push({ type: 'create', body });
+      if (body.submit && db.stores[user.id].status !== 'APPROVED') {
+        return problem(403, 'Your store is still being reviewed. Save products as drafts: you can submit them for approval once your store is approved.');
+      }
+      if (/[<>]/.test(body.name)) return problem(400, 'Some fields need attention.', { name: 'Remove the < and > characters' });
+      const p = sellerProduct(Math.max(...db.products.map((x) => x.id)) + 1, body.name, user.id,
+        { slug: db.stores[user.id].slug, storeName: db.stores[user.id].storeName }, body.submit ? 'PENDING_APPROVAL' : 'DRAFT');
+      apply(p, body);
+      list(p);
+      db.products.push(p);
+      return HttpResponse.json(productDto(p), { status: 201 });
+    })),
+    http.get(`${API}/seller/products/:id`, S(({ params, user }) => {
+      const [p, err] = owned(user, params.id);
+      return err ?? HttpResponse.json(productDto(p));
+    })),
+    http.put(`${API}/seller/products/:id`, S(async ({ request, params, user }) => {
+      const [p, err] = owned(user, params.id);
+      if (err) return err;
+      const body = await request.json();
+      db.sellerRequests.push({ type: 'update', id: p.id, body });
+      const contentChanged = p.name !== body.name || p.description !== body.description || p.image !== body.image || p.category !== body.category;
+      apply(p, body);
+      if (body.submit || (p.status === 'APPROVED' && contentChanged)) Object.assign(p, { status: 'PENDING_APPROVAL', rejectionReason: undefined });
+      list(p);
+      return HttpResponse.json(productDto(p));
+    })),
+    http.post(`${API}/seller/products/:id/submit`, S(({ params, user }) => {
+      const [p, err] = owned(user, params.id);
+      if (err) return err;
+      Object.assign(p, { status: 'PENDING_APPROVAL', rejectionReason: undefined });
+      return HttpResponse.json(productDto(p));
+    })),
+    http.delete(`${API}/seller/products/:id`, S(({ params, user }) => {
+      const [p, err] = owned(user, params.id);
+      if (err) return err;
+      Object.assign(p, { status: 'ARCHIVED', active: false });
+      return new HttpResponse(null, { status: 204 });
+    })),
+    http.get(`${API}/seller/orders`, S(({ request, user }) => {
+      const status = new URL(request.url).searchParams.get('status');
+      return page(db.sellerOrders.filter((o) => o.sellerId === user.id && (!status || o.fulfillmentStatus === status)).map(orderSummary));
+    })),
+    http.get(`${API}/seller/orders/:number`, S(({ params, user }) => {
+      const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);
+      return o ? HttpResponse.json(orderDto(o)) : problem(404, 'Order not found.');
+    })),
+    http.patch(`${API}/seller/orders/:number/status`, S(async ({ request, params, user }) => {
+      const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);
+      if (!o) return problem(404, 'Order not found.');
+      const { status, note } = await request.json();
+      if (!NEXT[o.fulfillmentStatus].includes(status)) return problem(409, `Can't move your part of this order from ${o.fulfillmentStatus} to ${status}.`);
+      o.fulfillmentStatus = status;
+      o.items.forEach((i) => Object.assign(i, { fulfillmentStatus: status, fulfillmentNote: note ?? i.fulfillmentNote }));
+      db.lastFulfilment = { number: o.orderNumber, status, note };
+      return HttpResponse.json(orderDto(o));
+    })),
+  ];
+}
+
+function adminMarketplaceHandlers(db, authed) {
+  const A = (fn) => adminOnly(authed, fn);
+  const detail = (id) => {
+    const u = db.users.find((x) => x.id === id);
+    return {
+      id, sellerName: u.fullName, email: u.email, accountPhone: u.phone, accountEnabled: true, store: db.stores[id], stats: sellerStats(db, id),
+      products: db.products.filter((p) => p.sellerId === id).map(productDto),
+      recentOrders: db.sellerOrders.filter((o) => o.sellerId === id).map(orderSummary),
+    };
+  };
+  const setStatus = (id, status, statusReason = null) => {
+    Object.assign(db.stores[id], { status, statusReason });
+    db.products.filter((p) => p.sellerId === id).forEach((p) => { p.active = status === 'APPROVED' && p.status === 'APPROVED'; });
+    return HttpResponse.json(detail(id));
+  };
+  return [
+    http.get(`${API}/admin/sellers`, A(({ request }) => {
+      const status = new URL(request.url).searchParams.get('status');
+      const content = Object.entries(db.stores).filter(([, st]) => !status || st.status === status).map(([id, st]) => {
+        const u = db.users.find((x) => x.id === Number(id));
+        const d = sellerStats(db, Number(id));
+        return { id: Number(id), storeName: st.storeName, slug: st.slug, sellerName: u.fullName, email: u.email, status: st.status,
+          productCount: d.totalProducts, pendingProducts: d.pendingProducts, orderCount: d.orders, revenue: d.grossSales, createdAt: st.createdAt };
+      });
+      return page(content, 25);
+    })),
+    http.get(`${API}/admin/sellers/:id`, A(({ params }) => (db.stores[params.id] ? HttpResponse.json(detail(Number(params.id))) : problem(404, 'Seller not found.')))),
+    http.patch(`${API}/admin/sellers/:id/approve`, A(({ params }) => setStatus(Number(params.id), 'APPROVED'))),
+    http.patch(`${API}/admin/sellers/:id/reactivate`, A(({ params }) => setStatus(Number(params.id), 'APPROVED'))),
+    http.patch(`${API}/admin/sellers/:id/reject`, A(async ({ request, params }) => setStatus(Number(params.id), 'REJECTED', (await request.json()).reason))),
+    http.patch(`${API}/admin/sellers/:id/suspend`, A(async ({ request, params }) => setStatus(Number(params.id), 'SUSPENDED', (await request.json()).reason))),
+    http.get(`${API}/admin/products/:id`, A(({ params }) => {
+      const p = db.products.find((x) => x.id === Number(params.id));
+      return p ? HttpResponse.json(productDto(p)) : problem(404, 'Product not found.');
+    })),
+    http.get(`${API}/admin/products`, A(({ request }) => {
+      const sp = new URL(request.url).searchParams;
+      let content = db.products;
+      if (sp.get('status')) content = content.filter((p) => p.status === sp.get('status'));
+      if (sp.get('owner') === 'marketplace') content = content.filter((p) => p.seller);
+      if (sp.get('owner') === 'platform') content = content.filter((p) => !p.seller);
+      return page(content.map(productDto), 25);
+    })),
+    http.patch(`${API}/admin/products/:id/approve`, A(({ params }) => {
+      const p = db.products.find((x) => x.id === Number(params.id));
+      if (p.status !== 'PENDING_APPROVAL') return problem(409, 'Only products waiting for approval can be approved.');
+      Object.assign(p, { status: 'APPROVED', rejectionReason: undefined, active: db.stores[p.sellerId].status === 'APPROVED' });
+      return HttpResponse.json(productDto(p));
+    })),
+    http.patch(`${API}/admin/products/:id/reject`, A(async ({ request, params }) => {
+      const p = db.products.find((x) => x.id === Number(params.id));
+      Object.assign(p, { status: 'REJECTED', rejectionReason: (await request.json()).reason, active: false });
+      return HttpResponse.json(productDto(p));
+    })),
   ];
 }

@@ -29,6 +29,8 @@ import com.giftgenius.common.ApiException;
 import com.giftgenius.config.AppProperties;
 import com.giftgenius.notify.Mailer;
 import com.giftgenius.security.JwtService;
+import com.giftgenius.seller.SellerDtos.SellerApplication;
+import com.giftgenius.seller.SellerService;
 import com.giftgenius.user.Role;
 import com.giftgenius.user.User;
 import com.giftgenius.user.UserRepository;
@@ -46,6 +48,7 @@ public class AuthService {
     private final PasswordEncoder encoder;
     private final JwtService jwt;
     private final Mailer mailer;
+    private final SellerService sellers;
     private final AppProperties.Security props;
     private final String publicUrl;
     /** Compared against when the email is unknown, so login takes the same time either way. */
@@ -53,13 +56,14 @@ public class AuthService {
 
     public AuthService(UserRepository users, RefreshTokenRepository refreshTokens,
             PasswordResetTokenRepository resetTokens, PasswordEncoder encoder, JwtService jwt, Mailer mailer,
-            AppProperties properties) {
+            SellerService sellers, AppProperties properties) {
         this.users = users;
         this.refreshTokens = refreshTokens;
         this.resetTokens = resetTokens;
         this.encoder = encoder;
         this.jwt = jwt;
         this.mailer = mailer;
+        this.sellers = sellers;
         this.props = properties.security();
         this.publicUrl = stripTrailingSlash(properties.publicUrl());
         this.dummyHash = encoder.encode(randomToken());
@@ -76,8 +80,30 @@ public class AuthService {
         user.setFullName(req.fullName().trim());
         user.setPhone(StringUtils.hasText(req.phone()) ? req.phone().trim() : null);
         user.setPasswordHash(encodePassword(req.password()));
-        user.setRole(Role.CUSTOMER);
+        // Registration can only ever create a customer or a (pending) seller, never an admin.
+        user.setRole(req.seller() == null ? Role.CUSTOMER : Role.SELLER);
         users.save(user);
+        if (req.seller() != null) {
+            sellers.open(user, req.seller());
+        }
+        return issue(user);
+    }
+
+    /**
+     * An existing customer opens a store, keeping their account (orders, wishlist, password). The store waits for
+     * admin review; the new session carries the SELLER role.
+     */
+    @Transactional
+    public IssuedTokens becomeSeller(Long userId, SellerApplication app) {
+        User user = requireUser(userId);
+        if (user.getRole() == Role.ADMIN) {
+            throw ApiException.conflict("Admin accounts can't open a store. Use a separate account to sell.");
+        }
+        if (user.getRole() == Role.SELLER) {
+            throw ApiException.conflict("You already have a store.");
+        }
+        sellers.open(user, app);
+        user.setRole(Role.SELLER);
         return issue(user);
     }
 
@@ -138,7 +164,7 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public UserDto me(Long userId) {
-        return UserDto.from(requireUser(userId));
+        return dto(requireUser(userId));
     }
 
     @Transactional
@@ -146,7 +172,7 @@ public class AuthService {
         User user = requireUser(userId);
         user.setFullName(req.fullName().trim());
         user.setPhone(StringUtils.hasText(req.phone()) ? req.phone().trim() : null);
-        return UserDto.from(user);
+        return dto(user);
     }
 
     /** Changes the password and signs out every other session. */
@@ -244,9 +270,12 @@ public class AuthService {
         rt.setExpiresAt(Instant.now().plus(props.refreshTokenTtl()));
         refreshTokens.save(rt);
 
-        AuthResponse body = new AuthResponse(jwt.issueAccessToken(user), jwt.accessTokenTtlSeconds(),
-                UserDto.from(user));
+        AuthResponse body = new AuthResponse(jwt.issueAccessToken(user), jwt.accessTokenTtlSeconds(), dto(user));
         return new IssuedTokens(body, raw);
+    }
+
+    private UserDto dto(User user) {
+        return UserDto.from(user, user.getRole() == Role.SELLER ? sellers.statusOf(user.getId()) : null);
     }
 
     private static String randomToken() {

@@ -38,6 +38,25 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     long countByUserIdAndCouponCodeAndStatusNot(Long userId, String couponCode, OrderStatus status);
 
+    /**
+     * Orders with at least one line sold by this seller (optionally in one fulfilment state), newest first.
+     * Orders still waiting for online payment aren't shown to sellers: there is nothing to fulfil yet.
+     */
+    @Query(value = "select o from Order o where o.status <> com.giftgenius.order.OrderStatus.PENDING_PAYMENT "
+            + "and exists (select 1 from OrderItem i where i.order = o and i.sellerId = :sellerId "
+            + "and (:fulfillment is null or i.fulfillmentStatus = :fulfillment)) order by o.createdAt desc",
+            countQuery = "select count(o) from Order o where o.status <> com.giftgenius.order.OrderStatus.PENDING_PAYMENT "
+            + "and exists (select 1 from OrderItem i where i.order = o and i.sellerId = :sellerId "
+            + "and (:fulfillment is null or i.fulfillmentStatus = :fulfillment))")
+    Page<Order> findForSeller(@Param("sellerId") Long sellerId, @Param("fulfillment") FulfillmentStatus fulfillment,
+            Pageable pageable);
+
+    /** The order only if this seller has a line in it (and it isn't waiting for payment). */
+    @Query("select o from Order o where o.orderNumber = :orderNumber "
+            + "and o.status <> com.giftgenius.order.OrderStatus.PENDING_PAYMENT "
+            + "and exists (select 1 from OrderItem i where i.order = o and i.sellerId = :sellerId)")
+    Optional<Order> findForSeller(@Param("orderNumber") String orderNumber, @Param("sellerId") Long sellerId);
+
     @Query("select coalesce(sum(o.total), 0) from Order o where o.paymentStatus = com.giftgenius.order.PaymentStatus.PAID "
             + "and o.createdAt >= :since")
     BigDecimal revenueSince(@Param("since") Instant since);

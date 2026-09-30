@@ -149,10 +149,20 @@ export default function Product() {
         <div className="pd-info">
           <div className="pd-category">{p.category}</div>
           <h1 className="pd-title">{p.name}</h1>
+          {p.seller && (
+            <p className="pd-seller">
+              Sold by <strong>{p.seller.storeName}</strong>
+              <Link to={`/store/${encodeURIComponent(p.seller.slug)}`} className="pd-seller-link">Visit store →</Link>
+            </p>
+          )}
           <div className="pd-rating">
-            <span className="stars" aria-hidden="true">{p.starsDisplay}</span>
-            <strong>{Number(p.rating).toFixed(1)}</strong>
-            <span className="pd-rating-count">({p.reviewCount} reviews)</span>
+            {p.reviewCount > 0 ? (
+              <>
+                <span className="stars" aria-hidden="true">{p.starsDisplay}</span>
+                <strong>{Number(p.rating).toFixed(1)}</strong>
+                <span className="pd-rating-count">({p.reviewCount} reviews)</span>
+              </>
+            ) : <span className="pd-rating-count">New · no reviews yet</span>}
             <span className={`pd-stock ${soldOut ? 'pd-stock--out' : p.stock < 10 ? 'pd-stock--low' : ''}`}>
               {soldOut ? '✕ Sold out' : p.stock < 10 ? `Only ${p.stock} left` : '✓ In Stock'}
             </span>

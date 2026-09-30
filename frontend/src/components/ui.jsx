@@ -66,8 +66,9 @@ export function Notice({ tone = 'info', children, role }) {
   return <div className={`gg-alert gg-alert--${tone}`} role={role}>{children}</div>;
 }
 
-export function StatusPill({ status }) {
-  const s = ORDER_STATUS[status] || { label: status, tone: 'info' };
+/** A status label; `labels` maps statuses to { label, tone } (order statuses by default). */
+export function StatusPill({ status, labels = ORDER_STATUS }) {
+  const s = labels[status] || { label: status, tone: 'info' };
   return <span className={`gg-status gg-status--${s.tone}`}>{s.label}</span>;
 }
 

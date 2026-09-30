@@ -29,6 +29,7 @@ import com.giftgenius.auth.AuthDtos.UserDto;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.config.AppProperties;
 import com.giftgenius.security.AuthUser;
+import com.giftgenius.seller.SellerDtos.SellerApplication;
 
 import jakarta.validation.Valid;
 
@@ -92,6 +93,13 @@ public class AuthController {
     public ResponseEntity<AuthResponse> changePassword(@AuthenticationPrincipal AuthUser user,
             @Valid @RequestBody ChangePasswordRequest req) {
         return withCookie(auth.changePassword(user.id(), req));
+    }
+
+    /** A signed-in customer opens a store; the response is a fresh session with the SELLER role. */
+    @PostMapping("/seller-application")
+    public ResponseEntity<AuthResponse> becomeSeller(@AuthenticationPrincipal AuthUser user,
+            @Valid @RequestBody SellerApplication req) {
+        return withCookie(auth.becomeSeller(user.id(), req));
     }
 
     @PostMapping("/password/forgot")

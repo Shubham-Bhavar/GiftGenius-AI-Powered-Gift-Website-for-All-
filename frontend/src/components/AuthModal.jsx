@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import AuthCard, { authLabel } from './AuthCard.jsx';
 import { useUi } from '../context/UiContext.jsx';
+import { homeFor } from '../lib/marketplace.js';
 import { useRestoreFocus } from '../hooks/useRestoreFocus.js';
 import { trapFocus } from '../lib/focus.js';
 
@@ -27,9 +28,10 @@ export default function AuthModal() {
       <div className="auth-modal" role="dialog" aria-modal="true" aria-label={authLabel(authMode)} onKeyDown={trapFocus}>
         <button type="button" className="auth-close" aria-label={`Close ${authLabel(authMode).toLowerCase()}`} onClick={closeAuth}>✕</button>
         {open && (
-          <AuthCard key={authMode} mode={authMode} note={authOptions?.note}
+          <AuthCard key={authMode} mode={authMode} note={authOptions?.note} initialAccountType={authOptions?.accountType}
             onModeChange={(m) => openAuth(m, authOptions)}
-            onDone={() => { closeAuth(); if (next) navigate(next); }} />
+            // Sellers land in the Seller Center and admins in Store Admin, unless sign-in was asked for somewhere.
+            onDone={(u) => { closeAuth(); const to = next ?? homeFor(u); if (to) navigate(to); }} />
         )}
       </div>
     </div>

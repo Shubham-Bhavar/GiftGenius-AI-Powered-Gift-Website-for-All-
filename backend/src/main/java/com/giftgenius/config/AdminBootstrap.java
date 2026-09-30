@@ -28,6 +28,7 @@ import com.giftgenius.user.UserRepository;
  *       <b>its password is replaced by ADMIN_PASSWORD</b>, and its sessions and reset links are revoked.
  *       Sign-up doesn't prove email ownership, so without the password reset whoever registered that email
  *       first would become admin; with it, only the holder of ADMIN_PASSWORD can sign in as admin.</li>
+ *   <li>That account is a seller: nothing changes and a warning is logged (a store can't belong to an admin).</li>
  * </ul>
  * ADMIN_PASSWORD must be at least 12 characters. It is never logged.
  */
@@ -62,6 +63,12 @@ public class AdminBootstrap implements ApplicationRunner {
         String email = admin.email().trim().toLowerCase();
         Optional<User> existing = users.findByEmailIgnoreCase(email);
         if (existing.isPresent() && existing.get().getRole() == Role.ADMIN) {
+            return;
+        }
+        if (existing.isPresent() && existing.get().getRole() == Role.SELLER) {
+            // A store's owner is never silently turned into an admin (their store and products would be orphaned).
+            log.warn("ADMIN_EMAIL {} belongs to a seller account; it was not promoted. Use a different email "
+                    + "for the admin account.", email);
             return;
         }
         if (admin.password().length() < MIN_PASSWORD_LENGTH) {

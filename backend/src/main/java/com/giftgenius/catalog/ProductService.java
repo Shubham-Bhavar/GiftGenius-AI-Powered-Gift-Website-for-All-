@@ -30,8 +30,9 @@ public class ProductService {
 
     public static final String CATALOG_CACHE = "catalog";
 
+    /** {@code store} is a seller's public slug: only that store's products. */
     public record ProductQuery(String q, String category, String tag, String occasion,
-            BigDecimal minPrice, BigDecimal maxPrice, String sort) {
+            BigDecimal minPrice, BigDecimal maxPrice, String sort, String store) {
     }
 
     private final ProductRepository products;
@@ -50,7 +51,8 @@ public class ProductService {
                 ProductSpecifications.inCategory(query.category()),
                 ProductSpecifications.hasTag(query.tag()),
                 ProductSpecifications.forOccasion(query.occasion()),
-                ProductSpecifications.priceBetween(query.minPrice(), query.maxPrice()));
+                ProductSpecifications.priceBetween(query.minPrice(), query.maxPrice()),
+                ProductSpecifications.fromStore(query.store()));
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sortFor(query.sort()));
         return PageResponse.of(products.findAll(spec, pageable).map(ProductDto::from));
     }
@@ -100,11 +102,23 @@ public class ProductService {
 
     // ── Admin ──────────────────────────────────────────────
 
+    /**
+     * Every product, listed or not. {@code status} narrows to one review state (e.g. PENDING_APPROVAL: the
+     * approval queue); {@code owner} is "platform" (GiftGenius's own), "marketplace" (sellers') or blank for all.
+     */
     @Transactional(readOnly = true)
-    public PageResponse<ProductDto> adminList(String q, int page, int size) {
-        Specification<Product> spec = Specification.allOf(ProductSpecifications.matchesText(q));
-        return PageResponse.of(products.findAll(spec, PageRequest.of(page, Math.min(size, 100), Sort.by("id")))
-                .map(ProductDto::from));
+    public PageResponse<ProductDto> adminList(String q, ProductStatus status, String owner, int page, int size) {
+        Specification<Product> spec = Specification.allOf(ProductSpecifications.matchesText(q),
+                ProductSpecifications.withStatus(status), ProductSpecifications.ownerType(owner));
+        Sort sort = status == ProductStatus.PENDING_APPROVAL ? Sort.by("updatedAt") : Sort.by("id");
+        return PageResponse.of(products.findAll(spec,
+                PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100), sort)).map(ProductDto::from));
+    }
+
+    /** Any product, listed or not (the public lookup only finds listed ones). */
+    @Transactional(readOnly = true)
+    public ProductDto adminGet(Long id) {
+        return products.findById(id).map(ProductDto::from).orElseThrow(() -> ApiException.notFound("Product not found."));
     }
 
     @Transactional
@@ -124,11 +138,17 @@ public class ProductService {
         return ProductDto.from(p);
     }
 
+    /** Takes a product off the shop. A seller's product is archived, so relisting it needs a fresh approval. */
     @Transactional
     @CacheEvict(value = CATALOG_CACHE, allEntries = true)
     public void deactivate(Long id) {
         Product p = products.findById(id).orElseThrow(() -> ApiException.notFound("Product not found."));
-        p.setActive(false);
+        if (p.getSeller() != null) {
+            p.setStatus(ProductStatus.ARCHIVED);
+            p.syncListing();
+        } else {
+            p.setActive(false);
+        }
     }
 
     private void apply(Product p, ProductUpsertRequest r) {
@@ -152,7 +172,10 @@ public class ProductService {
         p.setBadgeText(r.badgeText());
         p.setBadgeClass(r.badgeClass());
         p.setStock(r.stock());
-        if (r.active() != null) {
+        if (p.getSeller() != null) {
+            // A seller's product is listed by approving it, not by ticking "visible".
+            p.syncListing();
+        } else if (r.active() != null) {
             p.setActive(r.active());
         }
         if (r.isCultural() != null) {
@@ -177,7 +200,7 @@ public class ProductService {
                 .map(v -> v.trim().toLowerCase()).collect(Collectors.toCollection(LinkedHashSet::new)));
     }
 
-    private String uniqueSlug(String name) {
+    String uniqueSlug(String name) {
         String base = name.toLowerCase().replace("&", "and").replaceAll("[^a-z0-9]+", "-")
                 .replaceAll("(^-|-$)", "");
         if (base.isEmpty()) {

@@ -9,14 +9,20 @@ import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.giftgenius.seller.SellerProfile;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import lombok.Getter;
@@ -33,6 +39,11 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    /** The store that sells this product; null for GiftGenius's own products. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "seller_id")
+    private SellerProfile seller;
 
     @Column(nullable = false, unique = true)
     private String slug;
@@ -77,8 +88,17 @@ public class Product {
     @Column(nullable = false)
     private int stock;
 
+    /** Listed in the shop. For a seller's product this is derived: see {@link #syncListing()}. */
     @Column(nullable = false)
     private boolean active = true;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ProductStatus status = ProductStatus.APPROVED;
+
+    /** Shown to the seller when the product is rejected; cleared once it is approved. */
+    @Column(name = "rejection_reason")
+    private String rejectionReason;
 
     @Column(nullable = false)
     private boolean cultural;
@@ -129,5 +149,19 @@ public class Product {
 
     public boolean isPurchasable() {
         return active && stock > 0;
+    }
+
+    public boolean isOwnedBy(Long sellerId) {
+        return seller != null && seller.getUserId().equals(sellerId);
+    }
+
+    /**
+     * A seller's product is listed only while it is approved and its store is allowed to sell (the database
+     * also refuses a listed product that isn't approved). GiftGenius's own products keep the admin's choice.
+     */
+    public void syncListing() {
+        if (seller != null) {
+            active = status == ProductStatus.APPROVED && seller.canSell();
+        }
     }
 }

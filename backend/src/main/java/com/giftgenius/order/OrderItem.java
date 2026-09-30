@@ -1,9 +1,12 @@
 package com.giftgenius.order;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,6 +37,10 @@ public class OrderItem {
     @Column(name = "product_id", nullable = false)
     private Long productId;
 
+    /** The seller who fulfils this line (their user id), fixed when the order is placed; null for GiftGenius. */
+    @Column(name = "seller_id")
+    private Long sellerId;
+
     @Column(name = "product_name", nullable = false)
     private String productName;
 
@@ -54,4 +61,28 @@ public class OrderItem {
 
     @Column(name = "custom_message")
     private String customMessage;
+
+    /** Only for a seller's line. */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fulfillment_status")
+    private FulfillmentStatus fulfillmentStatus;
+
+    /** The seller's note to the customer, e.g. the courier and tracking number. */
+    @Column(name = "fulfillment_note")
+    private String fulfillmentNote;
+
+    @Column(name = "fulfillment_updated_at")
+    private Instant fulfillmentUpdatedAt;
+
+    public boolean isSoldBy(Long seller) {
+        return sellerId != null && sellerId.equals(seller);
+    }
+
+    public void setFulfillment(FulfillmentStatus status, String note) {
+        this.fulfillmentStatus = status;
+        if (note != null) {
+            this.fulfillmentNote = note;
+        }
+        this.fulfillmentUpdatedAt = Instant.now();
+    }
 }

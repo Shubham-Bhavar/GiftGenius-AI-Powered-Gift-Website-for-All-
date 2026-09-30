@@ -25,6 +25,7 @@ import com.giftgenius.auth.AuthDtos.ResetPasswordRequest;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.notify.Mailer;
 import com.giftgenius.security.JwtService;
+import com.giftgenius.seller.SellerService;
 import com.giftgenius.user.Role;
 import com.giftgenius.user.User;
 import com.giftgenius.user.UserRepository;
@@ -35,6 +36,7 @@ class AuthServiceTest {
     private final RefreshTokenRepository refreshTokens = mock(RefreshTokenRepository.class);
     private final PasswordResetTokenRepository resetTokens = mock(PasswordResetTokenRepository.class);
     private final Mailer mailer = mock(Mailer.class);
+    private final SellerService sellers = mock(SellerService.class);
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(4);
     private AuthService auth;
     private User user;
@@ -42,7 +44,7 @@ class AuthServiceTest {
     @BeforeEach
     void setUp() {
         auth = new AuthService(users, refreshTokens, resetTokens, encoder, new JwtService(TestProps.defaults()),
-                mailer, TestProps.defaults());
+                mailer, sellers, TestProps.defaults());
         user = new User();
         user.setId(5L);
         user.setEmail("asha@example.com");
