@@ -33,6 +33,15 @@ export const FULFILMENT_STATUS = {
   CANCELLED: { label: 'Cancelled', tone: 'bad', action: null },
 };
 
+/** A seller's progress as the customer reads it on their order and on tracking (the Seller Center says "To pack"). */
+export const CUSTOMER_FULFILMENT = {
+  NEW: { label: 'Preparing', tone: 'info' },
+  PACKED: { label: 'Packed', tone: 'info' },
+  SHIPPED: { label: 'Shipped', tone: 'info' },
+  DELIVERED: { label: 'Delivered', tone: 'ok' },
+  CANCELLED: { label: 'Cancelled', tone: 'bad' },
+};
+
 /** What a seller's product list shows: an approved product with no stock reads "Out of stock". */
 export const productState = (p) => (p.status === 'APPROVED' && p.stock === 0 ? 'OUT_OF_STOCK' : p.status);
 
@@ -42,6 +51,3 @@ export function homeFor(user) {
   if (user?.role === 'SELLER') return '/seller';
   return null;
 }
-
-/** Labels for a status map entry, falling back to the raw value. */
-export const labelOf = (map, key) => map[key]?.label ?? key;

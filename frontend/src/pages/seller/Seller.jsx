@@ -17,6 +17,8 @@ import {
 // ── Shared pieces ──────────────────────────────────────
 
 const useStore = () => useQuery({ queryKey: ['seller', 'me'], queryFn: api.seller.me });
+/** A store waiting for review or approved can add and change products (the API enforces the same rule). */
+const canEditProducts = (status) => status === 'APPROVED' || status === 'PENDING';
 
 /** Loading placeholder shaped like the content, announced once to screen readers. */
 function Skeleton({ kpis = 0, lines = 4, label = 'Loading…' }) {
@@ -132,12 +134,12 @@ function RecentOrders({ orders }) {
   );
 }
 
-function RecentProducts({ products }) {
+function RecentProducts({ products, canEdit }) {
   if (products.length === 0) {
     return (
       <div className="sel-empty">
-        <p><strong>No products yet.</strong> Add your first product to start selling.</p>
-        <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>
+        <p><strong>No products yet.</strong> {canEdit ? 'Add your first product to start selling.' : "Your store can't add products right now."}</p>
+        {canEdit && <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>}
       </div>
     );
   }
@@ -163,6 +165,7 @@ export function SellerDashboard() {
   if (dash.isPending) return <Skeleton kpis={6} label="Loading your dashboard…" />;
   if (dash.error) return <LoadError what="your dashboard" error={dash.error} onRetry={() => dash.refetch()} />;
   const { store, stats, recentOrders, recentProducts } = dash.data;
+  const canEdit = canEditProducts(store.status);
   return (
     <>
       <section className="sel-head" aria-labelledby="sel-dash-h">
@@ -171,7 +174,7 @@ export function SellerDashboard() {
           <p className="co-muted">Store status: <StatusPill status={store.status} labels={SELLER_STATUS} /></p>
         </div>
         <div className="adm-actions">
-          <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>
+          {canEdit && <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>}
           <Link to="/seller/products" className="btn-outline btn-sm">Manage Products</Link>
           <Link to="/seller/orders" className="btn-outline btn-sm">Orders</Link>
           <Link to="/seller/settings" className="btn-outline btn-sm">Store Settings</Link>
@@ -201,7 +204,7 @@ export function SellerDashboard() {
             <h2 id="sel-recent-products">🎁 Recent Products</h2>
             {recentProducts.length > 0 && <Link to="/seller/products">All products →</Link>}
           </div>
-          <RecentProducts products={recentProducts} />
+          <RecentProducts products={recentProducts} canEdit={canEdit} />
         </section>
       </div>
     </>
@@ -237,6 +240,7 @@ export function SellerProducts() {
     setPage(0);
   };
   const canSubmit = store.data?.status === 'APPROVED';
+  const canEdit = canEditProducts(store.data?.status);
   const filtered = !!(q || status || category);
 
   const act = async (fn, done) => {
@@ -274,7 +278,7 @@ export function SellerProducts() {
         <select id="sel-sort" className="sort-select" value={sort} onChange={setFilter('sort')}>
           {Object.entries(SORTS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
-        <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>
+        {canEdit && <Link to="/seller/products/new" className="btn-primary btn-sm">+ Add Product</Link>}
       </div>
 
       {products.isPending && <Skeleton lines={5} label="Loading your products…" />}
@@ -282,8 +286,9 @@ export function SellerProducts() {
       {products.data?.content.length === 0 && (filtered ? (
         <p className="co-muted">No products match these filters.</p>
       ) : (
-        <EmptyState icon="🎁" title="No products yet." action={<Link to="/seller/products/new" className="btn-primary">+ Add Your First Product</Link>}>
-          Add your first product to start selling.
+        <EmptyState icon="🎁" title="No products yet."
+          action={canEdit ? <Link to="/seller/products/new" className="btn-primary">+ Add Your First Product</Link> : null}>
+          {canEdit ? 'Add your first product to start selling.' : "Your store can't add products right now."}
         </EmptyState>
       ))}
       {products.data?.content.length > 0 && (
@@ -316,7 +321,7 @@ export function SellerProducts() {
                         <button type="button" className="btn-outline btn-sm" aria-label={`Submit ${p.name} for approval`}
                           onClick={() => act(() => api.seller.submitProduct(p.id), `${p.name} sent for approval`)}>Submit</button>
                       )}
-                      {p.status !== 'ARCHIVED' && (
+                      {canEdit && p.status !== 'ARCHIVED' && (
                         <button type="button" className="btn-outline btn-sm sel-danger" aria-label={`Archive ${p.name}`} onClick={() => archive(p)}>Archive</button>
                       )}
                     </td>
@@ -423,7 +428,7 @@ function ProductEditorForm({ product, store }) {
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }));
   const toggleOccasion = (o) => setF((x) => ({ ...x, occasion: x.occasion.includes(o) ? x.occasion.filter((v) => v !== o) : [...x.occasion, o] }));
   const storeStatus = store?.status;
-  const canEdit = !store || storeStatus === 'PENDING' || storeStatus === 'APPROVED';
+  const canEdit = !store || canEditProducts(storeStatus);
   const canSubmit = storeStatus === 'APPROVED';
   const approved = product?.status === 'APPROVED';
 
@@ -462,7 +467,8 @@ function ProductEditorForm({ product, store }) {
       {product?.status === 'PENDING_APPROVAL' && <Notice>This product is waiting for approval. You can still change it.</Notice>}
       {approved && (
         <Notice>Price, compare-at price, stock, tags and occasions update in the shop straight away. Changing the name,
-          descriptions, category or image sends the product back for approval, and it leaves the shop until then.</Notice>
+          descriptions, category, image or image description sends the product back for approval, and it leaves the
+          shop until then.</Notice>
       )}
       {!canEdit && <Notice tone="error">Your store can&apos;t add or change products right now.</Notice>}
 

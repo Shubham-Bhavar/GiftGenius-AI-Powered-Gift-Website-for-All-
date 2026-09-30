@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
 import axe from 'axe-core';
+import { http, HttpResponse } from 'msw';
+import { API } from './mockApi.js';
 import { renderApp } from './renderApp.jsx';
-import { db } from './setup.js';
+import { db, server } from './setup.js';
 
 /** Restores a signed-in session the way the app does on page load (refresh cookie → access token). */
 function signedInAs(userId) {
@@ -366,11 +368,14 @@ describe('customer orders with sellers', () => {
     expect(screen.getByText(/Part of this order has already shipped/)).toBeInTheDocument();
   });
 
-  it('can still be cancelled while no parcel has shipped', async () => {
-    db.orders.push(order([candle('PACKED'), chocolates]));
+  it('can still be cancelled while no parcel has shipped, and says the seller is preparing it', async () => {
+    db.orders.push(order([candle('NEW'), chocolates]));
     signedInAs(ASHA);
     renderApp('/account/orders/GG-MIX00001');
     expect(await screen.findByRole('button', { name: 'Cancel order' })).toBeInTheDocument();
+    const candleLine = screen.getByRole('link', { name: 'Lavender Soy Candle' }).closest('.od-mini-item');
+    expect(within(candleLine).getByText('Preparing')).toBeInTheDocument();
+    expect(within(candleLine).queryByText('To pack')).toBeNull(); // the Seller Center's wording
   });
 });
 
@@ -407,6 +412,77 @@ describe('Store Admin: sellers and product review', () => {
     await user.type(screen.getByLabelText('Reason for taking it down'), 'Wrong category.');
     await user.click(screen.getByRole('button', { name: 'Take Down' }));
     await waitFor(() => expect(db.products.find((p) => p.id === 21)).toMatchObject({ status: 'REJECTED', active: false, rejectionReason: 'Wrong category.' }));
+  });
+});
+
+describe('store status and failures', () => {
+  it('a seller signing up with an email that already has an account is told to open a store from it', async () => {
+    const { user } = renderApp('/register?type=seller');
+    await screen.findByLabelText('Store name');
+    await user.type(screen.getByLabelText('Full name'), 'Asha Rao');
+    await user.type(screen.getByLabelText('Email'), 'asha@example.com');
+    await user.type(screen.getByLabelText('Phone'), '+91 98765 43210');
+    await user.type(screen.getByLabelText('Password'), 'another-password-1');
+    await user.type(screen.getByLabelText('Confirm password'), 'another-password-1');
+    await user.type(screen.getByLabelText('Store name'), 'Asha Crafts');
+    await user.selectOptions(screen.getByLabelText('What you sell'), 'gift sets');
+    await user.type(screen.getByLabelText('Business address'), '12 MG Road');
+    await user.type(screen.getByLabelText('City'), 'Pune');
+    await user.type(screen.getByLabelText('PIN code'), '411001');
+    await user.selectOptions(screen.getByLabelText('State'), 'Maharashtra');
+    await user.click(screen.getByRole('button', { name: 'Create Seller Account →' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Sign in, then choose "Sell on GiftGenius" in your account');
+  });
+
+  it("a suspended store sees why and isn't offered product changes", async () => {
+    Object.assign(db.stores[SANA], { status: 'SUSPENDED', statusReason: 'Late deliveries' });
+    signedInAs(SANA);
+    const { unmount } = renderApp('/seller');
+    await screen.findByRole('heading', { level: 2, name: "Sana's Candles" });
+    expect(screen.getByText('Your store is suspended', { exact: false, selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText(/Reason: Late deliveries/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '+ Add Product' })).toBeNull();
+    unmount();
+
+    renderApp('/seller/products');
+    await screen.findByRole('table');
+    expect(screen.queryByRole('button', { name: /^Archive / })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^Submit / })).toBeNull();
+    expect(screen.queryByRole('link', { name: '+ Add Product' })).toBeNull();
+    expect(screen.getAllByRole('link', { name: /^Edit / }).length).toBeGreaterThan(0); // still viewable
+  });
+
+  it('shows "Unable to load" with a retry when the server fails, never a blank page or raw error', async () => {
+    let fail = true;
+    server.use(http.get(`${API}/seller/dashboard`, () => (fail
+      ? HttpResponse.json({ status: 500, detail: 'java.lang.NullPointerException at SellerService' }, { status: 500 })
+      : undefined)));
+    signedInAs(SANA);
+    const { user } = renderApp('/seller');
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Unable to load your dashboard.');
+    expect(alert).not.toHaveTextContent(/NullPointer|java/);
+    fail = false;
+    await user.click(within(alert).getByRole('button', { name: '↻ Retry' }));
+    expect(await screen.findByRole('heading', { level: 2, name: "Sana's Candles" })).toBeInTheDocument();
+  });
+
+  it('explains when the server can’t be reached', async () => {
+    server.use(http.get(`${API}/seller/products`, () => HttpResponse.error()));
+    signedInAs(SANA);
+    renderApp('/seller/products');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load your products. Check your connection and try again.');
+  });
+
+  it('an expired session on a seller page leads back to sign-in', async () => {
+    signedInAs(SANA);
+    const { user } = renderApp('/seller');
+    await screen.findByRole('heading', { level: 2, name: "Sana's Candles" });
+    // The session ends on the server: the access token is refused and the refresh cookie is gone.
+    db.tokens = {};
+    db.cookieUser = null;
+    await user.click(screen.getByRole('link', { name: '📈 Analytics' }));
+    expect(await screen.findByRole('heading', { level: 1, name: 'Welcome Back' })).toBeInTheDocument();
   });
 });
 

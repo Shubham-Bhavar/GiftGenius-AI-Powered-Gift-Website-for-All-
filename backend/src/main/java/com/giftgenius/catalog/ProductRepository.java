@@ -64,12 +64,12 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     /** Takes a store's products off the shop (store suspended). Statuses are kept for when it is reactivated. */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update Product p set p.active = false where p.seller.userId = :sellerId")
+    @Query("update Product p set p.active = false, p.version = p.version + 1 where p.seller.userId = :sellerId")
     int unlistAllOf(@Param("sellerId") Long sellerId);
 
     /** Lists a store's approved products again (store approved or reactivated). */
     @Modifying(flushAutomatically = true, clearAutomatically = true)
-    @Query("update Product p set p.active = true where p.seller.userId = :sellerId "
+    @Query("update Product p set p.active = true, p.version = p.version + 1 where p.seller.userId = :sellerId "
             + "and p.status = com.giftgenius.catalog.ProductStatus.APPROVED")
     int relistApprovedOf(@Param("sellerId") Long sellerId);
 }

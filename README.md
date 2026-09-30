@@ -36,8 +36,9 @@ giftgenius/
 - **Becoming a seller.** Anyone can sign up as a seller (Sign Up → Seller, with store details), or a customer can open a store from Account → *Sell on GiftGenius* and keep their account.
 - **Store review.** Every new store starts **pending** until an admin approves it (Store admin → Sellers). An admin can also reject a store with a reason, or suspend and reactivate it.
 - **Seller Center** (`/seller`). A dashboard with real figures, product management, the seller's own order lines with fulfilment updates, sales analytics, and store settings. There is also a public storefront at `/store/{slug}`.
-- **Product review.** A seller's products are drafts until submitted. Only an admin's approval (Store admin → Products → *Awaiting approval*) lists them in the shop. Changing an approved product's name, descriptions, category or image sends it back for review; price and stock changes apply at once.
-- **Orders.** A cart can mix GiftGenius and seller products, and still produces one customer order. Each order line remembers its seller. A seller sees only their own lines, their share of the money and the delivery address, and moves their part through packed → shipped → delivered. When every line of an order belongs to sellers, the customer's order status follows the slowest seller.
+- **Product review.** A seller's products are drafts until submitted. Only an admin's approval (Store admin → Products → *Awaiting approval*) lists them in the shop. Changing an approved product's name, descriptions, category, image or image description sends it back for review; price, compare-at price, stock, tags and occasions apply at once.
+- **Orders.** A cart can mix GiftGenius and seller products, and still produces one customer order. Each order line remembers its seller. A seller sees only their own lines, their share of the money and the delivery address, and moves their part through packed → shipped → delivered, optionally with a *seller fulfilment/tracking note* for the customer. That note is free text from the seller, not live carrier tracking. When every line of an order belongs to sellers, the customer's order status follows the slowest seller.
+- **Sales revenue, not payouts.** Seller figures are **sales revenue**: what shoppers paid for that seller's lines in confirmed orders, before order-wide coupons, excluding cancelled orders. They are not profit, since costs aren't recorded. They are also not a **seller payout**: GiftGenius doesn't settle money with sellers yet, so nothing in the app says a seller has been paid.
 
 **Store details** (support email, phone, city, social links, nav menu, and the end date on the homepage sale banner) live in one file: `frontend/src/config/site.js`.
 
@@ -68,7 +69,11 @@ Admin rights are enforced by the API (`/api/admin/**` requires the ADMIN role); 
 - **Ownership.** A seller's store (`seller_profiles`) shares the seller's user id. `products.seller_id` is set once, from the signed-in seller, when a product is created; request bodies can't set or change it.
 - **Access checks.** Every seller product operation loads the product and checks its owner: another seller's product is a 403 and a missing one a 404. Seller order queries are filtered by `order_items.seller_id` in the database.
 - **Store status.** What a seller may do also depends on their store's status (pending: drafts only; rejected or suspended: no product changes). It is read from the database on every request, not from the token.
-- **Listing rule.** A product is listed in the shop only while it is approved and its store is active. The database enforces the first half with a `CHECK` constraint (`active = FALSE OR status = 'APPROVED'`).
+- **Listing rule.** A product is listed in the shop only while it is approved and its store is active. The database enforces the first half with a `CHECK` constraint (`active = FALSE OR status = 'APPROVED'`). The constraint only refuses a *listed* product that isn't approved, so unlisted drafts, pending, rejected and archived products are unaffected.
+- **Concurrency.** Changes that could race are serialised with row locks:
+  - Before listing a product (approval, or an edit of an approved one), the store's row is locked, so a store suspended at that moment never keeps a listed product.
+  - Every change to an order's status or to its lines' fulfilment locks the order row first: seller fulfilment, customer cancellation and admin status updates. Two sellers shipping their parts at once, or a cancellation racing a shipment, always leave a consistent order.
+  - Store names are unique in the database as well as in the API.
 - **Existing catalogue.** The original 20 products have no seller (sold by GiftGenius) and stay `APPROVED`.
 - **Store text** (names, descriptions, notes) must not contain `<` or `>`, and images must be `https://` links. There's no file upload yet: products use an image link, so real object storage can be added behind the same field later.
 - **Notifications.** Emails go out for seller applications (to `ADMIN_EMAIL`), store and product decisions (to the seller), new orders (to each seller) and shipments (to the customer). They use the same SMTP settings as everything else; without SMTP they are logged, and nothing fails.
@@ -119,8 +124,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 ```bash
 cd backend && mvn verify                  # unit tests (49)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (63)
-cd frontend && npm run lint && npm test   # 124 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (71)
+cd frontend && npm run lint && npm test   # 129 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -133,12 +138,14 @@ The **integration tests** start the whole application against a real MySQL datab
 - **Marketplace:**
   - seller sign-up and store review;
   - role checks, including a seller editing their own token to claim ADMIN;
-  - product ownership: another seller's product can't be read, edited, submitted or archived, and owner fields in the body are ignored;
+  - product ownership: another seller's product can't be read, edited, submitted or archived, and owner, role or status fields in any request body are ignored;
+  - suspended stores can't change or remove products, and only approved stores have a public page;
   - validation;
   - product approval and the listing rule, including the database constraint;
   - suspension hiding a store's products;
   - split orders, where each seller sees only their own lines;
-  - fulfilment and the order roll-up, and cancelled orders not counting as sales;
+  - fulfilment and the order roll-up, including two sellers shipping at once and a cancellation racing a shipment;
+  - cancelled orders not counting as sales, and each order counted once whatever its number of lines;
   - the original 20 products unchanged.
 
 The **frontend tests** render the real app, with its router, providers and pages, against an in-memory API built on MSW. They cover:
@@ -154,6 +161,7 @@ The **frontend tests** render the real app, with its router, providers and pages
   - the "Sellers only" and "Admins only" gates;
   - the storefront and store bylines;
   - admin seller and product review;
+  - "Unable to load" with retry on server errors or no connection, and expired sessions returning to sign-in;
 - output escaping, the image fallback, and the session-refresh rules;
 - accessibility with axe-core (WCAG 2.x A/AA and best practices) on all 18 public pages, the signed-in and admin pages, and every overlay while open, plus keyboard behaviour: focus trapping and return, closed overlays kept out of the tab order, and the product tabs' arrow keys.
 

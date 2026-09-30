@@ -21,6 +21,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -530,5 +535,203 @@ class SellerMarketplaceIT extends AbstractIT {
         mvc.perform(s.auth(get("/api/seller/orders/" + number))).andExpect(status().isOk());
         mvc.perform(s.auth(patch("/api/seller/orders/" + number + "/status").contentType(MediaType.APPLICATION_JSON)
                 .content(json(fulfil("SHIPPED"))))).andExpect(status().isForbidden());
+    }
+
+    // ── Hardening ──────────────────────────────────────────
+
+    @Test
+    void noRequestFieldCanSetOwnershipRoleOrStatus() throws Exception {
+        Session a = approvedSeller("fields-a");
+        Session b = approvedSeller("fields-b");
+        Map<String, Object> sneaky = productBody("Fields Candle", true);
+        sneaky.putAll(Map.of("seller_id", b.userId(), "ownerId", b.userId(), "owner_id", b.userId(), "sellerId", b.userId(),
+                "role", "ADMIN", "status", "APPROVED", "active", true, "id", 1));
+        JsonNode created = body(mvc.perform(a.auth(postJson("/api/seller/products", sneaky)))
+                .andExpect(status().isCreated()).andReturn());
+        long id = created.path("id").asLong();
+        assertThat(id).isNotEqualTo(1L);
+        assertThat(created.path("status").asString()).isEqualTo("PENDING_APPROVAL");
+        assertThat(jdbc.queryForObject("select seller_id from products where id = ?", Long.class, id)).isEqualTo(a.userId());
+        // The same fields on an update change nothing either.
+        mvc.perform(a.auth(put("/api/seller/products/" + id).contentType(MediaType.APPLICATION_JSON).content(json(sneaky))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("PENDING_APPROVAL"));
+        assertThat(jdbc.queryForObject("select seller_id from products where id = ?", Long.class, id)).isEqualTo(a.userId());
+        mvc.perform(a.auth(get("/api/auth/me"))).andExpect(jsonPath("$.role").value("SELLER"));
+
+        // Store settings can't change the store's status, owner or web address.
+        String slug = body(mvc.perform(a.auth(get("/api/seller/me"))).andReturn()).path("slug").asString();
+        Map<String, Object> settings = application("Renamed Store " + UUID.randomUUID().toString().substring(0, 6));
+        settings.putAll(Map.of("status", "SUSPENDED", "slug", "hijacked", "userId", b.userId(), "user_id", b.userId(),
+                "role", "ADMIN"));
+        mvc.perform(a.auth(put("/api/seller/profile").contentType(MediaType.APPLICATION_JSON).content(json(settings))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("APPROVED"))
+                .andExpect(jsonPath("$.slug").value(slug));
+        assertThat(body(mvc.perform(b.auth(get("/api/seller/me"))).andReturn()).path("storeName").asString())
+                .isNotEqualTo(settings.get("storeName"));
+
+        // A seller application can't approve itself or ask for another role.
+        Map<String, Object> app = application("Self Approved " + UUID.randomUUID().toString().substring(0, 6));
+        app.putAll(Map.of("status", "APPROVED", "statusReason", "ok"));
+        String email = uniqueEmail("self-approve");
+        JsonNode reg = body(mvc.perform(postJson("/api/auth/register", Map.of("fullName", "Self", "email", email,
+                "password", SELLER_PASSWORD, "role", "ADMIN", "seller", app))).andExpect(status().isOk()).andReturn());
+        assertThat(reg.path("user").path("role").asString()).isEqualTo("SELLER");
+        assertThat(reg.path("user").path("sellerStatus").asString()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void theListingRuleAllowsEveryUnlistedState() {
+        try {
+            // Every state is allowed while the product isn't listed; only "listed but not approved" is refused.
+            for (String status : List.of("DRAFT", "PENDING_APPROVAL", "REJECTED", "ARCHIVED", "APPROVED")) {
+                assertThat(jdbc.update("update products set active = false, status = ? where id = 1", status)).isEqualTo(1);
+            }
+            assertThat(jdbc.update("update products set active = true where id = 1")).isEqualTo(1);
+            for (String status : List.of("DRAFT", "PENDING_APPROVAL", "REJECTED", "ARCHIVED")) {
+                assertThatThrownBy(() -> jdbc.update("update products set status = ? where id = 1", status))
+                        .as(status).isInstanceOf(DataAccessException.class);
+            }
+        } finally {
+            jdbc.update("update products set status = 'APPROVED', active = true where id = 1");
+        }
+    }
+
+    @Test
+    void storeNamesAreUniqueInTheDatabaseToo() throws Exception {
+        Session seller = pendingSeller("unique-name");
+        String name = body(mvc.perform(seller.auth(get("/api/seller/me"))).andReturn()).path("storeName").asString();
+        Long otherUser = register(uniqueEmail("unique-other")).userId();
+        assertThatThrownBy(() -> jdbc.update("insert into seller_profiles (user_id, slug, store_name, business_category, "
+                + "phone, address_line, city, state, pincode, status, version, created_at, updated_at) values "
+                + "(?, ?, ?, 'gift sets', '+91 98765 43210', 'x', 'Pune', 'Maharashtra', '411001', 'PENDING', 0, "
+                + "utc_timestamp(6), utc_timestamp(6))", otherUser, "dup-" + otherUser, name.toUpperCase()))
+                .isInstanceOf(DataAccessException.class);
+    }
+
+    @Test
+    void aSuspendedStoreCantChangeOrRemoveProducts() throws Exception {
+        Session s = approvedSeller("frozen");
+        long listed = listedProduct(s, "Frozen Candle");
+        long draft = createProduct(s, "Frozen Draft", false);
+        mvc.perform(admin().auth(patch("/api/admin/sellers/" + s.userId() + "/suspend")
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("reason", "Review.")))))
+                .andExpect(status().isOk());
+        mvc.perform(s.auth(put("/api/seller/products/" + listed).contentType(MediaType.APPLICATION_JSON)
+                .content(json(productBody("Frozen Candle", false))))).andExpect(status().isForbidden());
+        mvc.perform(s.auth(post("/api/seller/products/" + draft + "/submit"))).andExpect(status().isForbidden());
+        mvc.perform(s.auth(delete("/api/seller/products/" + listed))).andExpect(status().isForbidden());
+        mvc.perform(s.auth(get("/api/seller/products/" + listed))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED")).andExpect(jsonPath("$.active").value(false));
+        mvc.perform(s.auth(get("/api/seller/dashboard"))).andExpect(status().isOk());
+    }
+
+    @Test
+    void onlyApprovedStoresHaveAPublicPage() throws Exception {
+        Session pending = pendingSeller("hidden-pending");
+        String pendingSlug = body(mvc.perform(pending.auth(get("/api/seller/me"))).andReturn()).path("slug").asString();
+        mvc.perform(get("/api/stores/" + pendingSlug)).andExpect(status().isNotFound());
+        mvc.perform(admin().auth(patch("/api/admin/sellers/" + pending.userId() + "/reject")
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("reason", "Incomplete.")))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/stores/" + pendingSlug)).andExpect(status().isNotFound());
+        mvc.perform(get("/api/stores/no-such-store-anywhere")).andExpect(status().isNotFound());
+        // Nothing of theirs is in the shop either.
+        assertThat(body(mvc.perform(get("/api/products?store=" + pendingSlug)).andReturn()).path("totalElements").asInt())
+                .isZero();
+    }
+
+    @Test
+    void salesCountEachOrderOnceAndEveryUnit() throws Exception {
+        Session s = approvedSeller("count");
+        long candle = listedProduct(s, "Count Candle");
+        long mug = listedProduct(s, "Count Mug");
+        Session customer = register(uniqueEmail("count-buyer"));
+        addToCart(customer, candle, 2);
+        addToCart(customer, mug, 4);
+        mvc.perform(customer.auth(postJson("/api/cart/items", Map.of("productId", candle, "quantity", 1,
+                "customName", "Priya")))).andExpect(status().isOk()); // a second, personalised line of the same product
+        placeCod(customer);
+        mvc.perform(s.auth(get("/api/seller/analytics")))
+                .andExpect(jsonPath("$.stats.orders").value(1))
+                .andExpect(jsonPath("$.stats.unitsSold").value(7))
+                .andExpect(jsonPath("$.stats.grossSales").value(3150.0))
+                .andExpect(jsonPath("$.stats.averageOrderValue").value(3150.0))
+                .andExpect(jsonPath("$.topProducts.length()").value(2))
+                .andExpect(jsonPath("$.topProducts[0].productId").value(mug))
+                .andExpect(jsonPath("$.topProducts[1].unitsSold").value(3));
+    }
+
+    @Test
+    void twoSellersShippingOneOrderAtOnceBothCount() throws Exception {
+        Session a = approvedSeller("race-a");
+        Session b = approvedSeller("race-b");
+        long pa = listedProduct(a, "Race Candle");
+        long pb = listedProduct(b, "Race Mug");
+        for (int round = 0; round < 3; round++) {
+            Session customer = register(uniqueEmail("race-buyer"));
+            addToCart(customer, pa, 1);
+            addToCart(customer, pb, 1);
+            String number = placeCod(customer).path("orderNumber").asString();
+            List<Integer> codes = inParallel(
+                    () -> mvc.perform(a.auth(patch("/api/seller/orders/" + number + "/status")
+                            .contentType(MediaType.APPLICATION_JSON).content(json(fulfil("SHIPPED"))))).andReturn()
+                            .getResponse().getStatus(),
+                    () -> mvc.perform(b.auth(patch("/api/seller/orders/" + number + "/status")
+                            .contentType(MediaType.APPLICATION_JSON).content(json(fulfil("SHIPPED"))))).andReturn()
+                            .getResponse().getStatus());
+            assertThat(codes).containsOnly(200);
+            // Both parcels shipped, so the customer's order is shipped: neither update was lost.
+            mvc.perform(customer.auth(get("/api/orders/" + number))).andExpect(jsonPath("$.status").value("SHIPPED"));
+        }
+    }
+
+    @Test
+    void aCancelRacingAShipmentLeavesAConsistentOrder() throws Exception {
+        Session s = approvedSeller("race-cancel");
+        long product = listedProduct(s, "Race Cancel Candle");
+        for (int round = 0; round < 3; round++) {
+            Session customer = register(uniqueEmail("race-cancel-buyer"));
+            addToCart(customer, product, 1);
+            String number = placeCod(customer).path("orderNumber").asString();
+            inParallel(
+                    () -> mvc.perform(customer.auth(post("/api/orders/" + number + "/cancel"))).andReturn()
+                            .getResponse().getStatus(),
+                    () -> mvc.perform(s.auth(patch("/api/seller/orders/" + number + "/status")
+                            .contentType(MediaType.APPLICATION_JSON).content(json(fulfil("SHIPPED"))))).andReturn()
+                            .getResponse().getStatus());
+            JsonNode order = body(mvc.perform(customer.auth(get("/api/orders/" + number))).andReturn());
+            String line = order.path("items").get(0).path("fulfillmentStatus").asString();
+            // Either the cancel won (the line is cancelled) or the shipment did (the order isn't cancelled).
+            if ("CANCELLED".equals(order.path("status").asString())) {
+                assertThat(line).isEqualTo("CANCELLED");
+            } else {
+                assertThat(line).isEqualTo("SHIPPED");
+                assertThat(order.path("status").asString()).isEqualTo("SHIPPED");
+            }
+        }
+    }
+
+    /** Runs the calls at the same moment on separate threads and returns their results in order. */
+    @SafeVarargs
+    private static List<Integer> inParallel(Callable<Integer>... calls) throws Exception {
+        ExecutorService pool = Executors.newFixedThreadPool(calls.length);
+        try {
+            CountDownLatch start = new CountDownLatch(1);
+            List<Future<Integer>> results = new java.util.ArrayList<>();
+            for (Callable<Integer> call : calls) {
+                results.add(pool.submit(() -> {
+                    start.await();
+                    return call.call();
+                }));
+            }
+            start.countDown();
+            List<Integer> out = new java.util.ArrayList<>();
+            for (Future<Integer> f : results) {
+                out.add(f.get());
+            }
+            return out;
+        } finally {
+            pool.shutdownNow();
+        }
     }
 }

@@ -42,7 +42,7 @@ public class SellerProfile {
     @Column(nullable = false, unique = true)
     private String slug;
 
-    @Column(name = "store_name", nullable = false)
+    @Column(name = "store_name", nullable = false, unique = true)
     private String storeName;
 
     private String description;

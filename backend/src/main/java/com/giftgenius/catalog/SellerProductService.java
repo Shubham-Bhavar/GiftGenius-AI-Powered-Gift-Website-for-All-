@@ -106,13 +106,15 @@ public class SellerProductService {
     @CacheEvict(value = ProductService.CATALOG_CACHE, allEntries = true)
     public ProductDto update(Long sellerId, Long id, SellerProductRequest req) {
         Product p = owned(sellerId, id);
-        SellerProfile seller = store(sellerId);
+        // Locked: an approved product stays listed after this edit only if the store is still allowed to sell.
+        SellerProfile seller = lockedStore(sellerId);
         requireCanEdit(seller);
         boolean contentChanged = !Objects.equals(p.getName(), req.name().trim())
                 || !Objects.equals(p.getDescription(), req.description().trim())
                 || !Objects.equals(p.getLongDescription(), SafeText.clean(req.longDescription()))
                 || !Objects.equals(p.getCategory(), category(req.category()))
-                || !Objects.equals(p.getImageUrl(), req.image().trim());
+                || !Objects.equals(p.getImageUrl(), req.image().trim())
+                || !Objects.equals(p.getAltText(), SafeText.clean(req.alt()));
         apply(p, req);
         if (req.submit()) {
             requireCanSubmit(seller);
@@ -142,12 +144,13 @@ public class SellerProductService {
 
     /**
      * "Delete" for sellers: the product leaves the shop and is kept as ARCHIVED, because past orders refer to it.
-     * Allowed whatever the store's status, so a seller can always take their products down.
+     * Like every product change, it needs a store that is approved or waiting for review.
      */
     @Transactional
     @CacheEvict(value = ProductService.CATALOG_CACHE, allEntries = true)
     public void archive(Long sellerId, Long id) {
         Product p = owned(sellerId, id);
+        requireCanEdit(store(sellerId));
         p.setStatus(ProductStatus.ARCHIVED);
         p.syncListing();
     }
@@ -161,6 +164,8 @@ public class SellerProductService {
         if (p.getStatus() != ProductStatus.PENDING_APPROVAL) {
             throw ApiException.conflict("Only products waiting for approval can be approved.");
         }
+        // Locked: the product is listed only if its store can sell, even while the store is being suspended.
+        lockedStore(p.getSeller().getUserId());
         p.setStatus(ProductStatus.APPROVED);
         p.setRejectionReason(null);
         p.syncListing();
@@ -217,6 +222,10 @@ public class SellerProductService {
 
     private SellerProfile store(Long sellerId) {
         return sellers.findById(sellerId).orElseThrow(() -> ApiException.forbidden("Set up your store first."));
+    }
+
+    private SellerProfile lockedStore(Long sellerId) {
+        return sellers.lockById(sellerId).orElseThrow(() -> ApiException.forbidden("Set up your store first."));
     }
 
     private Product marketplaceProduct(Long id) {

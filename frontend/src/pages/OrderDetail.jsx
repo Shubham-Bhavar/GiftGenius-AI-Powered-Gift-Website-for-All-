@@ -10,7 +10,7 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { usePayment } from '../hooks/usePayment.js';
 import { api } from '../lib/api.js';
 import { CANCELLABLE, DELIVERY_LABEL, dateTime, inr } from '../lib/format.js';
-import { FULFILMENT_STATUS } from '../lib/marketplace.js';
+import { CUSTOMER_FULFILMENT } from '../lib/marketplace.js';
 
 export function OrderItems({ items }) {
   return (
@@ -24,7 +24,7 @@ export function OrderItems({ items }) {
             {i.seller && (
               <div className="od-mini-sub">
                 Sold by <Link to={`/store/${encodeURIComponent(i.seller.slug)}`}>{i.seller.storeName}</Link>
-                {i.fulfillmentStatus && <> · <StatusPill status={i.fulfillmentStatus} labels={FULFILMENT_STATUS} /></>}
+                {i.fulfillmentStatus && <> · <StatusPill status={i.fulfillmentStatus} labels={CUSTOMER_FULFILMENT} /></>}
               </div>
             )}
             {i.fulfillmentNote && <div className="od-mini-sub">🚚 {i.fulfillmentNote}</div>}

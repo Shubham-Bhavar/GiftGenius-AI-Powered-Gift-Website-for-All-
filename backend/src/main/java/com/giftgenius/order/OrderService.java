@@ -269,7 +269,9 @@ public class OrderService {
 
     @Transactional
     public OrderDto cancel(Long userId, String orderNumber) {
-        Order o = ownOrder(userId, orderNumber);
+        // Locked: a seller may be shipping part of this order right now.
+        Order o = orders.lockByOrderNumberAndUserId(orderNumber, userId)
+                .orElseThrow(() -> ApiException.notFound("Order not found."));
         if (!OrderStatus.CANCELLABLE.contains(o.getStatus())) {
             throw ApiException.conflict(o.getStatus() == OrderStatus.CANCELLED
                     ? "This order is already cancelled."
@@ -379,7 +381,8 @@ public class OrderService {
 
     @Transactional
     public OrderDto adminUpdateStatus(String orderNumber, StatusUpdateRequest req) {
-        Order o = orders.findByOrderNumber(orderNumber)
+        // Locked: sellers may be updating their lines of this order at the same time.
+        Order o = orders.lockByOrderNumber(orderNumber)
                 .orElseThrow(() -> ApiException.notFound("Order not found."));
         OrderStatus next = req.status();
         if (next == OrderStatus.CONFIRMED || next == OrderStatus.PENDING_PAYMENT) {

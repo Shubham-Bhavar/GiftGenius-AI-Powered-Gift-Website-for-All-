@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useQuery } from '@tanstack/react-query';
 import { EMPTY_STORE, storeBody, storeErrors, validateStore } from '../components/AuthCard.jsx';
 import StoreFormFields from '../components/StoreForm.jsx';
 import { ErrorNote, Field, Notice, PageHero, PasswordField, StatusPill } from '../components/ui.jsx';
@@ -8,6 +9,20 @@ import { useToast } from '../context/ToastContext.jsx';
 import { useDocumentTitle } from '../hooks/useDocumentTitle.js';
 import { api } from '../lib/api.js';
 import { SELLER_STATUS } from '../lib/marketplace.js';
+
+/** A seller's store status, read fresh (an admin may have reviewed it since sign-in). */
+function YourStore({ fallbackStatus }) {
+  const store = useQuery({ queryKey: ['seller', 'me'], queryFn: api.seller.me });
+  return (
+    <div className="co-form-section acc-seller">
+      <h2>🏪 Your Store</h2>
+      <p className="acc-seller-status">
+        {store.data?.storeName ?? 'Store'} status: <StatusPill status={store.data?.status ?? fallbackStatus} labels={SELLER_STATUS} />
+      </p>
+      <Link to="/seller" className="btn-primary">Go to Seller Center →</Link>
+    </div>
+  );
+}
 
 /** A customer opens a store with the account they already have (orders and wishlist stay). */
 function StartSelling() {
@@ -102,13 +117,7 @@ export default function Account() {
           {user.role === 'SELLER' && <Link to="/seller" className="acc-link"><span>🏪</span>Seller Center</Link>}
         </div>
 
-        {user.role === 'SELLER' && (
-          <div className="co-form-section acc-seller">
-            <h2>🏪 Your Store</h2>
-            <p className="acc-seller-status">Store status: <StatusPill status={user.sellerStatus} labels={SELLER_STATUS} /></p>
-            <Link to="/seller" className="btn-primary">Go to Seller Center →</Link>
-          </div>
-        )}
+        {user.role === 'SELLER' && <YourStore fallbackStatus={user.sellerStatus} />}
 
         <form className="co-form-section" onSubmit={saveProfile}>
           <h2>👤 Profile</h2>

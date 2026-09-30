@@ -24,6 +24,7 @@ import com.giftgenius.catalog.ProductDtos.ProductDto;
 import com.giftgenius.catalog.ProductDtos.ProductUpsertRequest;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.common.PageResponse;
+import com.giftgenius.seller.SellerProfileRepository;
 
 @Service
 public class ProductService {
@@ -36,10 +37,12 @@ public class ProductService {
     }
 
     private final ProductRepository products;
+    private final SellerProfileRepository sellers;
     private final CacheManager cacheManager;
 
-    public ProductService(ProductRepository products, CacheManager cacheManager) {
+    public ProductService(ProductRepository products, SellerProfileRepository sellers, CacheManager cacheManager) {
         this.products = products;
+        this.sellers = sellers;
         this.cacheManager = cacheManager;
     }
 
@@ -134,6 +137,9 @@ public class ProductService {
     @CacheEvict(value = CATALOG_CACHE, allEntries = true)
     public ProductDto update(Long id, ProductUpsertRequest req) {
         Product p = products.findById(id).orElseThrow(() -> ApiException.notFound("Product not found."));
+        if (p.getSeller() != null) {
+            sellers.lockById(p.getSeller().getUserId()); // the listing decision below reads the store's latest status
+        }
         apply(p, req);
         return ProductDto.from(p);
     }

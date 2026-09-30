@@ -901,6 +901,8 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 :root:not([data-theme="dark"]) .pcard-cat { color: var(--gold-text); }
 :root:not([data-theme="dark"]) :is(.pcard-rating > span:not(.stars), .price-og) { color: var(--muted-text); }
 :root:not([data-theme="dark"]) .gg-alert--info { color: var(--teal-text); }
+/* "Only N left" on a product page (3.3:1) and the current step of an order timeline (3.6:1). */
+:root:not([data-theme="dark"]) :is(.pd-stock--low, .t-item.active .t-title) { color: var(--gold-text); }
 :root:not([data-theme="dark"]) .pd-price-off { color: var(--success-text); }
 
 /* Dark theme: the original stylesheet left some muted text in a dim brown that is hard to read on the
@@ -917,6 +919,7 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 [data-theme="dark"] .adm-link { color: var(--gold-light); }
 [data-theme="dark"] :is(.pd-btn-wishlist:hover, .pd-btn-wishlist.is-saved, .od-id) { color: var(--gold-light); }
 [data-theme="dark"] .t-time { color: #8AABB0; }
+[data-theme="dark"] .t-item.active .t-title { color: var(--gold-light); }
 [data-theme="dark"] .gg-password-toggle { color: var(--teal); }
 
 /* The testimonials eyebrow sits on the dark band in both themes; the dimmed gold was unreadable (1.85:1). */

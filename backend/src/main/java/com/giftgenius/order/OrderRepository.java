@@ -9,14 +9,31 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByOrderNumber(String orderNumber);
 
     Optional<Order> findByOrderNumberAndUserId(String orderNumber, Long userId);
+
+    /*
+     * Row-locked lookups for every change to an order's status or its lines' fulfilment (customer cancel, admin
+     * status change, seller fulfilment). They serialise those changes, and because each is the first read of its
+     * transaction, everything read afterwards (the lines, too) is the latest committed state.
+     */
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.orderNumber = :orderNumber")
+    Optional<Order> lockByOrderNumber(@Param("orderNumber") String orderNumber);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.orderNumber = :orderNumber and o.user.id = :userId")
+    Optional<Order> lockByOrderNumberAndUserId(@Param("orderNumber") String orderNumber, @Param("userId") Long userId);
 
     Optional<Order> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
@@ -56,6 +73,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             + "and o.status <> com.giftgenius.order.OrderStatus.PENDING_PAYMENT "
             + "and exists (select 1 from OrderItem i where i.order = o and i.sellerId = :sellerId)")
     Optional<Order> findForSeller(@Param("orderNumber") String orderNumber, @Param("sellerId") Long sellerId);
+
+    /** {@link #findForSeller(String, Long)}, row-locked for a fulfilment update. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.orderNumber = :orderNumber "
+            + "and o.status <> com.giftgenius.order.OrderStatus.PENDING_PAYMENT "
+            + "and exists (select 1 from OrderItem i where i.order = o and i.sellerId = :sellerId)")
+    Optional<Order> lockForSeller(@Param("orderNumber") String orderNumber, @Param("sellerId") Long sellerId);
 
     @Query("select coalesce(sum(o.total), 0) from Order o where o.paymentStatus = com.giftgenius.order.PaymentStatus.PAID "
             + "and o.createdAt >= :since")

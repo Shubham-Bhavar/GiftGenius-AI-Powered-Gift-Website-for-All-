@@ -80,7 +80,7 @@ export function validateAuthForm(mode, form, accountType = 'customer') {
   return errors;
 }
 
-export function AuthField({ label, error, hint, as = 'input', children, ...props }) {
+function AuthField({ label, error, hint, as = 'input', children, ...props }) {
   const id = useId();
   const describedBy = [error ? `${id}-e` : null, hint ? `${id}-h` : null].filter(Boolean).join(' ') || undefined;
   const common = { id, 'aria-invalid': !!error, 'aria-describedby': describedBy, ...props };
@@ -116,7 +116,7 @@ const firstName = (u) => (u.fullName || '').split(' ')[0] || 'there';
  * `note` explains why sign-in is being asked for (e.g. at checkout).
  */
 /** The store fields of the seller sign-up, in the sign-in card's style. */
-export function StoreFields({ values, errors, onChange }) {
+function StoreFields({ values, errors, onChange }) {
   const set = (k) => (e) => onChange(k, e.target.value);
   return (
     <>
@@ -249,7 +249,11 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
             </>
           )}
           {state.error && !Object.keys(er).length && (
-            <p className="auth-error auth-error--block" role="alert">{authErrorMessage(mode, state.error)}</p>
+            <p className="auth-error auth-error--block" role="alert">
+              {seller && state.error.status === 409 && /email already exists/i.test(state.error.message)
+                ? 'An account with this email already exists. Sign in, then choose "Sell on GiftGenius" in your account to open your store.'
+                : authErrorMessage(mode, state.error)}
+            </p>
           )}
           <button type="submit" className="auth-submit" disabled={state.busy} aria-busy={state.busy}>
             {state.busy ? c.busy : seller ? 'Create Seller Account →' : c.cta}

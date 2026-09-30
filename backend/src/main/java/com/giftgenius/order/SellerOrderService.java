@@ -70,16 +70,19 @@ public class SellerOrderService {
     /**
      * Moves all of this seller's (not cancelled) lines in the order to the next step. Only an approved store can
      * do this; the lines of other sellers and GiftGenius are never touched.
+     *
+     * <p>The order row is locked first, so two sellers shipping their parts of one order at the same time (or a
+     * seller shipping while the customer cancels) are applied one after the other, each seeing the other's result.
      */
     @Transactional
-    public SellerOrderDto updateFulfilment(Long sellerUserId, String orderNumber, FulfillmentUpdateRequest req) {
-        SellerProfile seller = sellers.findById(sellerUserId)
+    public SellerOrderDto updateFulfilment(Long sellerId, String orderNumber, FulfillmentUpdateRequest req) {
+        Order o = orders.lockForSeller(orderNumber, sellerId)
+                .orElseThrow(() -> ApiException.notFound("Order not found."));
+        SellerProfile seller = sellers.findById(sellerId)
                 .orElseThrow(() -> ApiException.forbidden("Set up your store first."));
         if (!seller.canSell()) {
             throw ApiException.forbidden("Your store isn't active, so its orders are handled by GiftGenius for now.");
         }
-        Long sellerId = seller.getUserId();
-        Order o = own(sellerId, orderNumber);
         if (o.getStatus() == OrderStatus.CANCELLED) {
             throw ApiException.conflict("This order was cancelled, so there's nothing to send.");
         }

@@ -5,12 +5,23 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
+import jakarta.persistence.LockModeType;
 
 public interface SellerProfileRepository extends JpaRepository<SellerProfile, Long> {
 
     Optional<SellerProfile> findBySlug(String slug);
+
+    /**
+     * The store, read under a shared row lock: use before listing one of its products, so the listing decision
+     * sees the store's latest status (a suspension being written at the same time waits, or is waited for).
+     */
+    @Lock(LockModeType.PESSIMISTIC_READ)
+    @Query("select s from SellerProfile s where s.userId = :id")
+    Optional<SellerProfile> lockById(@Param("id") Long id);
 
     boolean existsBySlug(String slug);
 
