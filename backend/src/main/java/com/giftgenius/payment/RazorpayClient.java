@@ -62,8 +62,12 @@ public class RazorpayClient {
             if (res == null || !res.hasNonNull("id")) {
                 throw new RestClientException("Empty response");
             }
-            return new RazorpayOrder(res.get("id").asString(), res.path("amount").asLong(paise),
-                    res.path("currency").asString("INR"));
+            long amount = res.path("amount").asLong(paise);
+            String currency = res.path("currency").asString("INR");
+            if (amount != paise || !"INR".equals(currency)) {
+                throw new RestClientException("Order created for " + amount + " " + currency + ", expected " + paise);
+            }
+            return new RazorpayOrder(res.get("id").asString(), amount, currency);
         } catch (RestClientException e) {
             log.error("Razorpay order creation failed for {}: {}", receipt, e.getMessage());
             throw ApiException.unavailable("Online payment is temporarily unavailable. Try again or choose Cash on Delivery.");

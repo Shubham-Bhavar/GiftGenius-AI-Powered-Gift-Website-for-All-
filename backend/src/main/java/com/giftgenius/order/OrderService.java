@@ -247,14 +247,27 @@ public class OrderService {
                 needsPayment ? null : toDto(order));
     }
 
+    /**
+     * Confirms a payment from the shopper's browser. Only the signature proves it: Razorpay signs
+     * order_id|payment_id with our key secret, and the Razorpay order was created here for exactly this order's
+     * total, so the amount can't differ. Idempotent, and serialised with the webhook by the row lock.
+     */
     @Transactional
     public OrderDto verifyPayment(Long userId, String orderNumber, VerifyPaymentRequest req) {
-        Order o = ownOrder(userId, orderNumber);
+        Order o = orders.lockByOrderNumberAndUserId(orderNumber, userId)
+                .orElseThrow(() -> ApiException.notFound("Order not found."));
         if (o.getPaymentStatus() == PaymentStatus.PAID) {
-            return toDto(o);
+            return toDto(o); // already confirmed, by the webhook or another tab
         }
-        if (o.getStatus() != OrderStatus.PENDING_PAYMENT) {
+        boolean payable = o.getStatus() == OrderStatus.PENDING_PAYMENT;
+        // Cancelled (by the shopper, an admin or the payment window) while the payment was in flight.
+        boolean cancelledMeanwhile = o.getStatus() == OrderStatus.CANCELLED && o.getRazorpayOrderId() != null;
+        if (o.getPaymentMethod() != PaymentMethod.ONLINE || !(payable || cancelledMeanwhile)) {
             throw ApiException.conflict("This order can no longer be paid.");
+        }
+        if (!razorpay.isEnabled()) {
+            throw ApiException.unavailable("We couldn't confirm your payment just now. If money was deducted, "
+                    + "it will be confirmed automatically or refunded.");
         }
         if (!req.razorpayOrderId().equals(o.getRazorpayOrderId())
                 || !RazorpaySignatures.verifyPayment(req.razorpayOrderId(), req.razorpayPaymentId(),
@@ -263,7 +276,11 @@ public class OrderService {
             throw ApiException.badRequest("We couldn't verify this payment. If money was deducted, "
                     + "it will be confirmed automatically or refunded.");
         }
-        markPaid(o, req.razorpayPaymentId());
+        if (payable) {
+            markPaid(o, req.razorpayPaymentId());
+        } else {
+            recordLatePayment(o, req.razorpayPaymentId());
+        }
         return toDto(o);
     }
 
@@ -336,21 +353,23 @@ public class OrderService {
         if (rzpOrderId == null) {
             return;
         }
-        orders.findByRazorpayOrderId(rzpOrderId).ifPresent(o -> {
+        // Locked: the shopper's browser may be verifying this same payment right now.
+        orders.lockByRazorpayOrderId(rzpOrderId).ifPresent(o -> {
             switch (event) {
                 case "payment.captured", "order.paid" -> {
                     if (o.getPaymentStatus() == PaymentStatus.PAID) {
-                        return;
+                        return; // duplicate delivery, or the browser confirmed it first
                     }
-                    if (o.getStatus() == OrderStatus.PENDING_PAYMENT) {
-                        markPaid(o, paymentId);
-                    } else if (o.getStatus() == OrderStatus.CANCELLED
-                            && o.getPaymentStatus() != PaymentStatus.REFUND_PENDING) {
-                        // Paid after the payment window closed: money must go back.
-                        o.setRazorpayPaymentId(paymentId);
-                        o.setPaymentStatus(PaymentStatus.REFUND_PENDING);
-                        log.warn("Late payment {} on cancelled order {}; refund required", paymentId,
-                                o.getOrderNumber());
+                    if (o.getStatus() == OrderStatus.CANCELLED) {
+                        recordLatePayment(o, paymentId);
+                    } else if (o.getStatus() == OrderStatus.PENDING_PAYMENT) {
+                        if (paidInFull(o, payment)) {
+                            markPaid(o, paymentId);
+                        } else {
+                            log.error("Razorpay {} {} on order {} was {} {} paise, not the order total; not confirming it",
+                                    event, paymentId, o.getOrderNumber(), payment.path("currency").asString("?"),
+                                    payment.path("amount").asString("?"));
+                        }
                     }
                 }
                 case "payment.failed" -> {
@@ -461,7 +480,7 @@ public class OrderService {
     /** Called by {@link PendingOrderReaper} in its own transaction per order. */
     @Transactional
     public void expireIfStillPending(Long orderId) {
-        orders.findById(orderId).ifPresent(o -> {
+        orders.lockById(orderId).ifPresent(o -> {
             if (o.getStatus() == OrderStatus.PENDING_PAYMENT && o.getPaymentStatus() != PaymentStatus.PAID) {
                 doCancel(o, "Payment wasn't completed in time");
                 log.info("Expired unpaid order {}", o.getOrderNumber());
@@ -480,6 +499,26 @@ public class OrderService {
         notifyCustomer(o, "Payment received: GiftGenius order " + o.getOrderNumber() + " is confirmed",
                 "Thank you! We've received your payment and your order is confirmed.");
         notifySellers(o);
+    }
+
+    /** Money arrived for an order that was cancelled meanwhile: it must go back, whatever the amount. */
+    private void recordLatePayment(Order o, String paymentId) {
+        if (o.getPaymentStatus() == PaymentStatus.REFUND_PENDING || o.getPaymentStatus() == PaymentStatus.REFUNDED) {
+            return;
+        }
+        o.setRazorpayPaymentId(paymentId);
+        o.setPaymentStatus(PaymentStatus.REFUND_PENDING);
+        log.warn("Late payment {} on cancelled order {}; refund required", paymentId, o.getOrderNumber());
+    }
+
+    /** A webhook's payment entity covers this order exactly: the full total, in rupees. */
+    private static boolean paidInFull(Order o, JsonNode payment) {
+        return "INR".equals(payment.path("currency").asString(""))
+                && payment.path("amount").asLong(-1) == paise(o.getTotal());
+    }
+
+    private static long paise(BigDecimal rupees) {
+        return rupees.setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
     }
 
     private void doCancel(Order o, String note) {
@@ -629,7 +668,7 @@ public class OrderService {
         if (o.getPaymentMethod() == PaymentMethod.ONLINE && o.getStatus() == OrderStatus.PENDING_PAYMENT
                 && o.getRazorpayOrderId() != null) {
             pay = new PaymentInstructions("RAZORPAY", razorpay.keyId(), o.getRazorpayOrderId(),
-                    o.getTotal().movePointRight(2).longValue(), "INR", s.getFullName(), s.getEmail(), s.getPhone());
+                    paise(o.getTotal()), "INR", s.getFullName(), s.getEmail(), s.getPhone());
         }
         return new OrderDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
                 o.getDeliveryType(), o.getSubtotal(), o.getDiscount(), o.getDeliveryFee(), o.getTotal(),

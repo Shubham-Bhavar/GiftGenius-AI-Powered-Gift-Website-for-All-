@@ -50,7 +50,10 @@ export default function Checkout() {
     addressLine: '', area: '', city: '', state: '', pincode: '',
   });
   const onlineEnabled = options.data?.onlinePaymentEnabled;
-  const [payKey, setPayKey] = useState(onlineEnabled ? 'upi' : 'cod');
+  // UPI is the default once online payment is known to be on (the options load after the first render),
+  // until the shopper picks something else.
+  const [chosenPayKey, setPayKey] = useState(null);
+  const payKey = chosenPayKey ?? (onlineEnabled ? 'upi' : 'cod');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -110,7 +113,7 @@ export default function Checkout() {
       qc.invalidateQueries({ queryKey: ['products'] });
       qc.invalidateQueries({ queryKey: ['catalog'] });
       setPrefs({ couponCode: '' });
-      if (order.payment) await pay(order);
+      if (order.payment) await pay(order, payment.key);
       else await cart.refresh();
       navigate(`/account/orders/${order.orderNumber}?placed=1`, { replace: true });
     } catch (ex) {

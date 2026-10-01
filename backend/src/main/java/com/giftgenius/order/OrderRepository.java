@@ -23,9 +23,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /*
      * Row-locked lookups for every change to an order's status or its lines' fulfilment (customer cancel, admin
-     * status change, seller fulfilment). They serialise those changes, and because each is the first read of its
-     * transaction, everything read afterwards (the lines, too) is the latest committed state.
+     * status change, seller fulfilment, payment confirmation, expiry). They serialise those changes, and because each
+     * is the first read of its transaction, everything read afterwards (the lines, too) is the latest committed state.
      */
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.id = :id")
+    Optional<Order> lockById(@Param("id") Long id);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select o from Order o where o.orderNumber = :orderNumber")
@@ -37,7 +41,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByUserIdAndIdempotencyKey(Long userId, String idempotencyKey);
 
-    Optional<Order> findByRazorpayOrderId(String razorpayOrderId);
+    /** The webhook's lookup, locked so it and the shopper's browser can't both confirm the same payment. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select o from Order o where o.razorpayOrderId = :razorpayOrderId")
+    Optional<Order> lockByRazorpayOrderId(@Param("razorpayOrderId") String razorpayOrderId);
 
     Page<Order> findByUserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 

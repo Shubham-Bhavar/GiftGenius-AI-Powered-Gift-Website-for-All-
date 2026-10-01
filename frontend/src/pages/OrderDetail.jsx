@@ -56,7 +56,12 @@ export default function OrderDetail() {
   const toast = useToast();
   const pay = usePayment();
   const [busy, setBusy] = useState(false);
-  const order = useQuery({ queryKey: ['orders', number], queryFn: () => api.order(number) });
+  const order = useQuery({
+    queryKey: ['orders', number],
+    queryFn: () => api.order(number),
+    // While payment is pending, look again now and then: the Razorpay webhook may confirm it at any moment.
+    refetchInterval: (q) => (q.state.data?.status === 'PENDING_PAYMENT' ? 15_000 : false),
+  });
   useDocumentTitle(`Order ${number}`);
 
   if (order.isPending) return <Spinner label="Loading your order…" />;

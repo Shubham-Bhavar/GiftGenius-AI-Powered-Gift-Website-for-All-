@@ -19,13 +19,16 @@ function loadScript() {
 }
 
 /**
- * Opens Razorpay Checkout for an order's payment instructions.
- * Resolves with { razorpayOrderId, razorpayPaymentId, razorpaySignature } when paid,
- * or null if the shopper closes the window.
+ * Opens Razorpay Checkout for an order's payment instructions, on the shopper's chosen method
+ * ('upi', 'card' or 'netbanking') when given.
+ * Resolves with { razorpayOrderId, razorpayPaymentId, razorpaySignature } when paid, or null if the
+ * shopper closes the window without trying. A failed attempt (a declined card, a UPI request that
+ * timed out) leaves the window open for a retry, so it only rejects if they then close it.
  */
-export async function payWithRazorpay(orderNumber, payment) {
+export async function payWithRazorpay(orderNumber, payment, method) {
   const Razorpay = await loadScript();
   return new Promise((resolve, reject) => {
+    let lastFailure = null;
     const rzp = new Razorpay({
       key: payment.keyId,
       order_id: payment.razorpayOrderId,
@@ -33,7 +36,7 @@ export async function payWithRazorpay(orderNumber, payment) {
       currency: payment.currency,
       name: 'GiftGenius',
       description: `Order ${orderNumber}`,
-      prefill: { name: payment.name, email: payment.email, contact: payment.phone },
+      prefill: { name: payment.name, email: payment.email, contact: payment.phone, ...(method ? { method } : {}) },
       theme: { color: '#3A8F98' },
       handler: (r) =>
         resolve({
@@ -41,9 +44,14 @@ export async function payWithRazorpay(orderNumber, payment) {
           razorpayPaymentId: r.razorpay_payment_id,
           razorpaySignature: r.razorpay_signature,
         }),
-      modal: { ondismiss: () => resolve(null), confirm_close: true },
+      modal: {
+        ondismiss: () => (lastFailure ? reject(new Error(lastFailure)) : resolve(null)),
+        confirm_close: true,
+      },
     });
-    rzp.on('payment.failed', (r) => reject(new Error(r?.error?.description || 'The payment failed. Please try again.')));
+    rzp.on('payment.failed', (r) => {
+      lastFailure = r?.error?.description || 'The payment failed.';
+    });
     rzp.open();
   });
 }

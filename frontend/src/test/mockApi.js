@@ -78,6 +78,10 @@ export function createDb() {
     refreshCount: 0,
     nextLine: 100,
     aiSource: 'ai',
+    // Razorpay test mode: online checkout is off unless a test turns it on. A signature is valid only if
+    // it is `sig_<razorpayOrderId>|<razorpayPaymentId>` (the server checks an HMAC; the mock checks this).
+    onlinePayment: false,
+    verifyOutages: 0, // verify calls that fail with a network error before one gets through
     resetToken: 'reset-token-1', // the link emailed by "forgot password"; works once
     geoMode: 'ok', // /location/reverse: 'ok' | 'down' | 'abroad'
     geoRequests: [],
@@ -251,7 +255,7 @@ export function handlers(db) {
 
     // Checkout & orders
     http.get(`${API}/checkout/options`, () => HttpResponse.json({
-      onlinePaymentEnabled: false, cashOnDeliveryEnabled: true,
+      onlinePaymentEnabled: db.onlinePayment, cashOnDeliveryEnabled: true,
       delivery: [
         { type: 'STANDARD', label: 'Standard', eta: '3–5 days', fee: 49, freeAbove: 999 },
         { type: 'EXPRESS', label: 'Express', eta: '1–2 days', fee: 99, freeAbove: null },
@@ -273,17 +277,45 @@ export function handlers(db) {
       const cart = cartDto(db, user.id);
       if (!cart.items.length) return problem(400, 'Your cart is empty.');
       const q = quote(db, cart.items, body.couponCode, body.deliveryType);
+      const orderNumber = `GG-TEST${String(db.orders.length + 1).padStart(4, '0')}`;
+      const online = body.paymentMethod === 'ONLINE' && db.onlinePayment;
       const dto = {
-        orderNumber: `GG-TEST${String(db.orders.length + 1).padStart(4, '0')}`, status: 'CONFIRMED', paymentMethod: 'COD',
+        orderNumber, status: online ? 'PENDING_PAYMENT' : 'CONFIRMED', paymentMethod: online ? 'ONLINE' : 'COD',
         paymentStatus: 'PENDING', deliveryType: body.deliveryType, subtotal: q.subtotal, discount: q.discount,
         deliveryFee: q.deliveryFee, total: q.total, couponCode: q.couponCode, shipping: body.shipping,
         items: cart.items.map((i) => ({ ...i, image: i.image })),
-        timeline: [{ status: 'CONFIRMED', note: 'Order placed. Pay when it arrives.', at: '2026-09-25T10:00:00Z' }],
+        timeline: [online
+          ? { status: 'PENDING_PAYMENT', note: 'Waiting for online payment', at: '2026-09-25T10:00:00Z' }
+          : { status: 'CONFIRMED', note: 'Order placed. Pay when it arrives.', at: '2026-09-25T10:00:00Z' }],
         createdAt: '2026-09-25T10:00:00Z',
+        // Like the API: payment instructions only while an online order awaits payment. Never the key secret.
+        payment: online ? {
+          provider: 'RAZORPAY', keyId: 'rzp_test_mock', razorpayOrderId: `order_${orderNumber}`, amountPaise: Math.round(q.total * 100),
+          currency: 'INR', name: body.shipping.fullName, email: body.shipping.email, phone: body.shipping.phone,
+        } : undefined,
       };
       db.orders.push({ userId: user.id, key, dto });
-      db.carts[user.id] = [];
+      // An online order keeps the cart until payment succeeds.
+      if (!online) db.carts[user.id] = [];
       return HttpResponse.json(dto, { status: 201 });
+    })),
+    http.post(`${API}/orders/:number/payment/verify`, authed(async ({ request, params, user }) => {
+      const o = db.orders.find((x) => x.userId === user.id && x.dto.orderNumber === params.number);
+      if (!o) return problem(404, 'Order not found.');
+      if (db.verifyOutages > 0) {
+        db.verifyOutages -= 1;
+        return HttpResponse.error();
+      }
+      const { razorpayOrderId, razorpayPaymentId, razorpaySignature } = await request.json();
+      if (o.dto.paymentStatus === 'PAID') return HttpResponse.json(o.dto);
+      if (o.dto.status !== 'PENDING_PAYMENT') return problem(409, 'This order can no longer be paid.');
+      if (razorpayOrderId !== o.dto.payment.razorpayOrderId || razorpaySignature !== `sig_${razorpayOrderId}|${razorpayPaymentId}`) {
+        return problem(400, "We couldn't verify this payment. If money was deducted, it will be confirmed automatically or refunded.");
+      }
+      o.dto = { ...o.dto, status: 'CONFIRMED', paymentStatus: 'PAID', payment: undefined,
+        timeline: [...o.dto.timeline, { status: 'CONFIRMED', note: 'Payment received', at: '2026-09-25T10:01:00Z' }] };
+      db.carts[user.id] = [];
+      return HttpResponse.json(o.dto);
     })),
     http.get(`${API}/orders/track`, ({ request }) => {
       const p = new URL(request.url).searchParams;

@@ -18,12 +18,12 @@ public final class RazorpaySignatures {
     /** Checkout callback: signature = HMAC(order_id + "|" + payment_id, key_secret). */
     public static boolean verifyPayment(String razorpayOrderId, String razorpayPaymentId, String signature,
             String keySecret) {
-        return matches(hmacHex(razorpayOrderId + "|" + razorpayPaymentId, keySecret), signature);
+        return hasText(keySecret) && matches(hmacHex(razorpayOrderId + "|" + razorpayPaymentId, keySecret), signature);
     }
 
     /** Webhook: X-Razorpay-Signature = HMAC(raw request body, webhook_secret). */
     public static boolean verifyWebhook(String rawBody, String signature, String webhookSecret) {
-        return matches(hmacHex(rawBody, webhookSecret), signature);
+        return hasText(webhookSecret) && matches(hmacHex(rawBody, webhookSecret), signature);
     }
 
     static String hmacHex(String data, String secret) {
@@ -34,6 +34,10 @@ public final class RazorpaySignatures {
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new IllegalStateException("HMAC unavailable", e);
         }
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
     }
 
     private static boolean matches(String expected, String actual) {
