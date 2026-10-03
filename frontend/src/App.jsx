@@ -23,8 +23,8 @@ import Account from './pages/Account.jsx';
 import { AuthPage, ResetPassword } from './pages/Auth.jsx';
 import { About, Collections, Contact, Help, NotFound, Privacy, Terms } from './pages/Info.jsx';
 
-const admin = () => import('./pages/admin/Admin.jsx');
-const seller = () => import('./pages/seller/Seller.jsx');
+const admin = () => import('./pages/admin/index.js');
+const seller = () => import('./pages/seller/index.js');
 
 export const routes = [
   {
