@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Field, StatusPill } from '../../components/ui.jsx';
+import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { PRODUCT_STATUS, productState } from '../../lib/marketplace.js';

@@ -15,7 +15,8 @@ import '@fontsource/dm-mono/500.css';
 // The homepage stylesheet (unchanged), then the inner pages built on the same design tokens.
 import './styles/giftgenius.css';
 import './styles/pages.css';
-import App, { createQueryClient } from './App.jsx';
+import App from './app/App.jsx';
+import { createQueryClient } from './app/queryClient.js';
 
 const queryClient = createQueryClient();
 

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import StoreFormFields from '../../components/StoreForm.jsx';
-import { storeErrors, validateStore } from '../../components/AuthCard.jsx';
-import { Field, StatusPill } from '../../components/ui.jsx';
+import StoreFormFields from '../../components/seller/StoreForm.jsx';
+import { storeErrors, validateStore } from '../../components/auth/AuthCard.jsx';
+import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { api } from '../../lib/api.js';

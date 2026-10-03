@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { EmptyState, ErrorNote, Field, Notice, Spinner, StatusPill } from '../../components/ui.jsx';
+import { EmptyState, ErrorNote, Field, Notice, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { date, inr, orderItemsLabel, titleCase } from '../../lib/format.js';

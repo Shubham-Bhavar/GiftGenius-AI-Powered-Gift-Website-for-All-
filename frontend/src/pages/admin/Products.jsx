@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import SafeImg from '../../components/SafeImg.jsx';
-import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/ui.jsx';
+import SafeImg from '../../components/common/SafeImg.jsx';
+import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { api } from '../../lib/api.js';
 import { inr } from '../../lib/format.js';
 import { PRODUCT_STATUS } from '../../lib/marketplace.js';

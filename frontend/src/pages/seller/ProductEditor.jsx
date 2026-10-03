@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import SafeImg from '../../components/SafeImg.jsx';
-import { EmptyState, Field, Notice, StatusPill } from '../../components/ui.jsx';
+import SafeImg from '../../components/common/SafeImg.jsx';
+import { EmptyState, Field, Notice, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { api } from '../../lib/api.js';

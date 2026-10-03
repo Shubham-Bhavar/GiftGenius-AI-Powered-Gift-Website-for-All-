@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/ui.jsx';
+import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { api } from '../../lib/api.js';
 import { date, inr } from '../../lib/format.js';
 import { SELLER_STATUS } from '../../lib/marketplace.js';

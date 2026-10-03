@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { ErrorNote, Spinner } from '../../components/ui.jsx';
+import { ErrorNote, Spinner } from '../../components/common/ui.jsx';
 import { api } from '../../lib/api.js';
 import { inr } from '../../lib/format.js';
 import { TO_SHIP } from './Orders.jsx';

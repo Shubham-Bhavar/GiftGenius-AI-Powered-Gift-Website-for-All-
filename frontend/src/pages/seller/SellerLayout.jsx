@@ -1,6 +1,6 @@
 import { Link, NavLink, Outlet } from 'react-router';
-import { RequireSeller } from '../../components/guards.jsx';
-import { Notice, PageHero } from '../../components/ui.jsx';
+import { RequireSeller } from '../../components/auth/guards.jsx';
+import { Notice, PageHero } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useStore } from './shared.jsx';
 

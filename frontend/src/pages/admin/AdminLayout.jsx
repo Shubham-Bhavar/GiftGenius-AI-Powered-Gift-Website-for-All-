@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from 'react-router';
-import { RequireAdmin } from '../../components/guards.jsx';
-import { PageHero } from '../../components/ui.jsx';
+import { RequireAdmin } from '../../components/auth/guards.jsx';
+import { PageHero } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 export function AdminLayout() {

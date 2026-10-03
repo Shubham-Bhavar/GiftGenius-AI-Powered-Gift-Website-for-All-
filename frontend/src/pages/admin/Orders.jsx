@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
-import OrderTimeline from '../../components/OrderTimeline.jsx';
-import { ErrorNote, Field, Pagination, PaymentPill, Spinner, StatusPill } from '../../components/ui.jsx';
-import { OrderItems, OrderTotals } from '../OrderDetail.jsx';
+import OrderTimeline from '../../components/order/OrderTimeline.jsx';
+import { ErrorNote, Field, Pagination, PaymentPill, Spinner, StatusPill } from '../../components/common/ui.jsx';
+import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { trapFocus } from '../../lib/focus.js';

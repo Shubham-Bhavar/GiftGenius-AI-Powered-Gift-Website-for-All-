@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ErrorNote, Field, Spinner } from '../../components/ui.jsx';
+import { ErrorNote, Field, Spinner } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { api } from '../../lib/api.js';
 import { date, inr } from '../../lib/format.js';
