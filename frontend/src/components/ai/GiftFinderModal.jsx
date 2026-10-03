@@ -1,12 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
-import SafeImg from '../common/SafeImg.jsx';
-import { aiApi } from '../../services/ai.js';
-import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
 import { trapFocus } from '../../lib/focus.js';
+import { RecommendationCard } from './RecommendationCard.jsx';
+import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
 
 const TOTAL_STEPS = 4;
 const RECIPIENTS = [
@@ -90,66 +88,27 @@ function Options({ items, isSelected, onPick, label, interests }) {
   );
 }
 
-function ResultCard({ pick }) {
-  const cart = useCart();
-  const toast = useToast();
-  const [added, setAdded] = useState(false);
-  const p = pick.product;
-  const discount = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-  return (
-    <div className="gf-result-card">
-      <div className="gf-result-img-wrap">
-        <SafeImg src={p.image} alt={p.alt || p.name} loading="lazy" className="gf-result-img" />
-        {discount > 0 && <span className="gf-result-badge">{discount}% off</span>}
-      </div>
-      <div className="gf-result-body">
-        <p className="gf-result-cat">{p.category}</p>
-        <h3 className="gf-result-name"><Link to={`/product/${p.id}`}>{p.name}</Link></h3>
-        <p className="gf-result-desc">{p.description}</p>
-        <div className="gf-result-reason">✨ {pick.reason}</div>
-        <div className="gf-result-foot">
-          <div className="gf-result-price">
-            {discount > 0 && <span className="gf-result-og">₹{Number(p.originalPrice).toLocaleString('en-IN')}</span>}
-            <span className="gf-result-now">₹{Number(p.price).toLocaleString('en-IN')}</span>
-          </div>
-          <button type="button" className="gf-result-add" disabled={added} onClick={async () => {
-            try {
-              await cart.add(p, 1);
-              setAdded(true);
-              toast(`${p.name} added to cart! 🛒`);
-            } catch (err) {
-              toast(err.message, 'bad');
-            }
-          }}>{added ? '✓ Added' : '+ Add'}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /** The homepage's 4-step Gift Finder modal, now answered by the AI recommendation API. */
 export default function GiftFinderModal() {
   const { giftFinderOpen: open, closeGiftFinder } = useUi();
   const toast = useToast();
   const [step, setStep] = useState(1);
-  const [phase, setPhase] = useState('form'); // form | thinking | results | error
   const [state, setState] = useState({ recipient: null, occasion: null, budget: 1500, interests: [] });
-  const [result, setResult] = useState(null);
+  const { phase, result, submit: recommend, cancel, showForm } = useGiftRecommendations({ minThinkingMs: MIN_THINKING_MS });
   const content = useRef(null);
   const closeBtn = useRef(null);
-  const run = useRef(0);
 
   useRestoreFocus(open);
   // Reopening starts at step 1 but keeps earlier answers, like the original.
   useEffect(() => {
     if (open) {
       setStep(1);
-      setPhase('form');
+      showForm();
       closeBtn.current?.focus();
     } else {
-      run.current++; // cancel an in-flight request's rendering
+      cancel(); // an answer still on its way is not shown
     }
-  }, [open]);
+  }, [open, showForm, cancel]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -181,23 +140,11 @@ export default function GiftFinderModal() {
   const submit = async () => {
     if (phase !== 'form') return;
     if (!state.occasion) { toast('Choose an occasion first.', 'bad'); return; }
-    const id = ++run.current;
-    setPhase('thinking');
-    const started = Date.now();
-    try {
-      const res = await aiApi.recommend({
-        recipient: state.recipient === 'self' ? undefined : state.recipient || undefined,
-        occasion: state.occasion, budget: state.budget, interests: state.interests, limit: 4,
-      });
-      await new Promise((r) => setTimeout(r, Math.max(0, MIN_THINKING_MS - (Date.now() - started))));
-      if (id !== run.current) return;
-      setResult(res);
-      setPhase('results');
-    } catch (err) {
-      if (id !== run.current) return;
-      toast(err.message, 'bad');
-      setPhase('form');
-    }
+    const failed = await recommend({
+      recipient: state.recipient === 'self' ? undefined : state.recipient || undefined,
+      occasion: state.occasion, budget: state.budget, interests: state.interests, limit: 4,
+    });
+    if (failed) toast(failed.message, 'bad');
   };
 
   const recipientLabel = RECIPIENTS.find((r) => r.value === state.recipient)?.label ?? 'them';
@@ -294,7 +241,7 @@ export default function GiftFinderModal() {
                 <div className="gf-no-results"><p>{result.summary}</p></div>
               ) : (
                 <div className="gf-results-grid">
-                  {result.picks.map((p) => <ResultCard key={p.product.id} pick={p} />)}
+                  {result.picks.map((p) => <RecommendationCard key={p.product.id} variant="modal" pick={p} />)}
                 </div>
               )}
               <button type="button" className="gf-btn-done" onClick={closeGiftFinder}>Close</button>

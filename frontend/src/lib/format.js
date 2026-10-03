@@ -14,6 +14,9 @@ export function percentOff(price, original) {
   return Math.round(((o - p) / o) * 100);
 }
 
+/** ₹1,199: a price as shoppers see it on product pages and cards (en-IN grouping, no currency rounding). */
+export const rupees = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
+
 const dateFmt = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
 const dateTimeFmt = new Intl.DateTimeFormat('en-IN', {
   day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit',

@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import SafeImg from '../../components/common/SafeImg.jsx';
-import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { aiApi } from '../../services/ai.js';
+import { RecommendationCard } from '../../components/ai/RecommendationCard.jsx';
+import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
 
 /*
  * The AI Gift Quiz: the original 6-question quiz page, answered by the backend gift advisor
@@ -71,52 +70,13 @@ const TOTAL = QUESTIONS.length + 1; // + the free-text question
 
 const pad = (n) => String(n).padStart(2, '0');
 
-function ResultCard({ pick, index }) {
-  const cart = useCart();
-  const toast = useToast();
-  const [added, setAdded] = useState(false);
-  const p = pick.product;
-  const discount = Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100);
-  return (
-    <div className="result-pcard" style={{ animationDelay: `${0.05 + index * 0.08}s` }}>
-      <Link to={`/product/${p.id}`} className="rpc-img-wrap">
-        <SafeImg src={p.image} alt={p.alt || p.name} className="rpc-img" loading="lazy" />
-        {discount > 0 && <span className="rpc-discount">{discount}% OFF</span>}
-      </Link>
-      <div className="rpc-body">
-        <div className="rpc-cat">{p.category}</div>
-        <Link to={`/product/${p.id}`} className="rpc-name">{p.name}</Link>
-        <p className="rpc-desc">{p.description}</p>
-        <div className="rpc-reason">✨ {pick.reason}</div>
-        <div className="rpc-foot">
-          <div className="rpc-prices">
-            {discount > 0 && <span className="rpc-og">₹{Number(p.originalPrice).toLocaleString('en-IN')}</span>}
-            <span className="rpc-now">₹{Number(p.price).toLocaleString('en-IN')}</span>
-          </div>
-          <button type="button" className="rpc-add" disabled={added} onClick={async () => {
-            try {
-              await cart.add(p, 1);
-              setAdded(true);
-              toast(`${p.name} added to cart 🛒`);
-            } catch (err) {
-              toast(err.message, 'bad');
-            }
-          }}>{added ? '✓ Added' : '+ Add to Cart'}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function GiftFinder() {
   useDocumentTitle('AI Gift Quiz');
   const toast = useToast();
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState({}); // field -> selected option(s)
   const [extra, setExtra] = useState('');
-  const [phase, setPhase] = useState('quiz'); // quiz | thinking | results
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
+  const { phase, result, error, submit: recommend, reset } = useGiftRecommendations({ minThinkingMs: 900 });
   const card = useRef(null);
 
   useEffect(() => {
@@ -146,40 +106,28 @@ export default function GiftFinder() {
   };
   const answered = q ? (q.multi ? (answers[q.field] ?? []).length > 0 : answers[q.field] !== undefined) : true;
 
-  const submit = async () => {
-    setPhase('thinking');
-    setError(null);
+  const submit = () => {
     const notes = [answers.recipient?.note, answers.occasion?.note, extra.trim()].filter(Boolean).join(' ');
     const interests = (answers.interests ?? []).flatMap((o) => [o.value, o.also].filter(Boolean));
-    const started = Date.now();
-    try {
-      const res = await aiApi.recommend({
-        recipient: answers.recipient?.value || undefined,
-        occasion: answers.occasion?.value || undefined,
-        budget: answers.budget?.value || undefined,
-        interests,
-        personality: answers.personality?.value || undefined,
-        notes: notes || undefined,
-        limit: 4,
-      });
-      await new Promise((r) => setTimeout(r, Math.max(0, 900 - (Date.now() - started))));
-      setResult(res);
-      setPhase('results');
-    } catch (err) {
-      setError(err);
-      setPhase('quiz');
-    }
+    recommend({
+      recipient: answers.recipient?.value || undefined,
+      occasion: answers.occasion?.value || undefined,
+      budget: answers.budget?.value || undefined,
+      interests,
+      personality: answers.personality?.value || undefined,
+      notes: notes || undefined,
+      limit: 4,
+    });
   };
 
   const restart = () => {
     setAnswers({});
     setExtra('');
-    setResult(null);
+    reset();
     setStep(1);
-    setPhase('quiz');
   };
 
-  const progressStep = phase === 'quiz' ? step : TOTAL;
+  const progressStep = phase === 'form' ? step : TOTAL;
   const progressLabel = phase === 'results' ? 'Your matches are ready' : phase === 'thinking' ? 'Finding your matches' : (q?.label ?? 'Almost done');
   const who = answers.recipient?.label ?? 'them';
 
@@ -203,7 +151,7 @@ export default function GiftFinder() {
       </div>
 
       <div className="quiz-container" ref={card}>
-        {phase === 'quiz' && q && (
+        {phase === 'form' && q && (
           <div className="question-card active" key={step}>
             <div className="q-number">Question {pad(step)}</div>
             <h2 className="q-text" tabIndex={-1}>{q.title}</h2>
@@ -223,7 +171,7 @@ export default function GiftFinder() {
           </div>
         )}
 
-        {phase === 'quiz' && !q && (
+        {phase === 'form' && !q && (
           <div className="question-card active">
             <div className="q-number">Question {pad(TOTAL)}</div>
             <h2 className="q-text" tabIndex={-1}>Any extra details? <span className="q-optional">(optional)</span></h2>
@@ -266,7 +214,7 @@ export default function GiftFinder() {
             {phase === 'results' && result && (
               result.picks.length > 0 ? (
                 <div className="results-grid">
-                  {result.picks.map((p, i) => <ResultCard key={p.product.id} pick={p} index={i} />)}
+                  {result.picks.map((p, i) => <RecommendationCard key={p.product.id} pick={p} index={i} />)}
                 </div>
               ) : (
                 <div className="no-results-box">
