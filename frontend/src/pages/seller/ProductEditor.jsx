@@ -5,10 +5,11 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { EmptyState, Field, Notice, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
 import { titleCase } from '../../lib/format.js';
 import { PRODUCT_STATUS, SELLER_CATEGORIES, SELLER_OCCASIONS, productState } from '../../lib/marketplace.js';
 import { canEditProducts, LoadError, Skeleton, useStore } from './shared.jsx';
+import { catalogKeys } from '../../services/catalog.js';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', longDescription: '', category: '', occasion: [], tags: '', price: '', compareAtPrice: '',
@@ -71,7 +72,7 @@ export function SellerProductEditor() {
   const { id } = useParams();
   const editing = id !== undefined;
   useDocumentTitle(editing ? 'Edit Product' : 'Add Product');
-  const product = useQuery({ queryKey: ['seller', 'product', id], queryFn: () => api.seller.product(id), enabled: editing });
+  const product = useQuery({ ...sellerQueries.product(id), enabled: editing });
   const store = useStore();
 
   // Wait for the store too: what the seller may do (save drafts, submit) depends on its status.
@@ -113,9 +114,9 @@ function ProductEditorForm({ product, store }) {
     setState({ busy: submit ? 'submit' : 'save', error: null, errors: {} });
     try {
       const body = productBody(f, submit);
-      const saved = product ? await api.seller.updateProduct(product.id, body) : await api.seller.createProduct(body);
-      qc.invalidateQueries({ queryKey: ['seller'] });
-      ['product', 'products', 'catalog'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      const saved = product ? await sellerApi.updateProduct(product.id, body) : await sellerApi.createProduct(body);
+      qc.invalidateQueries({ queryKey: sellerKeys.all() });
+      [catalogKeys.product(), catalogKeys.products(), catalogKeys.catalog()].forEach((queryKey) => qc.invalidateQueries({ queryKey }));
       toast(saved.status === 'PENDING_APPROVAL' ? `${saved.name} sent for approval ✓`
         : saved.status === 'APPROVED' ? `${saved.name} saved ✓ The shop shows your changes.` : `${saved.name} saved as a draft ✓`);
       navigate('/seller/products');

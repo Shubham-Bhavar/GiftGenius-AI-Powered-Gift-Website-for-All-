@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys } from '../../services/admin.js';
 import { PRODUCT_STATUS, productState } from '../../lib/marketplace.js';
+import { catalogKeys } from '../../services/catalog.js';
 
 /** Approve or reject a seller's product, with a reason the seller sees. */
 export function ReviewPanel({ product, onDone }) {
@@ -20,7 +21,8 @@ export function ReviewPanel({ product, onDone }) {
     setError(null);
     try {
       await fn();
-      ['admin', 'products', 'product', 'catalog', 'categories'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      [adminKeys.all(), catalogKeys.products(), catalogKeys.product(), catalogKeys.catalog(), catalogKeys.categories()]
+        .forEach((queryKey) => qc.invalidateQueries({ queryKey }));
       toast(message);
       onDone();
     } catch (err) {
@@ -34,7 +36,7 @@ export function ReviewPanel({ product, onDone }) {
       setError(new Error('Give a reason the seller will see.'));
       return;
     }
-    run(() => api.admin.rejectProduct(product.id, reason.trim()),
+    run(() => adminApi.rejectProduct(product.id, reason.trim()),
       product.status === 'APPROVED' ? `${product.name} taken down` : `${product.name} rejected`);
   };
 
@@ -46,7 +48,7 @@ export function ReviewPanel({ product, onDone }) {
       {canApprove && (
         <div className="adm-actions">
           <button type="button" className="btn-primary btn-sm" disabled={busy}
-            onClick={() => run(() => api.admin.approveProduct(product.id), `${product.name} approved and listed ✓`)}>✓ Approve &amp; List</button>
+            onClick={() => run(() => adminApi.approveProduct(product.id), `${product.name} approved and listed ✓`)}>✓ Approve &amp; List</button>
         </div>
       )}
       {canReject && (

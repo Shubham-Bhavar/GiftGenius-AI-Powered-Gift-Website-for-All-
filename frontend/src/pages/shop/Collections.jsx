@@ -4,7 +4,7 @@ import { CategoryIcon, OCCASION_CARDS } from '../../components/product/occasions
 import { ErrorNote, PageHero, SecHeader } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useReveal } from '../../hooks/useReveal.js';
-import { api } from '../../lib/api.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { titleCase } from '../../lib/format.js';
 
 const CATEGORY_EMOJI = {
@@ -14,7 +14,7 @@ const CATEGORY_EMOJI = {
 
 export function Collections() {
   useDocumentTitle('Collections');
-  const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories, staleTime: 10 * 60_000 });
+  const categories = useQuery(catalogQueries.categories());
   useReveal([categories.data]);
   return (
     <>

@@ -9,7 +9,7 @@
  *
  * Nothing here talks to the backend or creates an account: guests keep using the local cart and wishlist.
  */
-import { hasSessionHint } from './api.js';
+import { hasSessionHint } from '../services/api/client.js';
 import { storage } from './storage.js';
 
 const GUEST_KEY = 'gg-guest';

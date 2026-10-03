@@ -5,7 +5,7 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { EmptyState, Pagination, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
 import { date, inr, titleCase } from '../../lib/format.js';
 import { PRODUCT_STATUS, SELLER_CATEGORIES, productState } from '../../lib/marketplace.js';
 import { canEditProducts, LoadError, Skeleton, useStore } from './shared.jsx';
@@ -25,8 +25,7 @@ export function SellerProducts() {
   const sort = params.get('sort') ?? 'newest';
   const store = useStore();
   const products = useQuery({
-    queryKey: ['seller', 'products', q, status, category, sort, page],
-    queryFn: () => api.seller.products({ q: q || undefined, status: status || undefined, category: category || undefined, sort, page, size: 20 }),
+    ...sellerQueries.products({ q, status, category, sort, page }),
     placeholderData: keepPreviousData,
   });
   const setFilter = (k) => (e) => {
@@ -43,7 +42,7 @@ export function SellerProducts() {
   const act = async (fn, done) => {
     try {
       await fn();
-      qc.invalidateQueries({ queryKey: ['seller'] });
+      qc.invalidateQueries({ queryKey: sellerKeys.all() });
       toast(done);
     } catch (err) {
       toast(err.message, 'bad');
@@ -51,7 +50,7 @@ export function SellerProducts() {
   };
   const archive = (p) => {
     if (!window.confirm(`Remove "${p.name}" from sale? It is archived: past orders keep it, and you can submit it again later.`)) return;
-    act(() => api.seller.archiveProduct(p.id), `${p.name} archived`);
+    act(() => sellerApi.archiveProduct(p.id), `${p.name} archived`);
   };
 
   return (
@@ -116,7 +115,7 @@ export function SellerProducts() {
                       {p.active && <Link to={`/product/${p.id}`} className="btn-outline btn-sm" aria-label={`View ${p.name} in the shop`}>View</Link>}
                       {submittable && canSubmit && (
                         <button type="button" className="btn-outline btn-sm" aria-label={`Submit ${p.name} for approval`}
-                          onClick={() => act(() => api.seller.submitProduct(p.id), `${p.name} sent for approval`)}>Submit</button>
+                          onClick={() => act(() => sellerApi.submitProduct(p.id), `${p.name} sent for approval`)}>Submit</button>
                       )}
                       {canEdit && p.status !== 'ARCHIVED' && (
                         <button type="button" className="btn-outline btn-sm sel-danger" aria-label={`Archive ${p.name}`} onClick={() => archive(p)}>Archive</button>

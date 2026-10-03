@@ -4,7 +4,7 @@ import { EmptyState, ErrorNote, Field, PageHero } from '../../components/common/
 import { SITE } from '../../config/site.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { supportApi } from '../../services/support.js';
 
 const TOPICS = [['general', 'General question'], ['order', 'Help with an order'], ['bulk', 'Bulk & corporate orders'], ['partnership', 'Partnerships']];
 
@@ -27,7 +27,7 @@ function ContactForm() {
     e.preventDefault();
     setState({ busy: true, error: null, errors: {}, sent: false });
     try {
-      await api.contact({ ...f, orderNumber: f.orderNumber.trim() || undefined });
+      await supportApi.contact({ ...f, orderNumber: f.orderNumber.trim() || undefined });
       setState({ busy: false, error: null, errors: {}, sent: true });
       toast("Message sent — we'll reply within one working day 💌");
     } catch (err) {

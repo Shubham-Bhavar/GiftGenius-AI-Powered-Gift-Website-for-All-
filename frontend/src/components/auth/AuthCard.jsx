@@ -1,7 +1,8 @@
 import { useId, useRef, useState } from 'react';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { ApiError, api } from '../../lib/api.js';
+import { ApiError } from '../../services/api/client.js';
+import { authApi } from '../../services/auth.js';
 import { titleCase } from '../../lib/format.js';
 import { INDIAN_STATES } from '../../lib/india.js';
 import { SELLER_CATEGORIES } from '../../lib/marketplace.js';
@@ -181,7 +182,7 @@ export default function AuthCard({ mode, onModeChange, onDone, pageHeading = fal
           : `Account created. Welcome to GiftGenius, ${firstName(u)}! 🎁`);
         onDone?.(u);
       } else {
-        await api.forgotPassword(form.email.trim());
+        await authApi.forgotPassword(form.email.trim());
         setState({ busy: false, error: null, errors: {}, sent: true });
         return;
       }

@@ -6,7 +6,7 @@ import { storeErrors, validateStore } from '../../components/auth/AuthCard.jsx';
 import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerApi, sellerKeys } from '../../services/seller.js';
 import { date } from '../../lib/format.js';
 import { SELLER_STATUS } from '../../lib/marketplace.js';
 import { LoadError, Skeleton, useStore } from './shared.jsx';
@@ -45,13 +45,13 @@ function SettingsForm({ store }) {
     }
     setState({ busy: true, error: null, errors: {} });
     try {
-      const saved = await api.seller.updateStore({
+      const saved = await sellerApi.updateStore({
         storeName: f.storeName.trim(), businessCategory: f.businessCategory, description: f.description.trim() || null,
         phone: f.phone.trim(), supportEmail: f.supportEmail.trim() || null, addressLine: f.addressLine.trim(), city: f.city.trim(),
         state: f.state, pincode: f.pincode.trim(), logoUrl: f.logoUrl.trim() || null, bannerUrl: f.bannerUrl.trim() || null,
       });
-      qc.setQueryData(['seller', 'me'], saved);
-      qc.invalidateQueries({ queryKey: ['seller', 'dashboard'] });
+      qc.setQueryData(sellerKeys.store(), saved);
+      qc.invalidateQueries({ queryKey: sellerKeys.dashboard() });
       setState({ busy: false, error: null, errors: {} });
       toast('Store settings saved ✓');
     } catch (err) {
@@ -61,8 +61,8 @@ function SettingsForm({ store }) {
 
   const reapply = async () => {
     try {
-      qc.setQueryData(['seller', 'me'], await api.seller.reapply());
-      qc.invalidateQueries({ queryKey: ['seller'] });
+      qc.setQueryData(sellerKeys.store(), await sellerApi.reapply());
+      qc.invalidateQueries({ queryKey: sellerKeys.all() });
       toast('Application sent again. We’ll review your store shortly.');
     } catch (err) {
       toast(err.message, 'bad');

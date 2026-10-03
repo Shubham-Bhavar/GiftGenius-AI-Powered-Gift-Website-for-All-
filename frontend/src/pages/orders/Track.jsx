@@ -5,7 +5,7 @@ import { StatusPill } from '../../components/common/ui.jsx';
 import { OrderItems } from '../../components/order/OrderSummary.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { ordersApi } from '../../services/orders.js';
 import { DELIVERY_LABEL, dateTime, inr } from '../../lib/format.js';
 
 /** Public order tracking (structure of the original track page), backed by the real order timeline. */
@@ -21,7 +21,7 @@ export default function Track() {
     e.preventDefault();
     setState({ busy: true, result: null, error: null });
     try {
-      setState({ busy: false, result: await api.track(orderNumber.trim(), email.trim()), error: null });
+      setState({ busy: false, result: await ordersApi.track(orderNumber.trim(), email.trim()), error: null });
     } catch (err) {
       setState({ busy: false, result: null, error: err });
     }

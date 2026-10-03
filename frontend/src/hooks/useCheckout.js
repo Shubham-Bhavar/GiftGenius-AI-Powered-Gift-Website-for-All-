@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
+import { ordersQueries } from '../services/orders.js';
 
 const KEY = 'gg-checkout';
 
@@ -38,8 +38,7 @@ export function useQuote(items, couponCode, deliveryType) {
   }, [items]);
   const body = { items: lines, couponCode: couponCode || undefined, deliveryType };
   return useQuery({
-    queryKey: ['quote', body],
-    queryFn: () => api.quote(body),
+    ...ordersQueries.quote(body),
     enabled: lines.length > 0,
     placeholderData: keepPreviousData,
     staleTime: 15_000,
@@ -47,5 +46,5 @@ export function useQuote(items, couponCode, deliveryType) {
 }
 
 export function useCheckoutOptions() {
-  return useQuery({ queryKey: ['checkout-options'], queryFn: api.checkoutOptions, staleTime: 5 * 60_000 });
+  return useQuery(ordersQueries.checkoutOptions());
 }

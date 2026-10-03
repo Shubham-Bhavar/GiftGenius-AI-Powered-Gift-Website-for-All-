@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorNote, Field, Spinner } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
 import { date, inr } from '../../lib/format.js';
 
 const EMPTY_COUPON = { code: '', type: 'PERCENT', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', perUserLimit: '1', validUntil: '', active: true };
@@ -10,7 +10,7 @@ const EMPTY_COUPON = { code: '', type: 'PERCENT', discountValue: '', minOrderAmo
 export function AdminCoupons() {
   const qc = useQueryClient();
   const toast = useToast();
-  const coupons = useQuery({ queryKey: ['admin', 'coupons'], queryFn: api.admin.coupons });
+  const coupons = useQuery(adminQueries.coupons());
   const [form, setForm] = useState(null);
   const [state, setState] = useState({ busy: false, error: null, errors: {} });
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }));
@@ -26,9 +26,9 @@ export function AdminCoupons() {
       active: form.active,
     };
     try {
-      if (form.id) await api.admin.updateCoupon(form.id, body);
-      else await api.admin.createCoupon(body);
-      qc.invalidateQueries({ queryKey: ['admin', 'coupons'] });
+      if (form.id) await adminApi.updateCoupon(form.id, body);
+      else await adminApi.createCoupon(body);
+      qc.invalidateQueries({ queryKey: adminKeys.coupons() });
       toast('Coupon saved ✓');
       setForm(null);
       setState({ busy: false, error: null, errors: {} });

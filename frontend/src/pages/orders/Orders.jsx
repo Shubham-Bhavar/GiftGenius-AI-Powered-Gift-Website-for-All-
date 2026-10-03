@@ -4,13 +4,13 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import SafeImg from '../../components/common/SafeImg.jsx';
 import { EmptyState, ErrorNote, PageHero, Pagination, PaymentPill, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { ordersQueries } from '../../services/orders.js';
 import { date, inr, orderItemsLabel } from '../../lib/format.js';
 
 export default function Orders() {
   useDocumentTitle('My Orders');
   const [page, setPage] = useState(0);
-  const orders = useQuery({ queryKey: ['orders', 'list', page], queryFn: () => api.orders(page, 10), placeholderData: keepPreviousData });
+  const orders = useQuery({ ...ordersQueries.list(page), placeholderData: keepPreviousData });
 
   return (
     <>

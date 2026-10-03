@@ -1,10 +1,10 @@
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api.js';
+import { sellerQueries } from '../../services/seller.js';
 
 // Pieces the Seller Center screens share: the store query, its edit rule, and loading/error/KPI blocks.
 
-export const useStore = () => useQuery({ queryKey: ['seller', 'me'], queryFn: api.seller.me });
+export const useStore = () => useQuery(sellerQueries.store());
 /** A store waiting for review or approved can add and change products (the API enforces the same rule). */
 export const canEditProducts = (status) => status === 'APPROVED' || status === 'PENDING';
 

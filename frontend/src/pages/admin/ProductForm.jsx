@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ErrorNote, Field } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys } from '../../services/admin.js';
+import { catalogKeys } from '../../services/catalog.js';
 
 const EMPTY_PRODUCT = {
   name: '', category: '', description: '', longDescription: '', price: '', originalPrice: '', image: '', alt: '',
@@ -37,9 +38,10 @@ export function ProductForm({ product, onDone }) {
       isCultural: product?.isCultural, isFestival: product?.isFestival,
     };
     try {
-      if (product) await api.admin.updateProduct(product.id, body);
-      else await api.admin.createProduct(body);
-      ['admin', 'products', 'product', 'catalog', 'categories'].forEach((k) => qc.invalidateQueries({ queryKey: [k] }));
+      if (product) await adminApi.updateProduct(product.id, body);
+      else await adminApi.createProduct(body);
+      [adminKeys.all(), catalogKeys.products(), catalogKeys.product(), catalogKeys.catalog(), catalogKeys.categories()]
+        .forEach((queryKey) => qc.invalidateQueries({ queryKey }));
       toast(product ? 'Product saved ✓' : 'Product created ✓');
       onDone();
     } catch (err) {

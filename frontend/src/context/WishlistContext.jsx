@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
+import { wishlistApi, wishlistKeys, wishlistQueries } from '../services/wishlist.js';
 import { storage } from '../lib/storage.js';
 import { useAuth } from './AuthContext.jsx';
 
@@ -27,16 +27,16 @@ export function WishlistProvider({ children }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const server = useQuery({ queryKey: ['wishlist'], queryFn: api.wishlist, enabled: !!user });
+  const server = useQuery({ ...wishlistQueries.wishlist(), enabled: !!user });
 
   const merging = useRef(false);
   useEffect(() => {
     if (!user || guest.length === 0 || merging.current) return;
     merging.current = true;
-    api
+    wishlistApi
       .mergeWishlist(guest.map((p) => p.id))
       .then((list) => {
-        qc.setQueryData(['wishlist'], list);
+        qc.setQueryData(wishlistKeys.wishlist(), list);
         setGuest([]);
       })
       .catch(() => {})
@@ -52,8 +52,8 @@ export function WishlistProvider({ children }) {
     async (product) => {
       const saved = ids.has(product.id);
       if (user) {
-        const list = saved ? await api.removeFromWishlist(product.id) : await api.addToWishlist(product.id);
-        qc.setQueryData(['wishlist'], list);
+        const list = saved ? await wishlistApi.removeFromWishlist(product.id) : await wishlistApi.addToWishlist(product.id);
+        qc.setQueryData(wishlistKeys.wishlist(), list);
         return !saved;
       }
       setGuest((list) => (saved ? list.filter((p) => p.id !== product.id) : [snapshot(product), ...list]));

@@ -5,7 +5,7 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { EmptyState, Field, Pagination, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
 import { date, dateTime, inr, orderItemsLabel } from '../../lib/format.js';
 import { FULFILMENT_STATUS } from '../../lib/marketplace.js';
 import { LoadError, Skeleton, useStore } from './shared.jsx';
@@ -16,8 +16,7 @@ export function SellerOrders() {
   const [page, setPage] = useState(0);
   const status = params.get('status') ?? '';
   const orders = useQuery({
-    queryKey: ['seller', 'orders', status, page],
-    queryFn: () => api.seller.orders({ status: status || undefined, page, size: 20 }),
+    ...sellerQueries.orders({ status, page }),
     placeholderData: keepPreviousData,
   });
   return (
@@ -70,7 +69,7 @@ export function SellerOrderDetail() {
   const qc = useQueryClient();
   const toast = useToast();
   const store = useStore();
-  const order = useQuery({ queryKey: ['seller', 'order', number], queryFn: () => api.seller.order(number) });
+  const order = useQuery(sellerQueries.order(number));
   const [next, setNext] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -103,10 +102,10 @@ export function SellerOrderDetail() {
     setBusy(true);
     setError(null);
     try {
-      const updated = await api.seller.updateOrder(number, next, note.trim() || undefined);
-      qc.setQueryData(['seller', 'order', number], updated);
-      qc.invalidateQueries({ queryKey: ['seller', 'orders'] });
-      qc.invalidateQueries({ queryKey: ['seller', 'dashboard'] });
+      const updated = await sellerApi.updateOrder(number, next, note.trim() || undefined);
+      qc.setQueryData(sellerKeys.order(number), updated);
+      qc.invalidateQueries({ queryKey: sellerKeys.orders() });
+      qc.invalidateQueries({ queryKey: sellerKeys.dashboard() });
       toast(`Order ${number}: ${FULFILMENT_STATUS[updated.fulfillmentStatus].label}`);
       setNext('');
       setNote('');

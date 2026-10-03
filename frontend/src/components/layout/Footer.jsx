@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { SITE } from '../../config/site.js';
-import { api } from '../../lib/api.js';
+import { supportApi } from '../../services/support.js';
 import { useToast } from '../../context/ToastContext.jsx';
 
 const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
@@ -20,7 +20,7 @@ export function Newsletter() {
     }
     setBusy(true);
     try {
-      await api.subscribe(val);
+      await supportApi.subscribe(val);
       toast('Subscribed! 🎉 Check your inbox.');
       setEmail('');
     } catch (err) {

@@ -12,7 +12,7 @@ import { useSearch } from '../../context/SearchContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useReveal } from '../../hooks/useReveal.js';
-import { api } from '../../lib/api.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { shouldShowWelcome } from '../../lib/welcome.js';
 
 /* Fuzzy search from the original homepage: all query characters appear in order. */
@@ -55,7 +55,7 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [query]);
 
-  const catalog = useQuery({ queryKey: ['catalog'], queryFn: () => api.products({ size: 100 }), staleTime: 60_000 });
+  const catalog = useQuery(catalogQueries.catalog());
 
   const products = useMemo(() => {
     const list = (catalog.data?.content ?? []).filter((p) => matchesQuery(p, debounced) && matchesFilter(p, filter));

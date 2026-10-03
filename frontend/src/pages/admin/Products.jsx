@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import SafeImg from '../../components/common/SafeImg.jsx';
 import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/common/ui.jsx';
-import { api } from '../../lib/api.js';
+import { adminQueries } from '../../services/admin.js';
 import { inr } from '../../lib/format.js';
 import { PRODUCT_STATUS } from '../../lib/marketplace.js';
 import { ProductForm } from './ProductForm.jsx';
@@ -34,13 +34,11 @@ export function AdminProducts() {
   };
 
   const products = useQuery({
-    queryKey: ['admin', 'products', q, status, owner, page],
-    queryFn: () => api.admin.products({ q: q || undefined, status: status || undefined, owner: owner || undefined, page, size: 25 }),
+    ...adminQueries.products({ q, status, owner, page }),
     placeholderData: keepPreviousData,
   });
   const one = useQuery({
-    queryKey: ['admin', 'product', editing],
-    queryFn: () => api.admin.product(editing),
+    ...adminQueries.product(editing),
     enabled: editing !== null && editing !== 0,
   });
 

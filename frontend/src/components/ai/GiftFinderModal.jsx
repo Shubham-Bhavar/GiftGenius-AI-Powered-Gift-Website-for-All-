@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import SafeImg from '../common/SafeImg.jsx';
-import { api } from '../../lib/api.js';
+import { aiApi } from '../../services/ai.js';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
@@ -185,7 +185,7 @@ export default function GiftFinderModal() {
     setPhase('thinking');
     const started = Date.now();
     try {
-      const res = await api.recommend({
+      const res = await aiApi.recommend({
         recipient: state.recipient === 'self' ? undefined : state.recipient || undefined,
         occasion: state.occasion, budget: state.budget, interests: state.interests, limit: 4,
       });

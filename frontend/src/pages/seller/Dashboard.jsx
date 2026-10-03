@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import SafeImg from '../../components/common/SafeImg.jsx';
 import { StatusPill } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerQueries } from '../../services/seller.js';
 import { date, inr, orderItemsLabel } from '../../lib/format.js';
 import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../lib/marketplace.js';
 import { canEditProducts, Kpi, LoadError, Skeleton } from './shared.jsx';
@@ -56,7 +56,7 @@ function RecentProducts({ products, canEdit }) {
 
 export function SellerDashboard() {
   useDocumentTitle('Seller Dashboard');
-  const dash = useQuery({ queryKey: ['seller', 'dashboard'], queryFn: api.seller.dashboard });
+  const dash = useQuery(sellerQueries.dashboard());
   if (dash.isPending) return <Skeleton kpis={6} label="Loading your dashboard…" />;
   if (dash.error) return <LoadError what="your dashboard" error={dash.error} onRetry={() => dash.refetch()} />;
   const { store, stats, recentOrders, recentProducts } = dash.data;

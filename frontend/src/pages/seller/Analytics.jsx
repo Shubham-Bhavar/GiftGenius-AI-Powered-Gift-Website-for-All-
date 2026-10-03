@@ -1,13 +1,13 @@
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { sellerQueries } from '../../services/seller.js';
 import { inr } from '../../lib/format.js';
 import { Kpi, LoadError, Skeleton } from './shared.jsx';
 
 export function SellerAnalytics() {
   useDocumentTitle('Seller Analytics');
-  const data = useQuery({ queryKey: ['seller', 'analytics'], queryFn: api.seller.analytics });
+  const data = useQuery(sellerQueries.analytics());
   if (data.isPending) return <Skeleton kpis={5} label="Loading your sales…" />;
   if (data.error) return <LoadError what="your sales" error={data.error} onRetry={() => data.refetch()} />;
   const { stats, topProducts } = data.data;

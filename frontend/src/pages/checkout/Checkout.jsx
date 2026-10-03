@@ -9,9 +9,10 @@ import { useCheckoutOptions, useCheckoutPrefs, useQuote } from '../../hooks/useC
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation.js';
 import { usePayment } from '../../hooks/usePayment.js';
-import { api } from '../../lib/api.js';
+import { ordersApi, ordersKeys } from '../../services/orders.js';
 import { inr, newIdempotencyKey } from '../../lib/format.js';
 import { INDIAN_STATES } from '../../lib/india.js';
+import { catalogKeys } from '../../services/catalog.js';
 
 const STATES = INDIAN_STATES;
 
@@ -105,13 +106,13 @@ export default function Checkout() {
         addressLine: [f.addressLine.trim(), f.area.trim()].filter(Boolean).join(', '),
         city: f.city, state: f.state, pincode: f.pincode,
       };
-      const order = await api.placeOrder(
+      const order = await ordersApi.placeOrder(
         { shipping, deliveryType: prefs.deliveryType, paymentMethod: effectiveMethod, couponCode: prefs.couponCode || undefined },
         idempotencyKey.current,
       );
-      qc.invalidateQueries({ queryKey: ['orders'] });
-      qc.invalidateQueries({ queryKey: ['products'] });
-      qc.invalidateQueries({ queryKey: ['catalog'] });
+      qc.invalidateQueries({ queryKey: ordersKeys.all() });
+      qc.invalidateQueries({ queryKey: catalogKeys.products() });
+      qc.invalidateQueries({ queryKey: catalogKeys.catalog() });
       setPrefs({ couponCode: '' });
       if (order.payment) await pay(order, payment.key);
       else await cart.refresh();

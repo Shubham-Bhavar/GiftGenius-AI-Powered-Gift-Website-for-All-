@@ -3,9 +3,10 @@ import { Link, useParams } from 'react-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { EmptyState, ErrorNote, Field, Notice, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
 import { date, inr, orderItemsLabel, titleCase } from '../../lib/format.js';
 import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../lib/marketplace.js';
+import { catalogKeys } from '../../services/catalog.js';
 
 /** Approve, reject, suspend or reactivate a store. Rejecting and suspending need a reason the seller sees. */
 function SellerActions({ seller, onChanged }) {
@@ -43,19 +44,19 @@ function SellerActions({ seller, onChanged }) {
       <div className="adm-actions">
         {(status === 'PENDING' || status === 'REJECTED') && (
           <button type="button" className="btn-primary btn-sm" disabled={busy}
-            onClick={() => run(() => api.admin.approveSeller(seller.id), `${seller.store.storeName} approved ✓`)}>✓ Approve Store</button>
+            onClick={() => run(() => adminApi.approveSeller(seller.id), `${seller.store.storeName} approved ✓`)}>✓ Approve Store</button>
         )}
         {status === 'PENDING' && (
           <button type="button" className="btn-outline btn-sm" disabled={busy}
-            onClick={() => run(() => api.admin.rejectSeller(seller.id, reason.trim()), `${seller.store.storeName} rejected`, true)}>✕ Reject</button>
+            onClick={() => run(() => adminApi.rejectSeller(seller.id, reason.trim()), `${seller.store.storeName} rejected`, true)}>✕ Reject</button>
         )}
         {status === 'APPROVED' && (
           <button type="button" className="btn-outline btn-sm sel-danger" disabled={busy}
-            onClick={() => run(() => api.admin.suspendSeller(seller.id, reason.trim()), `${seller.store.storeName} suspended`, true)}>Suspend Store</button>
+            onClick={() => run(() => adminApi.suspendSeller(seller.id, reason.trim()), `${seller.store.storeName} suspended`, true)}>Suspend Store</button>
         )}
         {status === 'SUSPENDED' && (
           <button type="button" className="btn-primary btn-sm" disabled={busy}
-            onClick={() => run(() => api.admin.reactivateSeller(seller.id), `${seller.store.storeName} reactivated ✓`)}>Reactivate Store</button>
+            onClick={() => run(() => adminApi.reactivateSeller(seller.id), `${seller.store.storeName} reactivated ✓`)}>Reactivate Store</button>
         )}
       </div>
       {error && <div className="gg-alert gg-alert--error" role="alert">{error.message}</div>}
@@ -66,7 +67,7 @@ function SellerActions({ seller, onChanged }) {
 export function AdminSellerDetail() {
   const { id } = useParams();
   const qc = useQueryClient();
-  const detail = useQuery({ queryKey: ['admin', 'seller', id], queryFn: () => api.admin.seller(id) });
+  const detail = useQuery(adminQueries.seller(id));
   if (detail.isPending) return <Spinner />;
   if (detail.error) {
     return detail.error.status === 404
@@ -76,9 +77,9 @@ export function AdminSellerDetail() {
   const d = detail.data;
   const st = d.store;
   const changed = (next) => {
-    qc.setQueryData(['admin', 'seller', id], next);
-    ['sellers', 'products', 'stats'].forEach((k) => qc.invalidateQueries({ queryKey: ['admin', k] }));
-    qc.invalidateQueries({ queryKey: ['products'] });
+    qc.setQueryData(adminKeys.seller(id), next);
+    [adminKeys.sellers(), adminKeys.products(), adminKeys.stats()].forEach((queryKey) => qc.invalidateQueries({ queryKey }));
+    qc.invalidateQueries({ queryKey: catalogKeys.products() });
   };
   return (
     <>

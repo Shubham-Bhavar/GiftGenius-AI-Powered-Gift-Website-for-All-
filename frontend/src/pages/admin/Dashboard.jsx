@@ -1,12 +1,12 @@
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ErrorNote, Spinner } from '../../components/common/ui.jsx';
-import { api } from '../../lib/api.js';
+import { adminQueries } from '../../services/admin.js';
 import { inr } from '../../lib/format.js';
 import { TO_SHIP } from './Orders.jsx';
 
 export function AdminDashboard() {
-  const stats = useQuery({ queryKey: ['admin', 'stats'], queryFn: api.admin.stats, refetchInterval: 60_000 });
+  const stats = useQuery({ ...adminQueries.stats(), refetchInterval: 60_000 });
   if (stats.isPending) return <Spinner />;
   if (stats.error) return <ErrorNote error={stats.error} onRetry={() => stats.refetch()} />;
   const s = stats.data;

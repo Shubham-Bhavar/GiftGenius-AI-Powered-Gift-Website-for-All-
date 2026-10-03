@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../../lib/api.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { useSearch } from '../../context/SearchContext.jsx';
 
 const STATIC_SUGGESTIONS = [
@@ -16,7 +16,7 @@ export function SearchBox() {
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
-  const catalog = useQuery({ queryKey: ['catalog'], queryFn: () => api.products({ size: 100 }), staleTime: 5 * 60_000 });
+  const catalog = useQuery(catalogQueries.catalog());
 
   const suggestions = useMemo(() => {
     const q = query.toLowerCase().trim();

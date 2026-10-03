@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/common/ui.jsx';
-import { api } from '../../lib/api.js';
+import { adminQueries } from '../../services/admin.js';
 import { date, inr } from '../../lib/format.js';
 import { SELLER_STATUS } from '../../lib/marketplace.js';
 
@@ -12,8 +12,7 @@ export function AdminSellers() {
   const [page, setPage] = useState(0);
   const status = params.get('status') ?? '';
   const sellers = useQuery({
-    queryKey: ['admin', 'sellers', status, q, page],
-    queryFn: () => api.admin.sellers({ status: status || undefined, q: q || undefined, page, size: 25 }),
+    ...adminQueries.sellers({ status, q, page }),
     placeholderData: keepPreviousData,
   });
   return (

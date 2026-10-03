@@ -10,7 +10,8 @@ import { useUi } from '../../context/UiContext.jsx';
 import { useWishlist } from '../../context/WishlistContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useReveal } from '../../hooks/useReveal.js';
-import { api } from '../../lib/api.js';
+import { aiApi } from '../../services/ai.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { percentOff, titleCase } from '../../lib/format.js';
 
 const rupees = (n) => `₹${Number(n).toLocaleString('en-IN')}`;
@@ -28,7 +29,7 @@ function MessageHelper({ product, onPick }) {
   const generate = async () => {
     setState({ busy: true, messages: null, source: null, error: null });
     try {
-      const res = await api.giftMessages({ ...form, productName: product.name });
+      const res = await aiApi.giftMessages({ ...form, productName: product.name });
       setState({ busy: false, messages: res.messages, source: res.source, error: null });
     } catch (err) {
       setState({ busy: false, messages: null, source: null, error: err });
@@ -84,8 +85,8 @@ export default function Product() {
   const [adding, setAdding] = useState(false);
   const [tab, setTab] = useState('description');
 
-  const product = useQuery({ queryKey: ['product', id], queryFn: () => api.product(id) });
-  const related = useQuery({ queryKey: ['related', id], queryFn: () => api.related(id, 4), enabled: product.isSuccess });
+  const product = useQuery(catalogQueries.product(id));
+  const related = useQuery({ ...catalogQueries.related(id), enabled: product.isSuccess });
   useDocumentTitle(product.data?.name);
   useReveal([related.data]);
 

@@ -7,7 +7,7 @@ import { EmptyState, ErrorNote, Notice, PaymentPill, Spinner, StatusPill } from 
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { usePayment } from '../../hooks/usePayment.js';
-import { api } from '../../lib/api.js';
+import { ordersApi, ordersKeys, ordersQueries } from '../../services/orders.js';
 import { CANCELLABLE, DELIVERY_LABEL, dateTime, inr } from '../../lib/format.js';
 import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
 
@@ -19,8 +19,7 @@ export default function OrderDetail() {
   const pay = usePayment();
   const [busy, setBusy] = useState(false);
   const order = useQuery({
-    queryKey: ['orders', number],
-    queryFn: () => api.order(number),
+    ...ordersQueries.detail(number),
     // While payment is pending, look again now and then: the Razorpay webhook may confirm it at any moment.
     refetchInterval: (q) => (q.state.data?.status === 'PENDING_PAYMENT' ? 15_000 : false),
   });
@@ -43,8 +42,8 @@ export default function OrderDetail() {
     if (!window.confirm('Cancel this order? Your items go back on the shelf.')) return;
     setBusy(true);
     try {
-      qc.setQueryData(['orders', number], await api.cancelOrder(number));
-      qc.invalidateQueries({ queryKey: ['orders', 'list'] });
+      qc.setQueryData(ordersKeys.detail(number), await ordersApi.cancelOrder(number));
+      qc.invalidateQueries({ queryKey: ordersKeys.list() });
       toast('Your order is cancelled');
     } catch (e) {
       toast(e.message, 'bad');

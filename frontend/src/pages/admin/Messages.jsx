@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorNote, Pagination, Spinner } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
 import { dateTime } from '../../lib/format.js';
 
 const TOPIC_LABEL = { general: 'General', order: 'Order help', bulk: 'Bulk order', partnership: 'Partnership' };
@@ -13,14 +13,13 @@ export function AdminMessages() {
   const [showHandled, setShowHandled] = useState(false);
   const [page, setPage] = useState(0);
   const messages = useQuery({
-    queryKey: ['admin', 'messages', showHandled, page],
-    queryFn: () => api.admin.messages({ handled: showHandled ? undefined : false, page, size: 20 }),
+    ...adminQueries.messages({ showHandled, page }),
     placeholderData: keepPreviousData,
   });
   const mark = async (m) => {
     try {
-      await api.admin.markMessageHandled(m.id, !m.handled);
-      qc.invalidateQueries({ queryKey: ['admin', 'messages'] });
+      await adminApi.markMessageHandled(m.id, !m.handled);
+      qc.invalidateQueries({ queryKey: adminKeys.messages() });
       toast(m.handled ? 'Marked as open' : 'Marked as handled ✓');
     } catch (err) {
       toast(err.message, 'bad');

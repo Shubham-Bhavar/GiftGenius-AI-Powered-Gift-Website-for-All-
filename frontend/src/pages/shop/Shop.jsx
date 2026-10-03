@@ -6,7 +6,7 @@ import { EmptyState, ErrorNote, PageHero, Pagination } from '../../components/co
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useReveal } from '../../hooks/useReveal.js';
-import { api } from '../../lib/api.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { titleCase } from '../../lib/format.js';
 
 const OCCASIONS = [
@@ -59,11 +59,10 @@ export default function Shop() {
 
   const query = { q, category, occasion, tag, minPrice, maxPrice, sort, page, size: PAGE_SIZE };
   const products = useQuery({
-    queryKey: ['products', query],
-    queryFn: ({ signal }) => api.products(query, signal),
+    ...catalogQueries.products(query),
     placeholderData: keepPreviousData,
   });
-  const categories = useQuery({ queryKey: ['categories'], queryFn: api.categories, staleTime: 10 * 60_000 });
+  const categories = useQuery(catalogQueries.categories());
   useReveal([products.data]);
 
   const update = (changes) => {

@@ -5,7 +5,7 @@ import OrderTimeline from '../../components/order/OrderTimeline.jsx';
 import { ErrorNote, Field, Pagination, PaymentPill, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { api } from '../../lib/api.js';
+import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
 import { trapFocus } from '../../lib/focus.js';
 import { ORDER_STATUS, date, dateTime, inr, orderItemsLabel } from '../../lib/format.js';
 
@@ -25,7 +25,7 @@ export const TO_SHIP = 'CONFIRMED,PACKED';
 function OrderDrawer({ number, onClose }) {
   const qc = useQueryClient();
   const toast = useToast();
-  const order = useQuery({ queryKey: ['admin', 'order', number], queryFn: () => api.admin.order(number) });
+  const order = useQuery(adminQueries.order(number));
   const [next, setNext] = useState('');
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
@@ -48,10 +48,10 @@ function OrderDrawer({ number, onClose }) {
     if (next === 'CANCELLED' && !window.confirm('Cancel this order? Stock is released and paid orders are marked for refund.')) return;
     setBusy(true);
     try {
-      const o = await api.admin.updateStatus(number, next, note.trim() || undefined);
-      qc.setQueryData(['admin', 'order', number], o);
-      qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
-      qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
+      const o = await adminApi.updateStatus(number, next, note.trim() || undefined);
+      qc.setQueryData(adminKeys.order(number), o);
+      qc.invalidateQueries({ queryKey: adminKeys.orders() });
+      qc.invalidateQueries({ queryKey: adminKeys.stats() });
       toast(`Order ${number} → ${ORDER_STATUS[o.status].label}`);
       setNext('');
       setNote('');
@@ -111,8 +111,7 @@ export function AdminOrders() {
   const [open, setOpen] = useState(null);
   const closeDrawer = useCallback(() => setOpen(null), []);
   const orders = useQuery({
-    queryKey: ['admin', 'orders', status, page],
-    queryFn: () => api.admin.orders({ status: status || undefined, page, size: 25 }),
+    ...adminQueries.orders({ status, page }),
     placeholderData: keepPreviousData,
   });
   return (

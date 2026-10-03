@@ -5,7 +5,7 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { ProductGrid, ProductGridSkeleton } from '../../components/product/ProductCard.jsx';
 import { EmptyState, ErrorNote, PageHero, Pagination, Spinner } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { catalogQueries } from '../../services/catalog.js';
 import { date, titleCase } from '../../lib/format.js';
 
 /** A seller's public storefront: their story and their approved products. Nothing private is shown. */
@@ -13,10 +13,9 @@ export default function Store() {
   const { slug } = useParams();
   const [category, setCategory] = useState('');
   const [page, setPage] = useState(0);
-  const store = useQuery({ queryKey: ['store', slug], queryFn: () => api.store(slug) });
+  const store = useQuery(catalogQueries.store(slug));
   const products = useQuery({
-    queryKey: ['products', 'store', slug, category, page],
-    queryFn: () => api.products({ store: slug, category: category || undefined, sort: 'newest', page, size: 24 }),
+    ...catalogQueries.storeProducts(slug, category, page),
     enabled: !!store.data,
     placeholderData: keepPreviousData,
   });

@@ -4,7 +4,7 @@ import AuthCard from '../../components/auth/AuthCard.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { authApi } from '../../services/auth.js';
 import { homeFor } from '../../lib/marketplace.js';
 
 /** Only allow same-site relative redirects after sign-in (no open redirects). */
@@ -57,7 +57,7 @@ export function ResetPassword() {
     }
     setState({ busy: true, error: null, field: null });
     try {
-      await api.resetPassword(token, password);
+      await authApi.resetPassword(token, password);
       toast('Password changed. Sign in with your new password. 🔐');
       navigate('/login', { replace: true });
     } catch (err) {

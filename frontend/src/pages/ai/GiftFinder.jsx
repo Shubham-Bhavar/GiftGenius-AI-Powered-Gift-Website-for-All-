@@ -4,7 +4,7 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { aiApi } from '../../services/ai.js';
 
 /*
  * The AI Gift Quiz: the original 6-question quiz page, answered by the backend gift advisor
@@ -153,7 +153,7 @@ export default function GiftFinder() {
     const interests = (answers.interests ?? []).flatMap((o) => [o.value, o.also].filter(Boolean));
     const started = Date.now();
     try {
-      const res = await api.recommend({
+      const res = await aiApi.recommend({
         recipient: answers.recipient?.value || undefined,
         occasion: answers.occasion?.value || undefined,
         budget: answers.budget?.value || undefined,

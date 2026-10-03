@@ -7,12 +7,13 @@ import { ErrorNote, Field, Notice, PageHero, PasswordField, StatusPill } from '.
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { api } from '../../lib/api.js';
+import { authApi } from '../../services/auth.js';
+import { sellerQueries } from '../../services/seller.js';
 import { SELLER_STATUS } from '../../lib/marketplace.js';
 
 /** A seller's store status, read fresh (an admin may have reviewed it since sign-in). */
 function YourStore({ fallbackStatus }) {
-  const store = useQuery({ queryKey: ['seller', 'me'], queryFn: api.seller.me });
+  const store = useQuery(sellerQueries.store());
   return (
     <div className="co-form-section acc-seller">
       <h2>🏪 Your Store</h2>
@@ -42,7 +43,7 @@ function StartSelling() {
     }
     setState({ busy: true, error: null, errors: {} });
     try {
-      await api.becomeSeller(storeBody(store, store.phone));
+      await authApi.becomeSeller(storeBody(store, store.phone));
       toast('Your store is set up and waiting for approval. 🏪');
       navigate('/seller');
     } catch (err) {
@@ -85,7 +86,7 @@ export default function Account() {
     e.preventDefault();
     setPState({ busy: true, error: null, errors: {} });
     try {
-      setUser(await api.updateProfile({ fullName: profile.fullName, phone: profile.phone.trim() }));
+      setUser(await authApi.updateProfile({ fullName: profile.fullName, phone: profile.phone.trim() }));
       setPState({ busy: false, error: null, errors: {} });
       toast('Profile saved ✓');
     } catch (err) {
@@ -97,7 +98,7 @@ export default function Account() {
     e.preventDefault();
     setWState({ busy: true, error: null, errors: {} });
     try {
-      await api.changePassword(pw.currentPassword, pw.newPassword);
+      await authApi.changePassword(pw.currentPassword, pw.newPassword);
       setPw({ currentPassword: '', newPassword: '' });
       setWState({ busy: false, error: null, errors: {} });
       toast('Password changed. Other devices have been signed out. 🔐');
