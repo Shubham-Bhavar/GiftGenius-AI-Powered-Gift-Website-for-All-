@@ -1,0 +1,101 @@
+/* Design tokens: colours, type, spacing, shadows (light and dark). */
+
+/* ─── 1. DESIGN TOKENS ─── */
+:root {
+  /* Palette — Light (Penguin-inspired: teal bg + gold luxury + orange accents) */
+  --cream:        #E6F7FA;      /* light teal background */
+  --cream-dark:   #D0EFF5;
+  --parchment:    #C5E8F0;
+  --gold:         #B8791A;      /* luxury gold */
+  --gold-light:   #D4AF37;
+  --gold-pale:    #FDF5E8;
+  --gold-dim:     rgba(212,175,55,0.12);
+  --ink:          #0F2225;      /* dark teal-ink */
+  --charcoal:     #1A3035;
+  --warm-mid:     #3A5A60;
+  --warm-light:   #6A8A90;
+  --border:       rgba(110,198,207,0.35);
+  --border-soft:  #B0DDE6;
+  --white:        #FFFFFF;
+  --danger:       #B83232;
+  --success:      #1A7A5E;
+
+  /* Penguin palette tokens */
+  --teal:         #6EC6CF;      /* penguin bg accent */
+  --teal-dark:    #3A8F98;
+  --teal-pale:    rgba(110,198,207,0.12);
+  --orange-acc:   #FFA726;      /* beak/feet accent */
+  --orange-dim:   rgba(255,167,38,0.15);
+
+  /* Primary gold token (design system) */
+  --primary-gold: #D4AF37;
+  --bg-light:     #E6F7FA;
+  --text-light:   #222222;
+
+  /* FX accents */
+  --fx-violet:    #4FB3BF;      /* teal replacing violet */
+  --fx-teal:      #6EC6CF;
+  --fx-glow:      rgba(110,198,207,0.28);
+
+  /* Typography */
+  --font-serif:   'Cormorant Garamond', Georgia, serif;
+  --font-sans:    'Outfit', sans-serif;
+  --font-mono:    'DM Mono', monospace;
+
+  /* Spacing (8px grid) */
+  --sp-1: 8px;
+  --sp-2: 16px;
+  --sp-3: 24px;
+  --sp-4: 32px;
+  --sp-5: 40px;
+  --sp-6: 48px;
+  --sp-9: 72px;
+
+  /* Radii */
+  --radius:    14px;
+  --radius-sm:  8px;
+  --radius-xs:  5px;
+
+  /* Shadows */
+  --shadow-sm: 0 2px 16px rgba(26,22,18,0.07);
+  --shadow-md: 0 8px 36px rgba(26,22,18,0.12);
+  --shadow-lg: 0 20px 60px rgba(26,22,18,0.16);
+
+  /* Transition */
+  --trans: 0.28s cubic-bezier(.4,0,.2,1);
+
+  /* Surfaces */
+  --bg:          var(--cream);
+  --surface:     var(--white);
+  --text:        var(--ink);
+  --text-muted:  var(--warm-mid);
+  --header-bg:   rgba(230,247,250,0.95);
+}
+
+/* Dark mode overrides */
+[data-theme="dark"] {
+  --bg:           #0F1A1C;      /* dark teal background */
+  --cream:        #e6f7fa;
+  --cream-dark:   #162428;
+  --parchment:    #1E2A2D;
+  --surface:      #1E2A2D;
+  --white:        #1E2A2D;
+  --text:         #F5F5F5;
+  --ink:          #F5F5F5;
+  --text-muted:   #8AABB0;
+  --warm-mid:     #8AABB0;
+  --warm-light:   #6A8A90;
+  --charcoal:     #243035;
+  --accent:       #FFD700;
+  --bg-dark:      #0F1A1C;
+  --text-dark:    #F5F5F5;
+  --border-soft:  #263840;
+  --border:       rgba(110,198,207,0.25);
+  --gold-pale:    rgba(212,175,55,0.1);
+  --teal:         #4FB3BF;
+  --teal-pale:    rgba(79,179,191,0.12);
+  --header-bg:    rgba(15,26,28,0.97);
+  --shadow-sm:    0 2px 16px rgba(0,0,0,0.4);
+  --shadow-md:    0 8px 36px rgba(0,0,0,0.5);
+  --shadow-lg:    0 20px 60px rgba(0,0,0,0.6);
+}

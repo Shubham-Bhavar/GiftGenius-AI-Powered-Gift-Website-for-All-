@@ -1,0 +1,285 @@
+/* Homepage AI Gift Finder results. */
+
+/* ═══════════════════════════════════════════════════
+   GIFT FINDER — RESULTS SCREEN
+   Uses your exact design tokens:
+   --teal, --teal-dark, --teal-pale, --gold, --gold-light,
+   --ink, --cream, --cream-dark, --surface, --text,
+   --text-muted, --border-soft, --font-serif,
+   --font-sans, --font-mono, --shadow-sm
+   Fully responds to [data-theme="dark"] automatically.
+═══════════════════════════════════════════════════ */
+
+/* ── Wrapper ── */
+.gf-results {
+  padding: 8px 0 20px;
+  animation: gf-fade-in 0.3s ease;
+}
+
+/* ── Header ── */
+.gf-results-header {
+  text-align: center;
+  margin-bottom: 22px;
+}
+
+.gf-results-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin: 8px 0 6px;
+}
+
+.gf-results-sub {
+  font-size: 12.5px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.gf-results-sub strong {
+  color: var(--teal-dark);
+  font-weight: 600;
+}
+
+[data-theme="dark"] .gf-results-sub strong {
+  color: var(--teal);
+}
+
+/* ── Grid ── */
+.gf-results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 480px) {
+  .gf-results-grid { grid-template-columns: 1fr; }
+}
+
+/* ── Result Card ── */
+.gf-result-card {
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  transition: transform var(--trans), box-shadow var(--trans), border-color var(--trans);
+  display: flex;
+  flex-direction: column;
+}
+
+.gf-result-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--teal);
+}
+
+[data-theme="dark"] .gf-result-card {
+  background: var(--parchment);
+  border-color: rgba(110, 198, 207, 0.2);
+}
+
+[data-theme="dark"] .gf-result-card:hover {
+  border-color: var(--teal);
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+}
+
+/* ── Image ── */
+.gf-result-img-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.gf-result-img {
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  display: block;
+  background: var(--cream-dark);
+}
+
+/* ── Discount badge ── */
+.gf-result-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 20px;
+}
+
+[data-theme="dark"] .gf-result-badge {
+  background: linear-gradient(135deg, var(--gold-light), var(--gold));
+  color: #0F1A1C;
+}
+
+/* ── Body ── */
+.gf-result-body {
+  padding: 10px 12px 13px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.gf-result-cat {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--teal-dark);
+  margin-bottom: 3px;
+}
+
+[data-theme="dark"] .gf-result-cat {
+  color: var(--teal);
+}
+
+.gf-result-name {
+  font-family: var(--font-serif);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+[data-theme="dark"] .gf-result-name {
+  color: #F5F5F5;
+}
+
+.gf-result-desc {
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+  margin-bottom: 7px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  flex: 1;
+}
+
+/* ── AI reason tag ── */
+.gf-result-reason {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--teal-dark);
+  background: var(--teal-pale);
+  border: 1px solid rgba(110, 198, 207, 0.3);
+  padding: 3px 8px;
+  border-radius: 20px;
+  margin-bottom: 9px;
+  width: fit-content;
+}
+
+[data-theme="dark"] .gf-result-reason {
+  color: var(--teal);
+  background: rgba(79, 179, 191, 0.12);
+  border-color: rgba(79, 179, 191, 0.25);
+}
+
+/* ── Footer: price + add button ── */
+.gf-result-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.gf-result-price { display: flex; flex-direction: column; }
+
+.gf-result-og {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-decoration: line-through;
+  font-family: var(--font-mono);
+  line-height: 1.2;
+}
+
+.gf-result-now {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+}
+
+[data-theme="dark"] .gf-result-now {
+  color: #F5F5F5;
+}
+
+/* ── Add to Cart button ── */
+.gf-result-add {
+  padding: 8px 13px;
+  background: linear-gradient(135deg, var(--ink), var(--charcoal));
+  color: var(--cream);
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--trans), transform 0.15s, box-shadow var(--trans);
+  flex-shrink: 0;
+}
+
+.gf-result-add:hover {
+  background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+  transform: scale(1.04);
+  box-shadow: 0 4px 14px rgba(110, 198, 207, 0.35);
+}
+
+[data-theme="dark"] .gf-result-add {
+  background: linear-gradient(135deg, var(--teal-dark), var(--teal));
+  color: #0F1A1C;
+}
+
+[data-theme="dark"] .gf-result-add:hover {
+  background: linear-gradient(135deg, var(--teal), var(--gold-light));
+  box-shadow: 0 4px 16px rgba(110, 198, 207, 0.4);
+}
+
+.gf-result-add:disabled {
+  background: var(--cream-dark);
+  color: var(--text-muted);
+  cursor: default;
+  transform: none;
+  box-shadow: none;
+}
+
+[data-theme="dark"] .gf-result-add:disabled {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-muted);
+}
+
+/* ── "No results" fallback ── */
+.gf-no-results {
+  text-align: center;
+  padding: 24px 16px;
+  color: var(--text-muted);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+
+.gf-no-results strong {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--text);
+  margin-bottom: 6px;
+}

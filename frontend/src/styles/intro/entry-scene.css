@@ -1,0 +1,961 @@
+/* First-visit entry animation: gift box, confetti, fireworks, entry scene. */
+
+/* ═══════════════════════════════════════════════════════
+   22. ENTRY ANIMATION — Gift Box Intro (Luxurious)
+═══════════════════════════════════════════════════════ */
+#entryOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: radial-gradient(ellipse at 50% 40%, #1c1408 0%, #0a0704 55%, #000 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 40px;
+  opacity: 1;
+  transition: opacity 0.9s ease;
+}
+
+/* Subtle ambient glow behind box */
+#entryOverlay::before {
+  content: '';
+  position: absolute;
+  width: 600px;
+  height: 400px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -60%);
+  background: radial-gradient(ellipse, rgba(212,175,55,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+#entryOverlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.entry-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: rgba(212,175,55,0.5);
+  text-transform: uppercase;
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+/* Gift box — large, premium */
+.gift-box-scene {
+  position: relative;
+  width: 320px;
+  height: 320px;
+  cursor: pointer;
+  filter: drop-shadow(0 40px 80px rgba(212,175,55,0.3));
+  transition: filter 0.3s ease;
+}
+
+.gift-box-scene:hover {
+  filter: drop-shadow(0 50px 100px rgba(212,175,55,0.5));
+}
+
+.gift-box-base {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  height: 180px;
+  background: linear-gradient(160deg, #c9922a 0%, #8a5c12 40%, #d4a843 70%, #a06b18 100%);
+  border-radius: 12px 12px 16px 16px;
+  box-shadow:
+    0 20px 60px rgba(0,0,0,0.6),
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    inset 0 -2px 0 rgba(0,0,0,0.3);
+}
+
+/* Ribbon vertical */
+.gift-box-base::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 30px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.15) 100%);
+  border-radius: 0 0 8px 8px;
+}
+
+/* Ribbon horizontal */
+.gift-box-base::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 0; right: 0;
+  height: 30px;
+  transform: translateY(-50%);
+  background: linear-gradient(90deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.3) 50%, rgba(255,255,255,0.1) 100%);
+}
+
+.gift-box-lid {
+  position: absolute;
+  bottom: 178px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 260px;
+  height: 68px;
+  background: linear-gradient(160deg, #e8c44a 0%, #b87818 35%, #d4a843 65%, #9a6010 100%);
+  border-radius: 12px 12px 0 0;
+  transform-origin: bottom center;
+  box-shadow:
+    0 -8px 30px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.25),
+    inset 0 -1px 0 rgba(0,0,0,0.2);
+  transition: transform 0.75s cubic-bezier(.2,.8,.3,1);
+}
+
+/* Lid ribbon */
+.gift-box-lid::before {
+  content: '';
+  position: absolute;
+  left: 50%; top: 0; bottom: 0;
+  width: 30px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.15) 100%);
+}
+
+.gift-box-bow {
+  position: absolute;
+  bottom: 238px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 72px;
+  line-height: 1;
+  animation: bowBounce 2s ease-in-out infinite;
+  transition: opacity 0.5s ease;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
+}
+
+/* Opened state */
+.gift-box-scene.opening .gift-box-lid {
+  transform: translateX(-50%) rotate(-55deg) translateY(-30px);
+  box-shadow: 0 -20px 50px rgba(212,175,55,0.4);
+}
+
+.gift-box-scene.opening .gift-box-bow { opacity: 0; }
+
+/* Gold shimmer on open */
+.gift-box-scene.opening .gift-box-base::after {
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(255,220,80,0.5) 45%,
+    rgba(255,255,200,0.8) 50%,
+    rgba(255,220,80,0.5) 55%,
+    transparent 100%);
+  animation: goldShimmer 0.6s ease forwards;
+}
+
+/* Entry brand text */
+.entry-brand {
+  text-align: center;
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.7s ease 0.5s, transform 0.7s ease 0.5s;
+}
+
+.entry-brand.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.entry-brand p {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: rgba(212,175,55,0.65);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.entry-brand h2 {
+  font-family: var(--font-serif);
+  font-size: 52px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #c9922a 0%, #f0d060 40%, #c9922a 70%, #e8c44a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.entry-brand h2 em {
+  font-style: italic;
+  background: linear-gradient(135deg, #fff 0%, #f0e0a0 50%, #fff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── CONFETTI ─── */
+.confetti-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10000;
+  overflow: hidden;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  animation: confettiFall linear forwards;
+}
+
+/* ─── FIREWORK ─── */
+.firework-container {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  overflow: hidden;
+}
+
+.firework-burst {
+  position: absolute;
+  border-radius: 50%;
+  animation: fireworkPop 0.8s ease-out forwards;
+}
+
+/* ═══════════════════════════════════════════════════════
+   23. SEARCH SUGGESTIONS DROPDOWN
+═══════════════════════════════════════════════════════ */
+.search-suggestions {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  z-index: 300;
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 0.25s ease, opacity 0.2s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.search-suggestions.open {
+  max-height: 200px;
+  opacity: 1;
+  pointer-events: all;
+}
+
+.search-suggestion-item {
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  transition: background 0.15s;
+}
+
+.search-suggestion-item:hover,
+.search-suggestion-item.highlighted {
+  background: var(--gold-pale);
+  color: var(--text);
+}
+
+.search-suggestion-item::before {
+  content: '🔍';
+  font-size: 11px;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.search-wrap { position: relative; }
+
+/* ═══════════════════════════════════════════════════════
+   24. WISHLIST HEART IN NAVBAR — always red
+═══════════════════════════════════════════════════════ */
+.wishlist-nav-btn {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffe0e0 100%);
+  border: 1.5px solid #f5a0a0;
+  width: 38px; height: 38px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  transition: var(--trans);
+  position: relative;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(229,57,53,0.15);
+}
+
+.wishlist-nav-btn:hover {
+  background: linear-gradient(135deg, #ffe0e0 0%, #ffbdbd 100%);
+  border-color: #e53935;
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(229,57,53,0.35);
+}
+
+.wishlist-nav-btn .wl-icon { transition: transform 0.3s ease; }
+.wishlist-nav-btn:hover .wl-icon { transform: scale(1.2) rotate(-8deg); }
+
+.wishlist-nav-badge {
+  position: absolute;
+  top: -5px; right: -5px;
+  background: #e53935;
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg);
+  font-weight: 500;
+  opacity: 0;
+  transform: scale(0);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.wishlist-nav-badge.visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+[data-theme="dark"] .wishlist-nav-btn {
+  background: linear-gradient(135deg, #2a1018 0%, #3d1520 100%);
+  border-color: #c0392b;
+  box-shadow: 0 2px 10px rgba(229,57,53,0.25);
+}
+
+[data-theme="dark"] .wishlist-nav-btn:hover {
+  background: linear-gradient(135deg, #3d1520 0%, #5c1f2a 100%);
+  box-shadow: 0 4px 18px rgba(229,57,53,0.4);
+}
+
+/* ═══════════════════════════════════════════════════════
+   25. CATEGORY ICON — large, consistent
+═══════════════════════════════════════════════════════ */
+.cat-ico {
+  font-size: 44px;
+  line-height: 1;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+  transition: transform 0.3s ease, filter 0.3s ease;
+}
+
+.cat-card:hover .cat-ico {
+  transform: scale(1.15) translateY(-4px);
+  filter: drop-shadow(0 8px 16px rgba(184,121,26,0.3));
+}
+
+/* ═══════════════════════════════════════════════════════
+   26. SLIDER TEXT DARK MODE FIX
+═══════════════════════════════════════════════════════ */
+.slider-text { color: var(--text); }
+
+[data-theme="dark"] .slider-text { color: var(--text-dark, #f5f5f5); }
+
+[data-theme="dark"] .marquee-item {
+  color: rgba(240,235,227,0.6);
+}
+
+/* Overlay for any slider backgrounds */
+.slide-overlay {
+  background: rgba(0,0,0,0.4);
+}
+
+/* ═══════════════════════════════════════════════════════
+   27. SMOOTH UX ENHANCEMENTS
+═══════════════════════════════════════════════════════ */
+/* Consistent hover scaling for all interactive cards */
+.pcard, .cat-card, .tcard, .feat-item {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+/* Prevent abrupt color jumps on theme switch */
+* { transition-property: background-color, border-color, color; transition-duration: 0.3s; }
+
+/* But don't override animation durations */
+.confetti-piece, .firework-burst { transition: none !important; }
+
+/* Nav gold underline animation */
+.nav-pill a::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%; right: 50%;
+  height: 1.5px;
+  background: var(--primary-gold);
+  border-radius: 1px;
+  transition: left 0.25s ease, right 0.25s ease, opacity 0.25s ease;
+  opacity: 0;
+}
+
+.nav-pill a:hover::after {
+  left: 14px;
+  right: 14px;
+  opacity: 0.5;
+}
+
+.nav-pill a.active::after {
+  left: 14px;
+  right: 14px;
+  opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════
+   28. CARTOON AVATAR — Entry popup & Nav
+═══════════════════════════════════════════════════════ */
+
+/* CSS cartoon filter — turns the real photo into a vivid illustrated style */
+.cartoon-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  /* Cartoon effect: high contrast + saturation + slight posterize-like treatment */
+  filter:
+    contrast(1.45)
+    saturate(1.8)
+    brightness(1.08)
+    hue-rotate(2deg)
+    drop-shadow(0 0 0 rgba(0,0,0,0));
+  border-radius: 50%;
+  display: block;
+  transition: filter 0.3s ease;
+}
+
+/* Additional cartoon outline layer via box-shadow on wrapper */
+.cartoon-avatar-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* ─── ENTRY SCENE ─── */
+.entry-scene-wrap {
+  position: relative;
+  width: 320px;
+  height: 360px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+/* Cartoon popup character — sits behind/above box */
+.cartoon-popup {
+  position: absolute;
+  bottom: 220px; /* sits above the box lid area */
+  left: 50%;
+  transform: translateX(-50%) translateY(80px) scale(0.5);
+  opacity: 0;
+  z-index: 10;
+  pointer-events: none;
+  transition:
+    transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1),
+    opacity 0.4s ease;
+  width: 140px;
+  height: 160px;
+}
+
+.cartoon-popup.popped {
+  transform: translateX(-50%) translateY(0) scale(1);
+  opacity: 1;
+}
+
+.cartoon-avatar-wrap {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #d4af37;
+  box-shadow:
+    0 0 0 3px rgba(212,175,55,0.3),
+    0 0 40px rgba(212,175,55,0.5),
+    0 20px 40px rgba(0,0,0,0.5);
+  position: relative;
+  background: #1a1208;
+  /* 3D depth effect */
+  transform: perspective(400px) rotateX(4deg);
+}
+
+.cartoon-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(212,175,55,0.35) 0%, transparent 70%);
+  pointer-events: none;
+  animation: cartoonGlowPulse 1.8s ease-in-out infinite;
+}
+
+/* "Hi!" speech bubble */
+.hi-bubble {
+  position: absolute;
+  top: -8px;
+  right: -55px;
+  background: #fff;
+  border-radius: 20px 20px 20px 4px;
+  padding: 8px 14px;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 700;
+  color: #1a1208;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.3);
+  opacity: 0;
+  transform: scale(0.6) translateY(10px);
+  transform-origin: bottom left;
+  transition: opacity 0.4s ease 0.3s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s;
+}
+
+.cartoon-popup.popped .hi-bubble {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.hi-tail {
+  position: absolute;
+  bottom: -8px;
+  left: 10px;
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid #fff;
+}
+
+/* Gift box scene repositioned inside the scene wrap */
+.entry-scene-wrap .gift-box-scene {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+}
+
+
+.nav-avatar-btn:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+/* ═══════════════════════════════════════════════════════
+   29. DARK THEME — COMPREHENSIVE FIXES
+   All surfaces, cards, inputs, sections correctly themed
+═══════════════════════════════════════════════════════ */
+
+/* ── Header ── */
+[data-theme="dark"] .site-header {
+  background: rgba(10, 8, 5, 0.97);
+  border-bottom-color: rgba(212,175,55,0.18);
+}
+
+[data-theme="dark"] .search-wrap {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.18);
+}
+
+[data-theme="dark"] .search-wrap:focus-within {
+  background: #211c14;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(184,121,26,0.2);
+}
+
+[data-theme="dark"] .search-wrap input {
+  color: #f0ebe3;
+}
+
+[data-theme="dark"] .icon-btn {
+  background: #1e1a14;
+  border-color: rgba(212,175,55,0.2);
+  color: #d4c4a0;
+}
+
+[data-theme="dark"] .icon-btn:hover {
+  background: #2a2418;
+  border-color: rgba(212,175,55,0.45);
+  color: #f0d080;
+}
+
+[data-theme="dark"] .hamburger {
+  background: #1e1a14;
+  border-color: rgba(212,175,55,0.2);
+}
+
+[data-theme="dark"] .logo { color: #f0ebe3; }
+[data-theme="dark"] .logo em { color: var(--gold-light); }
+
+/* ── Announcement bar ── */
+[data-theme="dark"] .announcement {
+  background: #0d0a06;
+  border-bottom: 1px solid rgba(212,175,55,0.15);
+}
+
+/* ── Hero ── */
+[data-theme="dark"] .hero-left {
+  background: var(--bg);
+}
+
+[data-theme="dark"] .hero h1 { color: #f0ebe3; }
+[data-theme="dark"] .hero-desc { color: #9a8a78; }
+
+[data-theme="dark"] .btn-primary {
+  background: linear-gradient(135deg, #c9922a, #d4af37);
+  color: #0d0a06;
+}
+
+[data-theme="dark"] .btn-primary:hover {
+  background: linear-gradient(135deg, #d4af37, #f0c84a);
+  box-shadow: 0 8px 28px rgba(212,175,55,0.4);
+}
+
+[data-theme="dark"] .btn-outline {
+  border-color: rgba(212,175,55,0.4);
+  color: #d4c4a0;
+}
+
+[data-theme="dark"] .btn-outline:hover {
+  border-color: var(--gold-light);
+  color: var(--gold-light);
+  background: rgba(212,175,55,0.08);
+}
+
+/* ── Product cards ── */
+[data-theme="dark"] .pcard {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.12);
+}
+
+[data-theme="dark"] .pcard:hover {
+  border-color: rgba(212,175,55,0.4);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(212,175,55,0.15);
+}
+
+[data-theme="dark"] .pcard-img {
+  background: #140f0a;
+}
+
+[data-theme="dark"] .pcard-name { color: #f0ebe3; }
+[data-theme="dark"] .pcard-cat { color: var(--gold-light); }
+
+[data-theme="dark"] .wish-btn {
+  background: rgba(20,15,10,0.92);
+  border-color: rgba(212,175,55,0.25);
+}
+
+[data-theme="dark"] .add-btn {
+  background: #252018;
+  border-color: rgba(212,175,55,0.3);
+  color: #d4c4a0;
+}
+
+[data-theme="dark"] .add-btn:hover {
+  background: var(--gold);
+  color: #0d0a06;
+  border-color: var(--gold);
+}
+
+/* ── Filter pills ── */
+[data-theme="dark"] .pill {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.2);
+  color: #9a8a78;
+}
+
+[data-theme="dark"] .pill:hover,
+[data-theme="dark"] .pill.active {
+  background: rgba(212,175,55,0.12);
+  border-color: var(--gold);
+  color: var(--gold-light);
+}
+
+[data-theme="dark"] .sort-select {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.2);
+  color: #9a8a78;
+}
+
+/* ── Marquee ── */
+[data-theme="dark"] .marquee-section {
+  background: #0a0806;
+}
+
+/* ── Promo banner ── */
+[data-theme="dark"] .promo-banner {
+  background: linear-gradient(135deg, #1a1208 0%, #0d0904 100%);
+  border: 1px solid rgba(212,175,55,0.2);
+}
+
+[data-theme="dark"] .promo-text h2 { color: #f0ebe3; }
+
+/* ── Testimonials ── */
+[data-theme="dark"] .testimonials {
+  background: #0d0a06;
+}
+
+[data-theme="dark"] .tcard {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.12);
+}
+
+[data-theme="dark"] .t-quote { color: #c0b090; }
+[data-theme="dark"] .t-name { color: #f0ebe3; }
+[data-theme="dark"] .t-loc { color: #7a6a5a; }
+[data-theme="dark"] .t-stars { color: var(--gold-light); }
+
+/* ── Features ── */
+[data-theme="dark"] .features {
+  background: #100d09;
+  border-top: 1px solid rgba(212,175,55,0.1);
+  border-bottom: 1px solid rgba(212,175,55,0.1);
+}
+
+[data-theme="dark"] .feat-item { border-color: rgba(212,175,55,0.12); }
+[data-theme="dark"] .feat-text strong { color: #f0ebe3; }
+[data-theme="dark"] .feat-text span { color: #7a6a5a; }
+
+/* ── Newsletter ── */
+[data-theme="dark"] .newsletter {
+  background: linear-gradient(135deg, #1a1208 0%, #100d09 100%);
+}
+
+[data-theme="dark"] .newsletter h2 { color: #f0ebe3; }
+[data-theme="dark"] .newsletter p { color: #9a8a78; }
+
+[data-theme="dark"] #nlEmail {
+  background: #120f08;
+  border-color: rgba(212,175,55,0.25);
+  color: #f0ebe3;
+}
+
+[data-theme="dark"] #nlEmail::placeholder { color: #5a4a38; }
+[data-theme="dark"] #nlEmail:focus { border-color: var(--gold); }
+
+/* ── Footer ── */
+[data-theme="dark"] .site-footer {
+  background: #080604;
+  border-top: 1px solid rgba(212,175,55,0.15);
+}
+
+[data-theme="dark"] .footer-col h3 { color: #c0a060; }
+[data-theme="dark"] .footer-col a { color: #7a6a5a; }
+[data-theme="dark"] .footer-col a:hover { color: var(--gold-light); }
+[data-theme="dark"] .footer-bottom { color: #4a3a2a; border-top-color: rgba(212,175,55,0.1); }
+
+/* ── Cart sidebar ── */
+[data-theme="dark"] .cart-side {
+  background: #120f0a;
+  border-left: 1px solid rgba(212,175,55,0.15);
+}
+
+[data-theme="dark"] .cart-hd { border-bottom-color: rgba(212,175,55,0.12); }
+[data-theme="dark"] .cart-hd h2 { color: #f0ebe3; }
+[data-theme="dark"] .cart-close-btn { background: #1e1a12; border-color: rgba(212,175,55,0.2); color: #9a8a78; }
+[data-theme="dark"] .cart-close-btn:hover { background: #2a2418; color: #f0ebe3; }
+[data-theme="dark"] .cart-item { border-bottom-color: rgba(212,175,55,0.1); }
+[data-theme="dark"] .ci-name { color: #f0ebe3; }
+[data-theme="dark"] .ci-img { background: #1a1510; border-color: rgba(212,175,55,0.15); }
+[data-theme="dark"] .checkout-btn {
+  background: linear-gradient(135deg, #c9922a, #d4af37);
+  color: #0d0a06;
+}
+[data-theme="dark"] .checkout-btn:hover {
+  background: linear-gradient(135deg, #d4af37, #f0c84a);
+}
+
+/* ── Quick view modal ── */
+[data-theme="dark"] .quickview-modal {
+  background: #120f0a;
+  border-color: rgba(212,175,55,0.2);
+}
+
+[data-theme="dark"] .modal-close { background: #1e1a12; border-color: rgba(212,175,55,0.2); color: #9a8a78; }
+[data-theme="dark"] .modal-name { color: #f0ebe3; }
+[data-theme="dark"] .modal-desc { color: #9a8a78; }
+
+/* ── Toast ── */
+[data-theme="dark"] .toast {
+  background: #1e1a12;
+  border-color: rgba(212,175,55,0.3);
+  color: #f0ebe3;
+}
+
+/* ── Mobile menu ── */
+[data-theme="dark"] .mobile-menu {
+  background: #120f0a;
+  border-bottom-color: rgba(212,175,55,0.15);
+}
+
+[data-theme="dark"] .mobile-menu a { color: #9a8a78; }
+[data-theme="dark"] .mobile-menu a:hover,
+[data-theme="dark"] .mobile-menu a[aria-current="page"] {
+  color: var(--gold-light);
+  background: rgba(212,175,55,0.08);
+}
+
+/* ── Section eyebrow lines ── */
+[data-theme="dark"] .sec-line { background: var(--gold); opacity: 0.35; }
+[data-theme="dark"] .sec-header h2 { color: #f0ebe3; }
+[data-theme="dark"] .sec-header p { color: #7a6a5a; }
+
+/* ── Search suggestions ── */
+[data-theme="dark"] .search-suggestions {
+  background: #1a1510;
+  border-color: rgba(212,175,55,0.2);
+}
+
+[data-theme="dark"] .search-suggestion-item {
+  color: #9a8a78;
+}
+
+[data-theme="dark"] .search-suggestion-item:hover,
+[data-theme="dark"] .search-suggestion-item.highlighted {
+  background: rgba(212,175,55,0.1);
+  color: var(--gold-light);
+}
+
+/* ── Scrollbar ── */
+[data-theme="dark"] ::-webkit-scrollbar-track { background: #120f0a; }
+/* ═══════════════════════════════════════════════════════
+   30. PENGUIN ANIMATION — Premium bounce + wave
+═══════════════════════════════════════════════════════ */
+
+/* Penguin bounces gently after popping from box */
+
+/* Subtle wave — arm/fin-like side sway */
+
+.cartoon-popup.popped {
+  animation: penguinBounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
+             penguinWave 2.4s ease-in-out 1.2s infinite;
+}
+
+/* Override the base transform from the non-popped .popped selector */
+.cartoon-popup.popped:not(.waving) {
+  transform: translateX(-50%) translateY(0) scale(1);
+  opacity: 1;
+}
+
+/* Avatar glow — teal halo matching penguin bg */
+.cartoon-avatar-wrap {
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 4px solid #D4AF37;
+  box-shadow:
+    0 0 0 3px rgba(212,175,55,0.35),
+    0 0 0 7px rgba(110,198,207,0.25),
+    0 0 50px rgba(110,198,207,0.45),
+    0 20px 40px rgba(0,0,0,0.5);
+  position: relative;
+  background: #0F2225;
+  transform: perspective(400px) rotateX(4deg);
+}
+
+/* Penguin image — slightly enhanced contrast for premium cartoon feel */
+.cartoon-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 10%;
+  filter:
+    contrast(1.3)
+    saturate(1.6)
+    brightness(1.05);
+  border-radius: 50%;
+  display: block;
+  transition: filter 0.3s ease;
+}
+
+/* Glow ring pulses with teal */
+.cartoon-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(110,198,207,0.4) 0%, rgba(212,175,55,0.2) 40%, transparent 70%);
+  pointer-events: none;
+  animation: cartoonGlowPulse 1.8s ease-in-out infinite;
+}
+
+/* Entry overlay — teal dark */
+#entryOverlay {
+  background: radial-gradient(ellipse at 50% 40%, #0A1E22 0%, #060D10 55%, #020608 100%);
+}
+
+#entryOverlay::before {
+  background: radial-gradient(ellipse, rgba(110,198,207,0.1) 0%, rgba(212,175,55,0.06) 40%, transparent 70%);
+}
+
+/* Entry brand title — teal+gold gradient */
+.entry-brand h2 {
+  font-family: var(--font-serif);
+  font-size: 52px;
+  font-weight: 700;
+  background: linear-gradient(135deg, #D4AF37 0%, #6EC6CF 40%, #D4AF37 70%, #FFA726 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  background-size: 200% 200%;
+  animation: brandGradientShift 3s ease infinite;
+}
+
+.entry-brand h2 em {
+  font-style: italic;
+  background: linear-gradient(135deg, #fff 0%, #d0f0f5 50%, #fff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Entry hint — teal tone */
+.entry-hint {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  color: rgba(110,198,207,0.6);
+  text-transform: uppercase;
+  animation: hintPulse 2.2s ease-in-out infinite;
+}
+
+/* Hi bubble — teal themed */
+.hi-bubble {
+  position: absolute;
+  top: -10px;
+  right: -65px;
+  background: linear-gradient(135deg, #E6F7FA, #fff);
+  border: 2px solid rgba(110,198,207,0.5);
+  border-radius: 20px 20px 20px 4px;
+  padding: 8px 15px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 700;
+  color: #0F2225;
+  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(110,198,207,0.3), 0 2px 8px rgba(0,0,0,0.2);
+  opacity: 0;
+  transform: scale(0.6) translateY(10px);
+  transform-origin: bottom left;
+  transition: opacity 0.4s ease 0.3s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) 0.3s;
+}
+
+.hi-tail {
+  position: absolute;
+  bottom: -9px;
+  left: 10px;
+  width: 0; height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-top: 10px solid #E6F7FA;
+}

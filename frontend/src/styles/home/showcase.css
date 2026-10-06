@@ -1,0 +1,252 @@
+/* Homepage marquee, occasion categories (also on Collections) and promo banner. */
+
+/* ─── 8. MARQUEE ─── */
+.marquee-section {
+  background: var(--ink);
+  padding: 16px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.marquee-section::before,
+.marquee-section::after {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 80px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.marquee-section::before { left: 0; background: linear-gradient(90deg,#8aabb0, transparent); }
+.marquee-section::after  { right: 0; background: linear-gradient(-90deg,#8aabb0, transparent); }
+
+.marquee-track {
+  display: flex;
+  animation: marqueeScroll 28s linear infinite;
+  width: max-content;
+}
+
+.marquee-track:hover { animation-play-state: paused; }
+
+.marquee-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 30px;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-style: italic;
+  color: rgba(230,247,250,0.55);
+  white-space: nowrap;
+  border-right: 1px solid rgba(184,121,26,0.2);
+}
+
+.marquee-dot { color: var(--gold); font-size: 18px; font-style: normal; }
+
+/* ─── 9. CATEGORIES ─── */
+.cats-bg { background: var(--bg); padding-bottom: var(--sp-6); }
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 12px;
+}
+
+.cat-card {
+  background: var(--surface);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 24px 10px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: var(--trans);
+  position: relative;
+  overflow: hidden;
+}
+
+.cat-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.cat-card:hover {
+  border-color: var(--border);
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-md);
+}
+
+.cat-card:hover::after { transform: scaleX(1); }
+
+/* SVG icon — inherits gold color */
+.cat-ico {
+  font-size: 44px;
+  line-height: 1;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--gold);
+  transition: color 0.25s, transform 0.3s ease, filter 0.3s ease;
+}
+
+.cat-ico svg {
+  width: 48px;
+  height: 48px;
+}
+
+.cat-card:hover .cat-ico {
+  color: var(--gold-light);
+  transform: scale(1.15) translateY(-4px);
+  filter: drop-shadow(0 6px 12px rgba(184,121,26,0.4));
+}
+
+.cat-card span:not(.cat-ico) {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+  transition: color 0.25s;
+}
+
+.cat-card:hover span:not(.cat-ico) { color: var(--gold); }
+
+/* Dark mode: cat cards get a richer surface */
+[data-theme="dark"] .cat-card {
+  background: #1E1A14;
+  border-color: rgba(212,175,55,0.15);
+}
+
+[data-theme="dark"] .cat-card:hover {
+  background: #251F16;
+  border-color: rgba(212,175,55,0.4);
+  box-shadow: 0 8px 36px rgba(0,0,0,0.5), 0 0 0 1px rgba(212,175,55,0.15);
+}
+
+/* ─── 10. PROMO ─── */
+.promo-wrap { padding: 0 5% var(--sp-9); }
+
+/* Banner shell + decorative glow/highlight pseudo-elements */
+.promo-banner {
+  background: var(--charcoal);
+  border-radius: 20px;
+  padding: 52px 56px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: var(--sp-4);
+  position: relative;
+  overflow: hidden;
+}
+
+.promo-banner::before {
+  content: '';
+  position: absolute;
+  right: -60px; top: -80px;
+  width: 340px; height: 340px;
+  background: radial-gradient(circle, rgba(184,121,26,0.2) 0%, transparent 65%);
+  border-radius: 50%;
+}
+
+.promo-banner::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(184,121,26,0.5), transparent);
+}
+
+.promo-eyebrow { color: var(--gold-light) !important; margin-bottom: 10px; }
+
+/* Left side — headline, copy, sale progress */
+.promo-text h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 2.5vw, 32px);
+  font-weight: 600;
+  color: var(--cream);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.promo-text > p {
+  font-size: 14.5px;
+  color: rgba(230,247,250,0.6);
+  margin-top: 6px;
+  font-weight: 300;
+}
+
+.promo-text strong { color: var(--gold-light); font-weight: 500; }
+
+.promo-progress { margin-top: 18px; display: flex; flex-direction: column; gap: 6px; }
+
+.promo-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: rgba(230,247,250,0.45);
+  letter-spacing: 0.08em;
+}
+
+.promo-progress-track {
+  height: 3px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.promo-progress-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--teal-dark), var(--fx-teal));
+  width: 68%;
+  box-shadow: 0 0 8px rgba(110,198,207,0.5);
+  position: relative;
+}
+
+/* Right side — big "30% OFF" number callout */
+.promo-right {
+  text-align: center;
+  position: relative;
+  z-index: 1;
+  min-width: 160px;
+}
+
+.promo-num {
+  font-family: var(--font-serif);
+  font-size: 80px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1;
+  letter-spacing: -0.06em;
+}
+
+.promo-pct {
+  font-family: var(--font-serif);
+  font-size: 40px;
+  color: var(--gold);
+  vertical-align: top;
+  line-height: 1.4;
+}
+
+.promo-off {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: rgba(230,247,250,0.45);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.promo-cta { margin-top: var(--sp-3); }

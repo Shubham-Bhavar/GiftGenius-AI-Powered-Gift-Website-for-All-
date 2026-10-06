@@ -1,0 +1,68 @@
+/* Entry scene penguin image. */
+
+/* ═══════════════════════════════════════════════════════
+   31. PENGUIN IMAGE — Optimized display for cartoon PNG
+   Cyan bg penguin holding "Hi" sign — show fully
+═══════════════════════════════════════════════════════ */
+
+/* Override circle crop — show full penguin body */
+.cartoon-avatar-wrap {
+  width: 150px !important;
+  height: 150px !important;
+  border-radius: 20px !important;        /* rounded square, not circle */
+  overflow: hidden !important;
+  border: 3px solid #D4AF37 !important;
+  box-shadow:
+    0 0 0 3px rgba(212,175,55,0.35),
+    0 0 0 7px rgba(110,198,207,0.3),
+    0 0 60px rgba(110,198,207,0.55),
+    0 24px 48px rgba(0,0,0,0.55) !important;
+  background: #5FD5E0 !important;        /* match penguin's cyan bg */
+  transform: perspective(400px) rotateX(2deg) !important;
+}
+
+/* Show full penguin — don't crop the feet/sign */
+.cartoon-avatar {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  filter:
+    contrast(1.05)
+    saturate(1.1)
+    brightness(1.0) !important;           /* cartoon is already vivid, keep natural */
+  border-radius: 17px !important;
+  display: block !important;
+}
+
+/* Bigger popup container to fit the penguin */
+.cartoon-popup {
+  width: 170px !important;
+  height: 185px !important;
+  bottom: 210px !important;
+}
+
+/* Glow with cyan matching penguin bg */
+.cartoon-glow {
+  background: radial-gradient(circle, 
+    rgba(95,213,224,0.5) 0%, 
+    rgba(212,175,55,0.25) 40%, 
+    transparent 70%) !important;
+}
+
+/* Hi bubble — now redundant since penguin holds "Hi" sign, 
+   update it to say something else */
+.hi-bubble {
+  right: -80px !important;
+  top: -15px !important;
+  background: linear-gradient(135deg, #5FD5E0, #7DE8F0) !important;
+  border-color: rgba(212,175,55,0.6) !important;
+  color: #0F2225 !important;
+  font-size: 13px !important;
+  padding: 7px 13px !important;
+}
+
+/* Entry scene wrap — give more height */
+.entry-scene-wrap {
+  height: 400px !important;
+}
