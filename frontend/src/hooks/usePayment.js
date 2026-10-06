@@ -1,7 +1,6 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { paymentApi } from '../services/payment.js';
-import { payWithRazorpay } from '../lib/razorpay.js';
+import { paymentApi, payWithRazorpay } from '../services/payment.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
 import { ordersKeys } from '../services/orders.js';

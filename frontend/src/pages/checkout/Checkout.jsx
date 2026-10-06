@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { CouponBox, StepsBar, SummaryCard } from '../../components/checkout/CheckoutParts.jsx';
+import { PaymentMethods, usePaymentChoice } from '../../components/checkout/PaymentMethods.jsx';
 import { ErrorNote, Field, Spinner } from '../../components/common/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useCart } from '../../context/CartContext.jsx';
@@ -21,14 +22,6 @@ const normalize = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/n
 /** The dropdown entry for a state name from the address lookup ("NCT of Delhi" → "Delhi"), or ''. */
 const matchState = (name) => STATES.find((st) => normalize(st) === normalize(name)) ?? '';
 const PINCODE_RE = /^[1-9][0-9]{5}$/;
-
-// Online methods all open Razorpay Checkout, which offers UPI, cards and net banking.
-const PAY_METHODS = [
-  { key: 'upi', label: '📱 UPI / QR Code', method: 'ONLINE' },
-  { key: 'card', label: '💳 Credit / Debit Card', method: 'ONLINE' },
-  { key: 'netbanking', label: '🏦 Net Banking', method: 'ONLINE' },
-  { key: 'cod', label: '💰 Cash on Delivery', method: 'COD' },
-];
 
 function splitName(full = '') {
   const parts = full.trim().split(/\s+/);
@@ -51,10 +44,7 @@ export default function Checkout() {
     addressLine: '', area: '', city: '', state: '', pincode: '',
   });
   const onlineEnabled = options.data?.onlinePaymentEnabled;
-  // UPI is the default once online payment is known to be on (the options load after the first render),
-  // until the shopper picks something else.
-  const [chosenPayKey, setPayKey] = useState(null);
-  const payKey = chosenPayKey ?? (onlineEnabled ? 'upi' : 'cod');
+  const { payKey, setPayKey, paymentMethod: effectiveMethod } = usePaymentChoice(onlineEnabled);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
@@ -65,8 +55,6 @@ export default function Checkout() {
   if (cart.loading) return <Spinner label="Loading your cart…" />;
   if (cart.items.length === 0 && !busy) return <Navigate to="/cart" replace />;
 
-  const payment = PAY_METHODS.find((m) => m.key === payKey) ?? PAY_METHODS[3];
-  const effectiveMethod = payment.method === 'ONLINE' && !onlineEnabled ? 'COD' : payment.method;
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
   const err = (k) => fieldErrors[`shipping.${k}`];
 
@@ -114,7 +102,7 @@ export default function Checkout() {
       qc.invalidateQueries({ queryKey: catalogKeys.products() });
       qc.invalidateQueries({ queryKey: catalogKeys.catalog() });
       setPrefs({ couponCode: '' });
-      if (order.payment) await pay(order, payment.key);
+      if (order.payment) await pay(order, payKey);
       else await cart.refresh();
       navigate(`/account/orders/${order.orderNumber}?placed=1`, { replace: true });
     } catch (ex) {
@@ -210,23 +198,7 @@ export default function Checkout() {
             </div>
           </section>
 
-          <section className="co-form-section" aria-labelledby="pay-h">
-            <h2 id="pay-h">💳 Payment Method</h2>
-            <div className="co-pay-methods" role="radiogroup" aria-labelledby="pay-h">
-              {PAY_METHODS.map((m) => {
-                const disabled = m.method === 'ONLINE' && !onlineEnabled;
-                return (
-                  <label key={m.key} className={`co-pay-method ${payKey === m.key ? 'selected' : ''} ${disabled ? 'disabled' : ''}`}>
-                    <input type="radio" name="pay" value={m.key} checked={payKey === m.key} disabled={disabled} onChange={() => setPayKey(m.key)} />
-                    {m.label}
-                  </label>
-                );
-              })}
-            </div>
-            <p className="co-muted">
-              🔒 {onlineEnabled ? 'Online payments are processed securely by Razorpay.' : 'Online payment is unavailable right now — pay by cash or UPI on delivery.'}
-            </p>
-          </section>
+          <PaymentMethods payKey={payKey} onChange={setPayKey} onlineEnabled={onlineEnabled} />
           <CouponBox quote={q} couponCode={prefs.couponCode} onApply={(code) => setPrefs({ couponCode: code })} />
         </div>
 
