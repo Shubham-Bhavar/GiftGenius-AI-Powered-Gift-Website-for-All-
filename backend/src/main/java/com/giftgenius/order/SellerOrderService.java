@@ -16,7 +16,6 @@ import org.springframework.util.StringUtils;
 
 import com.giftgenius.common.ApiException;
 import com.giftgenius.common.PageResponse;
-import com.giftgenius.notify.Mailer;
 import com.giftgenius.order.SellerOrderDtos.FulfillmentUpdateRequest;
 import com.giftgenius.order.SellerOrderDtos.SellerOrderDto;
 import com.giftgenius.order.SellerOrderDtos.SellerOrderItem;
@@ -40,15 +39,15 @@ public class SellerOrderService {
     private final OrderItemRepository items;
     private final SellerProfileRepository sellers;
     private final OrderService orderService;
-    private final Mailer mailer;
+    private final OrderNotifier notifier;
 
     public SellerOrderService(OrderRepository orders, OrderItemRepository items, SellerProfileRepository sellers,
-            OrderService orderService, Mailer mailer) {
+            OrderService orderService, OrderNotifier notifier) {
         this.orders = orders;
         this.items = items;
         this.sellers = sellers;
         this.orderService = orderService;
-        this.mailer = mailer;
+        this.notifier = notifier;
     }
 
     @Transactional(readOnly = true)
@@ -105,7 +104,7 @@ public class SellerOrderService {
         if (next.hasShipped() && !announced) {
             // The order as a whole hasn't reached this step (other parcels are still to come): tell the customer
             // about this parcel. When it has, the order update email already said so.
-            notifyPartial(o, seller, mine, next, note);
+            notifier.partialShipment(o, seller, mine, next, note);
         }
         return toDto(o, sellerId);
     }
@@ -156,22 +155,6 @@ public class SellerOrderService {
                 new SellerShipping(s.getFullName(), s.getPhone(), s.getAddressLine(), s.getCity(), s.getState(),
                         s.getPincode()),
                 items, o.getCreatedAt());
-    }
-
-    private void notifyPartial(Order o, SellerProfile seller, List<OrderItem> mine, FulfillmentStatus step, String note) {
-        StringBuilder body = new StringBuilder();
-        body.append("Hi ").append(o.getShipping().getFullName().trim().split("\\s+")[0]).append(",\n\n")
-                .append(step == FulfillmentStatus.DELIVERED ? "Part of your order has been delivered"
-                        : "Part of your order is on its way")
-                .append(", sent by ").append(seller.getStoreName()).append(":\n\n");
-        for (OrderItem i : mine) {
-            body.append("  • ").append(i.getProductName()).append(" × ").append(i.getQuantity()).append('\n');
-        }
-        if (note != null) {
-            body.append('\n').append(note).append('\n');
-        }
-        body.append("\nOrder ").append(o.getOrderNumber()).append("\n\n— GiftGenius\n");
-        mailer.send(o.getShipping().getEmail(), "Update on your GiftGenius order " + o.getOrderNumber(), body.toString());
     }
 
     // ── Sales figures (computed in the database from the seller's own lines) ──

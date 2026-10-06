@@ -17,7 +17,6 @@ import com.giftgenius.order.OrderDtos.OrderDto;
 import com.giftgenius.order.OrderDtos.OrderSummaryDto;
 import com.giftgenius.order.OrderDtos.PlaceOrderRequest;
 import com.giftgenius.order.OrderDtos.TrackingDto;
-import com.giftgenius.order.OrderDtos.VerifyPaymentRequest;
 import com.giftgenius.security.AuthUser;
 
 import jakarta.validation.Valid;
@@ -56,12 +55,6 @@ public class OrderController {
     @GetMapping("/{orderNumber}")
     public OrderDto get(@AuthenticationPrincipal AuthUser user, @PathVariable String orderNumber) {
         return orders.get(user.id(), orderNumber);
-    }
-
-    @PostMapping("/{orderNumber}/payment/verify")
-    public OrderDto verify(@AuthenticationPrincipal AuthUser user, @PathVariable String orderNumber,
-            @Valid @RequestBody VerifyPaymentRequest req) {
-        return orders.verifyPayment(user.id(), orderNumber, req);
     }
 
     @PostMapping("/{orderNumber}/cancel")

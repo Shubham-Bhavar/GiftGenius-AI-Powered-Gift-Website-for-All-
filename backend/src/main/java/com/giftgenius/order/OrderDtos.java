@@ -38,12 +38,6 @@ public final class OrderDtos {
             @Size(max = 40) String couponCode) {
     }
 
-    public record VerifyPaymentRequest(
-            @NotBlank String razorpayOrderId,
-            @NotBlank String razorpayPaymentId,
-            @NotBlank String razorpaySignature) {
-    }
-
     public record StatusUpdateRequest(@NotNull OrderStatus status, @Size(max = 255) String note) {
     }
 

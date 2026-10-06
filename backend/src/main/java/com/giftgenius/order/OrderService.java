@@ -1,21 +1,16 @@
 package com.giftgenius.order;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.security.SecureRandom;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -26,37 +21,23 @@ import org.springframework.util.StringUtils;
 import com.giftgenius.cart.Cart;
 import com.giftgenius.cart.CartItem;
 import com.giftgenius.cart.CartService;
-import com.giftgenius.catalog.ProductDtos.SellerRef;
 import com.giftgenius.catalog.ProductRepository;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.common.PageResponse;
 import com.giftgenius.config.AppProperties;
-import com.giftgenius.notify.Mailer;
 import com.giftgenius.order.OrderDtos.OrderDto;
-import com.giftgenius.order.OrderDtos.OrderItemDto;
 import com.giftgenius.order.OrderDtos.OrderSummaryDto;
-import com.giftgenius.order.OrderDtos.PaymentInstructions;
 import com.giftgenius.order.OrderDtos.PlaceOrderRequest;
-import com.giftgenius.order.OrderDtos.ShippingDto;
 import com.giftgenius.order.OrderDtos.ShippingRequest;
-import com.giftgenius.order.OrderDtos.StatusEventDto;
 import com.giftgenius.order.OrderDtos.StatusUpdateRequest;
 import com.giftgenius.order.OrderDtos.TrackingDto;
-import com.giftgenius.order.OrderDtos.VerifyPaymentRequest;
-import com.giftgenius.payment.RazorpayClient;
-import com.giftgenius.payment.RazorpayClient.RazorpayOrder;
-import com.giftgenius.payment.RazorpaySignatures;
 import com.giftgenius.pricing.CouponRepository;
 import com.giftgenius.pricing.PricingDtos.Quote;
 import com.giftgenius.pricing.PricingDtos.QuoteLine;
 import com.giftgenius.pricing.PricingDtos.QuoteLineRequest;
 import com.giftgenius.pricing.PricingService;
 import com.giftgenius.seller.SellerProfile;
-import com.giftgenius.seller.SellerProfileRepository;
 import com.giftgenius.user.UserRepository;
-
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class OrderService {
@@ -64,7 +45,6 @@ public class OrderService {
     private static final Logger log = LoggerFactory.getLogger(OrderService.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final char[] ORDER_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789".toCharArray();
-    private static final String GIFTGENIUS = "GiftGenius";
 
     /** Result of the first checkout transaction. */
     private record Placement(Long orderId, String orderNumber, BigDecimal total, boolean needsPayment, OrderDto dto) {
@@ -75,44 +55,39 @@ public class OrderService {
     private final PricingService pricing;
     private final ProductRepository products;
     private final CouponRepository coupons;
-    private final RazorpayClient razorpay;
+    private final OnlinePayments payments;
     private final UserRepository users;
-    private final SellerProfileRepository sellers;
-    private final ObjectMapper json;
-    private final Mailer mailer;
+    private final OrderMapper mapper;
+    private final OrderNotifier notifier;
     private final TransactionTemplate tx;
     private final AppProperties.Orders orderProps;
-    private final String publicUrl;
 
     public OrderService(OrderRepository orders, CartService carts, PricingService pricing,
-            ProductRepository products, CouponRepository coupons, RazorpayClient razorpay,
-            UserRepository users, SellerProfileRepository sellers, ObjectMapper json, Mailer mailer,
+            ProductRepository products, CouponRepository coupons, OnlinePayments payments,
+            UserRepository users, OrderMapper mapper, OrderNotifier notifier,
             PlatformTransactionManager txManager, AppProperties properties) {
         this.orders = orders;
         this.carts = carts;
         this.pricing = pricing;
         this.products = products;
         this.coupons = coupons;
-        this.razorpay = razorpay;
+        this.payments = payments;
         this.users = users;
-        this.sellers = sellers;
-        this.json = json;
-        this.mailer = mailer;
+        this.mapper = mapper;
+        this.notifier = notifier;
         this.tx = new TransactionTemplate(txManager);
         this.orderProps = properties.orders();
-        String url = properties.publicUrl();
-        this.publicUrl = url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
     }
 
     // ── Customer ───────────────────────────────────────────
 
     /**
      * Places an order from the customer's cart in up to three short transactions, so no database
-     * locks are held while Razorpay is called:
+     * locks are held while the payment provider is called:
      * <ol>
      *   <li>validate, reserve stock and coupon, save the order;</li>
-     *   <li>(online payment only, no transaction) create the Razorpay order;</li>
-     *   <li>attach the Razorpay order id, or cancel and release everything if step 2 failed.</li>
+     *   <li>(online payment only, no transaction) open the payment with the provider;</li>
+     *   <li>attach the provider's payment id, or cancel and release everything if step 2 failed.</li>
      * </ol>
      */
     public OrderDto place(Long userId, PlaceOrderRequest req, String idempotencyKey) {
@@ -121,9 +96,9 @@ public class OrderService {
         if (!p.needsPayment()) {
             return p.dto();
         }
-        RazorpayOrder rzp;
+        String paymentRef;
         try {
-            rzp = razorpay.createOrder(p.total(), p.orderNumber());
+            paymentRef = payments.open(p.total(), p.orderNumber());
         } catch (RuntimeException e) {
             tx.executeWithoutResult(s -> orders.findById(p.orderId()).ifPresent(o -> {
                 o.setPaymentStatus(PaymentStatus.FAILED);
@@ -134,8 +109,8 @@ public class OrderService {
         }
         return tx.execute(s -> {
             Order o = orders.findById(p.orderId()).orElseThrow();
-            o.setRazorpayOrderId(rzp.id());
-            return toDto(o);
+            o.setRazorpayOrderId(paymentRef);
+            return mapper.toDto(o);
         });
     }
 
@@ -149,11 +124,11 @@ public class OrderService {
                 if (o.getStatus() == OrderStatus.PENDING_PAYMENT && o.getRazorpayOrderId() == null) {
                     throw ApiException.conflict("Your order is still being set up. Wait a moment and try again.");
                 }
-                return new Placement(o.getId(), o.getOrderNumber(), o.getTotal(), false, toDto(o));
+                return new Placement(o.getId(), o.getOrderNumber(), o.getTotal(), false, mapper.toDto(o));
             }
         }
         boolean online = req.paymentMethod() == PaymentMethod.ONLINE;
-        if (online && !razorpay.isEnabled()) {
+        if (online && !payments.available()) {
             throw ApiException.badRequest("Online payment isn't available right now. Choose Cash on Delivery.");
         }
         if (online && orders.countByUserIdAndStatus(userId, OrderStatus.PENDING_PAYMENT)
@@ -239,49 +214,12 @@ public class OrderService {
         log.info("Order {} placed by user {} ({}, ₹{})", order.getOrderNumber(), userId,
                 order.getPaymentMethod(), order.getTotal());
         if (!needsPayment) {
-            notifyCustomer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
+            notifier.customer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
                     "Thank you! Your order is confirmed and we're getting it ready.");
-            notifySellers(order);
+            notifier.sellers(order);
         }
         return new Placement(order.getId(), order.getOrderNumber(), order.getTotal(), needsPayment,
-                needsPayment ? null : toDto(order));
-    }
-
-    /**
-     * Confirms a payment from the shopper's browser. Only the signature proves it: Razorpay signs
-     * order_id|payment_id with our key secret, and the Razorpay order was created here for exactly this order's
-     * total, so the amount can't differ. Idempotent, and serialised with the webhook by the row lock.
-     */
-    @Transactional
-    public OrderDto verifyPayment(Long userId, String orderNumber, VerifyPaymentRequest req) {
-        Order o = orders.lockByOrderNumberAndUserId(orderNumber, userId)
-                .orElseThrow(() -> ApiException.notFound("Order not found."));
-        if (o.getPaymentStatus() == PaymentStatus.PAID) {
-            return toDto(o); // already confirmed, by the webhook or another tab
-        }
-        boolean payable = o.getStatus() == OrderStatus.PENDING_PAYMENT;
-        // Cancelled (by the shopper, an admin or the payment window) while the payment was in flight.
-        boolean cancelledMeanwhile = o.getStatus() == OrderStatus.CANCELLED && o.getRazorpayOrderId() != null;
-        if (o.getPaymentMethod() != PaymentMethod.ONLINE || !(payable || cancelledMeanwhile)) {
-            throw ApiException.conflict("This order can no longer be paid.");
-        }
-        if (!razorpay.isEnabled()) {
-            throw ApiException.unavailable("We couldn't confirm your payment just now. If money was deducted, "
-                    + "it will be confirmed automatically or refunded.");
-        }
-        if (!req.razorpayOrderId().equals(o.getRazorpayOrderId())
-                || !RazorpaySignatures.verifyPayment(req.razorpayOrderId(), req.razorpayPaymentId(),
-                        req.razorpaySignature(), razorpay.keySecret())) {
-            log.warn("Payment signature mismatch on order {}", orderNumber);
-            throw ApiException.badRequest("We couldn't verify this payment. If money was deducted, "
-                    + "it will be confirmed automatically or refunded.");
-        }
-        if (payable) {
-            markPaid(o, req.razorpayPaymentId());
-        } else {
-            recordLatePayment(o, req.razorpayPaymentId());
-        }
-        return toDto(o);
+                needsPayment ? null : mapper.toDto(order));
     }
 
     @Transactional
@@ -299,22 +237,22 @@ public class OrderService {
                     + "Contact us and we'll help.");
         }
         doCancel(o, "Cancelled by you");
-        notifyCustomer(o, "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
+        notifier.customer(o, "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
                 o.getPaymentStatus() == PaymentStatus.REFUND_PENDING
                         ? "Your order is cancelled. Your refund is being processed and usually arrives in 5–7 working days."
                         : "Your order is cancelled as you asked.");
-        return toDto(o);
+        return mapper.toDto(o);
     }
 
     @Transactional(readOnly = true)
     public PageResponse<OrderSummaryDto> mine(Long userId, int page, int size) {
-        return summaries(orders.findByUserIdOrderByCreatedAtDesc(userId,
+        return mapper.summaries(orders.findByUserIdOrderByCreatedAtDesc(userId,
                 PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50))));
     }
 
     @Transactional(readOnly = true)
     public OrderDto get(Long userId, String orderNumber) {
-        return toDto(ownOrder(userId, orderNumber));
+        return mapper.toDto(ownOrder(userId, orderNumber));
     }
 
     /** Public lookup. The email must match the order, and failures look identical to avoid enumeration. */
@@ -324,62 +262,7 @@ public class OrderService {
                 .filter(x -> email != null && x.getShipping().getEmail().equalsIgnoreCase(email.trim()))
                 .orElseThrow(() -> ApiException.notFound(
                         "No order matches that order ID and email. Check both and try again."));
-        return new TrackingDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
-                o.getDeliveryType(),
-                o.getTotal(), firstName(o), o.getShipping().getCity(), items(o, sellerRefs(List.of(o))), timeline(o),
-                o.getCreatedAt());
-    }
-
-    // ── Payments (webhook) ─────────────────────────────────
-
-    @Transactional
-    public void handleRazorpayWebhook(String rawBody, String signature) {
-        if (!razorpay.isEnabled() || !StringUtils.hasText(razorpay.webhookSecret())) {
-            throw ApiException.notFound("Webhook not configured.");
-        }
-        if (!RazorpaySignatures.verifyWebhook(rawBody, signature, razorpay.webhookSecret())) {
-            throw ApiException.badRequest("Invalid signature.");
-        }
-        JsonNode root;
-        try {
-            root = json.readTree(rawBody);
-        } catch (Exception e) {
-            throw ApiException.badRequest("Malformed payload.");
-        }
-        String event = root.path("event").asString("");
-        JsonNode payment = root.path("payload").path("payment").path("entity");
-        String rzpOrderId = payment.path("order_id").asString(null);
-        String paymentId = payment.path("id").asString(null);
-        if (rzpOrderId == null) {
-            return;
-        }
-        // Locked: the shopper's browser may be verifying this same payment right now.
-        orders.lockByRazorpayOrderId(rzpOrderId).ifPresent(o -> {
-            switch (event) {
-                case "payment.captured", "order.paid" -> {
-                    if (o.getPaymentStatus() == PaymentStatus.PAID) {
-                        return; // duplicate delivery, or the browser confirmed it first
-                    }
-                    if (o.getStatus() == OrderStatus.CANCELLED) {
-                        recordLatePayment(o, paymentId);
-                    } else if (o.getStatus() == OrderStatus.PENDING_PAYMENT) {
-                        if (paidInFull(o, payment)) {
-                            markPaid(o, paymentId);
-                        } else {
-                            log.error("Razorpay {} {} on order {} was {} {} paise, not the order total; not confirming it",
-                                    event, paymentId, o.getOrderNumber(), payment.path("currency").asString("?"),
-                                    payment.path("amount").asString("?"));
-                        }
-                    }
-                }
-                case "payment.failed" -> {
-                    if (o.getStatus() == OrderStatus.PENDING_PAYMENT) {
-                        o.setPaymentStatus(PaymentStatus.FAILED);
-                    }
-                }
-                default -> log.debug("Ignoring Razorpay event {}", event);
-            }
-        });
+        return mapper.toTracking(o);
     }
 
     // ── Admin ──────────────────────────────────────────────
@@ -389,12 +272,12 @@ public class OrderService {
         PageRequest pr = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 100));
         var result = statuses == null || statuses.isEmpty() ? orders.findAllByOrderByCreatedAtDesc(pr)
                 : orders.findByStatusInOrderByCreatedAtDesc(statuses, pr);
-        return summaries(result);
+        return mapper.summaries(result);
     }
 
     @Transactional(readOnly = true)
     public OrderDto adminGet(String orderNumber) {
-        return toDto(orders.findByOrderNumber(orderNumber)
+        return mapper.toDto(orders.findByOrderNumber(orderNumber)
                 .orElseThrow(() -> ApiException.notFound("Order not found.")));
     }
 
@@ -419,7 +302,7 @@ public class OrderService {
                             && i.getFulfillmentStatus() != FulfillmentStatus.DELIVERED)
                     .forEach(i -> i.setFulfillment(FulfillmentStatus.DELIVERED, null));
         }
-        return toDto(o);
+        return mapper.toDto(o);
     }
 
     /**
@@ -473,7 +356,7 @@ public class OrderService {
             default -> null;
         };
         if (headline != null && next != OrderStatus.PACKED) {
-            notifyCustomer(o, "Update on your GiftGenius order " + o.getOrderNumber(), headline);
+            notifier.customer(o, "Update on your GiftGenius order " + o.getOrderNumber(), headline);
         }
     }
 
@@ -490,37 +373,6 @@ public class OrderService {
 
     // ── Internals ──────────────────────────────────────────
 
-    private void markPaid(Order o, String paymentId) {
-        o.setPaymentStatus(PaymentStatus.PAID);
-        o.setRazorpayPaymentId(paymentId);
-        o.recordStatus(OrderStatus.CONFIRMED, "Payment received");
-        carts.removeProducts(o.getUser().getId(),
-                o.getItems().stream().map(OrderItem::getProductId).collect(Collectors.toSet()));
-        notifyCustomer(o, "Payment received: GiftGenius order " + o.getOrderNumber() + " is confirmed",
-                "Thank you! We've received your payment and your order is confirmed.");
-        notifySellers(o);
-    }
-
-    /** Money arrived for an order that was cancelled meanwhile: it must go back, whatever the amount. */
-    private void recordLatePayment(Order o, String paymentId) {
-        if (o.getPaymentStatus() == PaymentStatus.REFUND_PENDING || o.getPaymentStatus() == PaymentStatus.REFUNDED) {
-            return;
-        }
-        o.setRazorpayPaymentId(paymentId);
-        o.setPaymentStatus(PaymentStatus.REFUND_PENDING);
-        log.warn("Late payment {} on cancelled order {}; refund required", paymentId, o.getOrderNumber());
-    }
-
-    /** A webhook's payment entity covers this order exactly: the full total, in rupees. */
-    private static boolean paidInFull(Order o, JsonNode payment) {
-        return "INR".equals(payment.path("currency").asString(""))
-                && payment.path("amount").asLong(-1) == paise(o.getTotal());
-    }
-
-    private static long paise(BigDecimal rupees) {
-        return rupees.setScale(2, RoundingMode.HALF_UP).movePointRight(2).longValueExact();
-    }
-
     private void doCancel(Order o, String note) {
         for (OrderItem item : o.getItems()) {
             products.releaseStock(item.getProductId(), item.getQuantity());
@@ -534,40 +386,6 @@ public class OrderService {
         o.getItems().stream().filter(i -> i.getSellerId() != null)
                 .forEach(i -> i.setFulfillment(FulfillmentStatus.CANCELLED, null));
         o.recordStatus(OrderStatus.CANCELLED, note);
-    }
-
-    /** Emails each seller with lines in a newly confirmed order: what to send, not who the customer is. */
-    private void notifySellers(Order o) {
-        Map<Long, List<OrderItem>> bySeller = o.getItems().stream().filter(i -> i.getSellerId() != null)
-                .collect(Collectors.groupingBy(OrderItem::getSellerId, LinkedHashMap::new, Collectors.toList()));
-        if (bySeller.isEmpty()) {
-            return;
-        }
-        for (SellerProfile seller : sellers.findAllById(bySeller.keySet())) {
-            StringBuilder body = new StringBuilder();
-            body.append("Hi ").append(seller.getStoreName()).append(",\n\nYou have a new order to fulfil: ")
-                    .append(o.getOrderNumber()).append("\n\n");
-            for (OrderItem i : bySeller.get(seller.getUserId())) {
-                body.append("  • ").append(i.getProductName()).append(" × ").append(i.getQuantity()).append('\n');
-            }
-            body.append("\nDelivery details and status updates: ").append(publicUrl).append("/seller/orders/")
-                    .append(o.getOrderNumber()).append("\n\n— GiftGenius Seller Center\n");
-            mailer.send(seller.getUser().getEmail(), "New GiftGenius order " + o.getOrderNumber(), body.toString());
-        }
-    }
-
-    private void notifyCustomer(Order o, String subject, String headline) {
-        StringBuilder body = new StringBuilder();
-        body.append("Hi ").append(firstName(o)).append(",\n\n").append(headline).append("\n\n");
-        body.append("Order ").append(o.getOrderNumber()).append('\n');
-        for (OrderItem i : o.getItems()) {
-            body.append("  • ").append(i.getProductName()).append(" × ").append(i.getQuantity()).append('\n');
-        }
-        body.append("Total: ₹").append(o.getTotal().setScale(2, RoundingMode.HALF_UP))
-                .append(o.getPaymentMethod() == PaymentMethod.COD ? " (cash on delivery)" : "").append("\n\n");
-        body.append("Track your order: ").append(publicUrl).append("/track?order=").append(o.getOrderNumber())
-                .append("\n\n— GiftGenius\n");
-        mailer.send(o.getShipping().getEmail(), subject, body.toString());
     }
 
     private Order ownOrder(Long userId, String orderNumber) {
@@ -596,10 +414,6 @@ public class OrderService {
             throw ApiException.badRequest("Idempotency-Key must be at most 64 characters.");
         }
         return k;
-    }
-
-    private static String firstName(Order o) {
-        return o.getShipping().getFullName().trim().split("\\s+")[0];
     }
 
     private static ShippingAddress toAddress(ShippingRequest s) {
@@ -634,61 +448,5 @@ public class OrderService {
         };
     }
 
-    private static List<OrderItemDto> items(Order o, Map<Long, SellerRef> refs) {
-        return o.getItems().stream().map(i -> new OrderItemDto(i.getProductId(), i.getProductName(),
-                i.getImageUrl(), i.getUnitPrice(), i.getQuantity(), i.getLineTotal(), i.getCustomName(),
-                i.getCustomMessage(), i.getSellerId() == null ? null : refs.get(i.getSellerId()),
-                i.getFulfillmentStatus(), i.getFulfillmentNote())).toList();
-    }
 
-    /** Store names for the sellers in these orders, in one query. */
-    private Map<Long, SellerRef> sellerRefs(Collection<Order> list) {
-        Set<Long> ids = list.stream().flatMap(o -> o.getItems().stream()).map(OrderItem::getSellerId)
-                .filter(Objects::nonNull).collect(Collectors.toSet());
-        if (ids.isEmpty()) {
-            return Map.of();
-        }
-        return sellers.findAllById(ids).stream()
-                .collect(Collectors.toMap(SellerProfile::getUserId, SellerRef::from));
-    }
-
-    private PageResponse<OrderSummaryDto> summaries(Page<Order> page) {
-        Map<Long, SellerRef> refs = sellerRefs(page.getContent());
-        return PageResponse.of(page.map(o -> toSummary(o, refs)));
-    }
-
-    private static List<StatusEventDto> timeline(Order o) {
-        return o.getEvents().stream().map(e -> new StatusEventDto(e.getStatus(), e.getNote(), e.getCreatedAt()))
-                .toList();
-    }
-
-    private OrderDto toDto(Order o) {
-        ShippingAddress s = o.getShipping();
-        PaymentInstructions pay = null;
-        if (o.getPaymentMethod() == PaymentMethod.ONLINE && o.getStatus() == OrderStatus.PENDING_PAYMENT
-                && o.getRazorpayOrderId() != null) {
-            pay = new PaymentInstructions("RAZORPAY", razorpay.keyId(), o.getRazorpayOrderId(),
-                    paise(o.getTotal()), "INR", s.getFullName(), s.getEmail(), s.getPhone());
-        }
-        return new OrderDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
-                o.getDeliveryType(), o.getSubtotal(), o.getDiscount(), o.getDeliveryFee(), o.getTotal(),
-                o.getCouponCode(),
-                new ShippingDto(s.getFullName(), s.getEmail(), s.getPhone(), s.getAddressLine(), s.getCity(),
-                        s.getState(), s.getPincode()),
-                items(o, sellerRefs(List.of(o))), timeline(o), o.getCreatedAt(), pay);
-    }
-
-    private static OrderSummaryDto toSummary(Order o, Map<Long, SellerRef> refs) {
-        OrderItem first = o.getItems().isEmpty() ? null : o.getItems().get(0);
-        int count = o.getItems().stream().mapToInt(OrderItem::getQuantity).sum();
-        // Who sells the lines, in order: marketplace stores by name, GiftGenius for its own lines.
-        List<String> storeNames = o.getItems().stream()
-                .map(i -> i.getSellerId() == null ? GIFTGENIUS
-                        : refs.containsKey(i.getSellerId()) ? refs.get(i.getSellerId()).storeName() : null)
-                .filter(Objects::nonNull).distinct().toList();
-        return new OrderSummaryDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getPaymentStatus(),
-                o.getTotal(), count, o.getItems().size(),
-                first == null ? null : first.getProductName(), first == null ? null : first.getImageUrl(),
-                o.getCreatedAt(), o.getShipping().getEmail(), storeNames);
-    }
 }
