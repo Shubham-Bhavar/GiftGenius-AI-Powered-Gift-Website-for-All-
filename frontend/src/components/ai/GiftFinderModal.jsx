@@ -5,6 +5,7 @@ import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
 import { trapFocus } from '../../lib/focus.js';
 import { RecommendationCard } from './RecommendationCard.jsx';
 import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
+import { THINKING_MS } from '../../animations/motion.js';
 
 const TOTAL_STEPS = 4;
 const RECIPIENTS = [
@@ -37,7 +38,6 @@ const BUDGET_MIN = 500;
 const BUDGET_MAX = 5000;
 const BUDGET_STEP = 100;
 const PROGRESS_LABELS = { 1: 'Understanding them', 2: 'Understanding the occasion', 3: 'Understanding your budget', 4: 'Almost ready' };
-const MIN_THINKING_MS = 1100; // the original "thinking" beat, kept even when the AI answers faster
 
 function Identity() {
   return (
@@ -94,7 +94,7 @@ export default function GiftFinderModal() {
   const toast = useToast();
   const [step, setStep] = useState(1);
   const [state, setState] = useState({ recipient: null, occasion: null, budget: 1500, interests: [] });
-  const { phase, result, submit: recommend, cancel, showForm } = useGiftRecommendations({ minThinkingMs: MIN_THINKING_MS });
+  const { phase, result, submit: recommend, cancel, showForm } = useGiftRecommendations({ minThinkingMs: THINKING_MS.giftFinder });
   const content = useRef(null);
   const closeBtn = useRef(null);
 

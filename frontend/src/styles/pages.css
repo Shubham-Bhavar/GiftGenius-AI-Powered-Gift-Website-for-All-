@@ -70,7 +70,6 @@
   animation: ggSpin 0.8s linear infinite; display: inline-block;
 }
 .gg-spinner-inline .gg-spinner { width: 16px; height: 16px; border-width: 2px; }
-@keyframes ggSpin { to { transform: rotate(360deg); } }
 
 .gg-empty { display: grid; justify-items: center; text-align: center; gap: 12px; padding: 56px 16px; }
 .gg-empty-icon {
@@ -176,7 +175,6 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
   box-shadow: var(--shadow-lg); padding: 8px; display: grid; gap: 2px;
   animation: ggPop 0.2s cubic-bezier(.34,1.56,.64,1);
 }
-@keyframes ggPop { from { opacity: 0; transform: translateY(-6px) scale(0.97); } }
 .account-who { padding: 10px 12px 12px; border-bottom: 1px solid var(--border-soft); margin-bottom: 6px; font-family: var(--font-serif); font-size: 17px; font-weight: 600; color: var(--text); }
 .account-who small { display: block; font-family: var(--font-sans); font-size: 12px; font-weight: 300; color: var(--text-muted); }
 .account-dropdown button {
@@ -575,7 +573,6 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
   animation: ggPop 0.5s cubic-bezier(.34,1.56,.64,1);
 }
 .od-success-icon { font-size: 56px; margin-bottom: 10px; animation: ggBounce 1.2s ease 0.2s both; }
-@keyframes ggBounce { 0% { transform: scale(0.3); opacity: 0; } 55% { transform: scale(1.15); opacity: 1; } 75% { transform: scale(0.95); } 100% { transform: scale(1); } }
 .od-success h1, .od-success h2 { font-family: var(--font-serif); font-size: 2rem; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 8px; }
 .od-success > p { color: var(--text-muted); }
 .od-order-id {
@@ -601,7 +598,6 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 .t-item.done .t-dot { background: linear-gradient(135deg, var(--teal-dark), var(--teal)); border-color: transparent; color: #fff; font-weight: 700; }
 .t-item.active .t-dot { background: var(--gold-pale); border-color: var(--gold-light); animation: ggPulse 1.8s ease-in-out infinite; }
 .t-item.cancelled .t-dot { background: rgba(184,50,50,0.1); border-color: var(--danger); color: var(--danger); }
-@keyframes ggPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.45); } 50% { box-shadow: 0 0 0 10px rgba(212,175,55,0); } }
 .t-title { font-weight: 600; font-size: 15px; color: var(--text); padding-top: 4px; }
 .t-item:not(.done):not(.active):not(.cancelled) .t-title { color: var(--text-muted); }
 .t-item.active .t-title { color: var(--gold); }
@@ -639,7 +635,6 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
   background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius);
   padding: 40px 44px; box-shadow: var(--shadow-sm); animation: qFadeIn 0.32s ease;
 }
-@keyframes qFadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .q-number { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); margin-bottom: 10px; }
 .q-text { font-family: var(--font-serif); font-size: 1.55rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text); margin-bottom: 28px; line-height: 1.3; outline: none; }
 .q-hint { margin: -18px 0 18px; font-size: 13px; color: var(--text-muted); }
@@ -694,7 +689,6 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 .thinking-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--teal); animation: qdot 0.8s infinite; }
 .thinking-dots span:nth-child(2) { animation-delay: 0.15s; background: var(--gold-light); }
 .thinking-dots span:nth-child(3) { animation-delay: 0.3s; }
-@keyframes qdot { 0%, 80%, 100% { transform: scale(0.75); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
 .thinking-box p { color: var(--text-muted); font-size: 14px; font-family: var(--font-mono); letter-spacing: 0.06em; }
 .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 20px; }
 @media (max-width: 540px) { .results-grid { grid-template-columns: 1fr; } }
@@ -1253,7 +1247,6 @@ a.sel-list-title:hover { color: var(--gold-text); }
 .sel-skel { display: grid; gap: 16px; }
 .sel-skel-kpi { height: 96px; border-radius: var(--radius); background: var(--cream-dark); animation: selPulse 1.4s ease-in-out infinite; }
 .sel-skel-line { height: 14px; border-radius: 6px; background: var(--cream-dark); margin: 10px 0; animation: selPulse 1.4s ease-in-out infinite; }
-@keyframes selPulse { 50% { opacity: 0.55; } }
 @media (prefers-reduced-motion: reduce) { .sel-skel-kpi, .sel-skel-line { animation: none; } }
 
 /* Public storefront */

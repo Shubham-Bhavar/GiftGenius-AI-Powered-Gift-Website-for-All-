@@ -5,9 +5,9 @@ import { ProductGrid, ProductGridSkeleton } from '../../components/product/Produ
 import { EmptyState, ErrorNote, PageHero, Pagination } from '../../components/common/ui.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { useReveal } from '../../hooks/useReveal.js';
 import { catalogQueries } from '../../services/catalog.js';
 import { titleCase } from '../../lib/format.js';
+import { Reveal } from '../../animations/Reveal.jsx';
 
 const OCCASIONS = [
   ['', 'All occasions'], ['birthday', 'Birthday'], ['anniversary', 'Anniversary'], ['festival', 'Festival'],
@@ -63,7 +63,6 @@ export default function Shop() {
     placeholderData: keepPreviousData,
   });
   const categories = useQuery(catalogQueries.categories());
-  useReveal([products.data]);
 
   const update = (changes) => {
     const next = new URLSearchParams(live.current);
@@ -89,77 +88,79 @@ export default function Shop() {
         Thoughtfully curated gifts for every person and every occasion — hand-wrapped and delivered across India.
       </PageHero>
 
-      <section className="products-section shop-section" aria-labelledby="shop-heading">
-        <div className="shop-toolbar">
-          <div className="search-wrap shop-search">
-            <svg aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="14" height="14">
-              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-            </svg>
-            <label htmlFor="shopSearch" className="sr-only">Search gifts</label>
-            <input id="shopSearch" type="search" placeholder="Search chocolates, perfume, hampers…" value={search}
-              onChange={(e) => setSearch(e.target.value)} />
+      <Reveal>
+        <section className="products-section shop-section" aria-labelledby="shop-heading">
+          <div className="shop-toolbar">
+            <div className="search-wrap shop-search">
+              <svg aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" width="14" height="14">
+                <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+              </svg>
+              <label htmlFor="shopSearch" className="sr-only">Search gifts</label>
+              <input id="shopSearch" type="search" placeholder="Search chocolates, perfume, hampers…" value={search}
+                onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <label htmlFor="shopCategory" className="sr-only">Category</label>
+            <select id="shopCategory" className="sort-select" value={category} onChange={(e) => update({ category: e.target.value })}>
+              <option value="">All categories</option>
+              {categories.data?.map((c) => <option key={c.category} value={c.category}>{titleCase(c.category)} ({c.count})</option>)}
+            </select>
+            <label htmlFor="shopPrice" className="sr-only">Price</label>
+            <select id="shopPrice" className="sort-select" value={band < 0 ? 0 : band} onChange={(e) => {
+              const [min, max] = PRICE_BANDS[Number(e.target.value)];
+              update({ minPrice: min, maxPrice: max });
+            }}>
+              {PRICE_BANDS.map(([, , label], i) => <option key={label} value={i}>{label}</option>)}
+            </select>
+            <label htmlFor="shopSort" className="sr-only">Sort products</label>
+            <select id="shopSort" className="sort-select" value={sort} onChange={(e) => update({ sort: e.target.value === 'featured' ? '' : e.target.value })}>
+              <option value="featured">Sort: Featured</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="rating">Top Rated</option>
+              <option value="newest">Newest</option>
+            </select>
           </div>
-          <label htmlFor="shopCategory" className="sr-only">Category</label>
-          <select id="shopCategory" className="sort-select" value={category} onChange={(e) => update({ category: e.target.value })}>
-            <option value="">All categories</option>
-            {categories.data?.map((c) => <option key={c.category} value={c.category}>{titleCase(c.category)} ({c.count})</option>)}
-          </select>
-          <label htmlFor="shopPrice" className="sr-only">Price</label>
-          <select id="shopPrice" className="sort-select" value={band < 0 ? 0 : band} onChange={(e) => {
-            const [min, max] = PRICE_BANDS[Number(e.target.value)];
-            update({ minPrice: min, maxPrice: max });
-          }}>
-            {PRICE_BANDS.map(([, , label], i) => <option key={label} value={i}>{label}</option>)}
-          </select>
-          <label htmlFor="shopSort" className="sr-only">Sort products</label>
-          <select id="shopSort" className="sort-select" value={sort} onChange={(e) => update({ sort: e.target.value === 'featured' ? '' : e.target.value })}>
-            <option value="featured">Sort: Featured</option>
-            <option value="price_asc">Price: Low to High</option>
-            <option value="price_desc">Price: High to Low</option>
-            <option value="rating">Top Rated</option>
-            <option value="newest">Newest</option>
-          </select>
-        </div>
 
-        <div className="pills" role="group" aria-label="Filter by occasion">
-          {OCCASIONS.map(([key, label]) => (
-            <button key={key || 'all'} type="button" className={`pill ${occasion === key ? 'active' : ''}`} aria-pressed={occasion === key}
-              onClick={() => update({ occasion: key })}>
-              {label}
-            </button>
-          ))}
-        </div>
-
-        <div className="sec-topbar">
-          <h2 id="shop-heading">{data ? `${data.totalElements} ${data.totalElements === 1 ? 'gift' : 'gifts'}` : 'Gifts'}</h2>
-          <div className="shop-topbar-actions">
-            {hasFilters && (
-              <button type="button" className="link-arrow link-button" onClick={() => { setSearch(''); replaceParams(sort !== 'featured' ? { sort } : {}); }}>
-                Clear filters ✕
+          <div className="pills" role="group" aria-label="Filter by occasion">
+            {OCCASIONS.map(([key, label]) => (
+              <button key={key || 'all'} type="button" className={`pill ${occasion === key ? 'active' : ''}`} aria-pressed={occasion === key}
+                onClick={() => update({ occasion: key })}>
+                {label}
               </button>
-            )}
-            <button type="button" className="btn-outline btn-sm" onClick={openGiftFinder}>✨ Not sure? Ask GiftGenius AI</button>
+            ))}
           </div>
-        </div>
 
-        <ErrorNote error={products.error} onRetry={() => products.refetch()} />
-        {products.isPending && <ProductGridSkeleton count={8} />}
-        {data && data.content.length === 0 && (
-          <EmptyState icon="🔍" title="No gifts match those filters"
-            action={<>
-              <button type="button" className="btn-primary" onClick={() => { setSearch(''); replaceParams({}); }}>Show all gifts →</button>
-              <button type="button" className="btn-outline" onClick={openGiftFinder}>✨ Ask GiftGenius AI</button>
-            </>}>
-            Try a different search, widen the price range, or let our AI gift finder suggest something.
-          </EmptyState>
-        )}
-        {data && data.content.length > 0 && (
-          <div className={products.isPlaceholderData ? 'is-stale' : ''}>
-            <ProductGrid products={data.content} />
-            <Pagination page={data.page} totalPages={data.totalPages} onChange={(p) => { update({ page: String(p) }); window.scrollTo({ top: 0 }); }} />
+          <div className="sec-topbar">
+            <h2 id="shop-heading">{data ? `${data.totalElements} ${data.totalElements === 1 ? 'gift' : 'gifts'}` : 'Gifts'}</h2>
+            <div className="shop-topbar-actions">
+              {hasFilters && (
+                <button type="button" className="link-arrow link-button" onClick={() => { setSearch(''); replaceParams(sort !== 'featured' ? { sort } : {}); }}>
+                  Clear filters ✕
+                </button>
+              )}
+              <button type="button" className="btn-outline btn-sm" onClick={openGiftFinder}>✨ Not sure? Ask GiftGenius AI</button>
+            </div>
           </div>
-        )}
-      </section>
+
+          <ErrorNote error={products.error} onRetry={() => products.refetch()} />
+          {products.isPending && <ProductGridSkeleton count={8} />}
+          {data && data.content.length === 0 && (
+            <EmptyState icon="🔍" title="No gifts match those filters"
+              action={<>
+                <button type="button" className="btn-primary" onClick={() => { setSearch(''); replaceParams({}); }}>Show all gifts →</button>
+                <button type="button" className="btn-outline" onClick={openGiftFinder}>✨ Ask GiftGenius AI</button>
+              </>}>
+              Try a different search, widen the price range, or let our AI gift finder suggest something.
+            </EmptyState>
+          )}
+          {data && data.content.length > 0 && (
+            <div className={products.isPlaceholderData ? 'is-stale' : ''}>
+              <ProductGrid products={data.content} />
+              <Pagination page={data.page} totalPages={data.totalPages} onChange={(p) => { update({ page: String(p) }); window.scrollTo({ top: 0 }); }} />
+            </div>
+          )}
+        </section>
+      </Reveal>
     </>
   );
 }

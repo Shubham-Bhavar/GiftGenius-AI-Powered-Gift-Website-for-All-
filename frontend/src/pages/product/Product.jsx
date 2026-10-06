@@ -9,10 +9,10 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useWishlist } from '../../context/WishlistContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { useReveal } from '../../hooks/useReveal.js';
 import { catalogQueries } from '../../services/catalog.js';
 import { percentOff, rupees, titleCase } from '../../lib/format.js';
 import { GiftMessageHelper } from '../../components/ai/GiftMessageHelper.jsx';
+import { Reveal } from '../../animations/Reveal.jsx';
 
 const TABS = [['description', 'Description'], ['details', 'Gift Details'], ['delivery', 'Delivery & Returns']];
 
@@ -31,7 +31,6 @@ export default function Product() {
   const product = useQuery(catalogQueries.product(id));
   const related = useQuery({ ...catalogQueries.related(id), enabled: product.isSuccess });
   useDocumentTitle(product.data?.name);
-  useReveal([related.data]);
 
   if (product.isPending) return <Spinner label="Loading gift…" />;
   if (product.error) {
@@ -199,13 +198,15 @@ export default function Product() {
       </div>
 
       {related.data?.length > 0 && (
-        <section className="products-section pd-related" aria-labelledby="related-heading">
-          <div className="sec-topbar">
-            <h2 id="related-heading">You Might Also Love 💫</h2>
-            <Link to={`/shop?category=${encodeURIComponent(p.category)}`} className="link-arrow">View all →</Link>
-          </div>
-          <ProductGrid products={related.data} label="Related gifts" />
-        </section>
+        <Reveal>
+          <section className="products-section pd-related" aria-labelledby="related-heading">
+            <div className="sec-topbar">
+              <h2 id="related-heading">You Might Also Love 💫</h2>
+              <Link to={`/shop?category=${encodeURIComponent(p.category)}`} className="link-arrow">View all →</Link>
+            </div>
+            <ProductGrid products={related.data} label="Related gifts" />
+          </section>
+        </Reveal>
       )}
     </>
   );

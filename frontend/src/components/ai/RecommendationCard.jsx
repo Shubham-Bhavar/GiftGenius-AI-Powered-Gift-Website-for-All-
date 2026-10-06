@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import SafeImg from '../common/SafeImg.jsx';
+import { staggerDelay } from '../../animations/motion.js';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { percentOff, rupees } from '../../lib/format.js';
@@ -27,7 +28,7 @@ function usePick(pick, addedMessage) {
 function PageCard({ pick, index }) {
   const { p, discount, added, add } = usePick(pick, (x) => `${x.name} added to cart 🛒`);
   return (
-    <div className="result-pcard" style={{ animationDelay: `${0.05 + index * 0.08}s` }}>
+    <div className="result-pcard" style={{ animationDelay: staggerDelay(index) }}>
       <Link to={`/product/${p.id}`} className="rpc-img-wrap">
         <SafeImg src={p.image} alt={p.alt || p.name} className="rpc-img" loading="lazy" />
         {discount > 0 && <span className="rpc-discount">{discount}% OFF</span>}

@@ -4,6 +4,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { RecommendationCard } from '../../components/ai/RecommendationCard.jsx';
 import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
+import { THINKING_MS } from '../../animations/motion.js';
 
 /*
  * The AI Gift Quiz: the original 6-question quiz page, answered by the backend gift advisor
@@ -76,7 +77,7 @@ export default function GiftFinder() {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState({}); // field -> selected option(s)
   const [extra, setExtra] = useState('');
-  const { phase, result, error, submit: recommend, reset } = useGiftRecommendations({ minThinkingMs: 900 });
+  const { phase, result, error, submit: recommend, reset } = useGiftRecommendations({ minThinkingMs: THINKING_MS.quizPage });
   const card = useRef(null);
 
   useEffect(() => {

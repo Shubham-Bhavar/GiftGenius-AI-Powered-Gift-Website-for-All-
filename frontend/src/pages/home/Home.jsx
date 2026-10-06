@@ -11,9 +11,9 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useSearch } from '../../context/SearchContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { useReveal } from '../../hooks/useReveal.js';
 import { catalogQueries } from '../../services/catalog.js';
 import { shouldShowWelcome } from '../../lib/welcome.js';
+import { Reveal } from '../../animations/Reveal.jsx';
 
 /* Fuzzy search from the original homepage: all query characters appear in order. */
 function fuzzyMatch(str, query) {
@@ -66,8 +66,6 @@ export default function Home() {
     }[sort];
     return by ? [...list].sort(by) : list;
   }, [catalog.data, debounced, filter, sort]);
-
-  useReveal([catalog.data, products.length]);
 
   return (
     <>
@@ -123,21 +121,23 @@ export default function Home() {
         </div>
       </div>
 
-      <section className="section cats-bg" aria-labelledby="cats-heading">
-        <header className="sec-header sec-header--center">
-          <p className="sec-eyebrow sec-eyebrow--center"><span className="sec-line" aria-hidden="true" /> Occasions <span className="sec-line" aria-hidden="true" /></p>
-          <h2 id="cats-heading">Shop by Occasion</h2>
-          <p>Find the right gift for every meaningful moment in life</p>
-        </header>
-        <div className="category-grid">
-          {OCCASION_CARDS.map((c) => (
-            <Link key={c.key} to={c.to} className="cat-card" aria-label={`${c.label} gifts`}>
-              <CategoryIcon name={c.key} />
-              <span>{c.label}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <Reveal>
+        <section className="section cats-bg" aria-labelledby="cats-heading">
+          <header className="sec-header sec-header--center">
+            <p className="sec-eyebrow sec-eyebrow--center"><span className="sec-line" aria-hidden="true" /> Occasions <span className="sec-line" aria-hidden="true" /></p>
+            <h2 id="cats-heading">Shop by Occasion</h2>
+            <p>Find the right gift for every meaningful moment in life</p>
+          </header>
+          <div className="category-grid">
+            {OCCASION_CARDS.map((c) => (
+              <Link key={c.key} to={c.to} className="cat-card" aria-label={`${c.label} gifts`}>
+                <CategoryIcon name={c.key} />
+                <span>{c.label}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      </Reveal>
 
       <section className="promo-wrap" aria-label="Promotional offer">
         <div className="promo-banner">
@@ -158,72 +158,78 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="products-section" id="products" aria-labelledby="products-heading">
-        <div className="sec-topbar">
-          <h2 id="products-heading">Trending Gifts</h2>
-          <Link to="/shop" className="link-arrow">View all →</Link>
-        </div>
-        <div className="sort-row">
-          <label htmlFor="sortSelect" className="sr-only">Sort products</label>
-          <select id="sortSelect" className="sort-select" aria-label="Sort products" value={sort} onChange={(e) => setSort(e.target.value)}>
-            <option value="default">Sort: Featured</option>
-            <option value="price-asc">Price: Low to High</option>
-            <option value="price-desc">Price: High to Low</option>
-            <option value="rating">Top Rated</option>
-          </select>
-        </div>
-        <div className="pills" role="group" aria-label="Filter products">
-          {FILTERS.map(([key, label]) => (
-            <button key={key} type="button" className={`pill ${filter === key ? 'active' : ''}`} aria-pressed={filter === key} onClick={() => setFilter(key)}>
-              {label}
-            </button>
-          ))}
-        </div>
-        <p className="search-status sr-only" aria-live="polite" aria-atomic="true">
-          {debounced ? `${products.length} product${products.length !== 1 ? 's' : ''} found` : ''}
-        </p>
-        {catalog.isPending && <ProductGridSkeleton count={8} />}
-        <ErrorNote error={catalog.error} onRetry={() => catalog.refetch()} />
-        {catalog.data && (products.length > 0 ? (
-          <ProductGrid products={products} id="productGrid" />
-        ) : (
-          <p className="home-no-match">No gifts match that search. <Link to="/gift-finder">Let GiftGenius AI suggest something →</Link></p>
-        ))}
-      </section>
-
-      <section className="features" aria-label="Why shop with us">
-        <div className="feat-item"><div className="feat-ico" aria-hidden="true">🚀</div><div className="feat-text"><strong>Same-Day Delivery</strong><span>Order before 2 PM in Mumbai</span></div></div>
-        <div className="feat-item"><div className="feat-ico" aria-hidden="true">🎀</div><div className="feat-text"><strong>Free Gift Wrapping</strong><span>On all orders above ₹499</span></div></div>
-        <div className="feat-item"><div className="feat-ico" aria-hidden="true">💬</div><div className="feat-text"><strong>Personalized Messages</strong><span>Add a heartfelt note, free</span></div></div>
-        <div className="feat-item"><div className="feat-ico" aria-hidden="true">🔄</div><div className="feat-text"><strong>Easy Returns</strong><span>7-day hassle-free returns</span></div></div>
-      </section>
-
-      <section className="testimonials" aria-labelledby="testimonials-heading">
-        <header className="sec-header sec-header--center">
-          <p className="sec-eyebrow sec-eyebrow--center sec-eyebrow--dim">
-            <span className="sec-line sec-line--faded" aria-hidden="true" /> Customer Stories <span className="sec-line sec-line--faded" aria-hidden="true" />
+      <Reveal>
+        <section className="products-section" id="products" aria-labelledby="products-heading">
+          <div className="sec-topbar">
+            <h2 id="products-heading">Trending Gifts</h2>
+            <Link to="/shop" className="link-arrow">View all →</Link>
+          </div>
+          <div className="sort-row">
+            <label htmlFor="sortSelect" className="sr-only">Sort products</label>
+            <select id="sortSelect" className="sort-select" aria-label="Sort products" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="default">Sort: Featured</option>
+              <option value="price-asc">Price: Low to High</option>
+              <option value="price-desc">Price: High to Low</option>
+              <option value="rating">Top Rated</option>
+            </select>
+          </div>
+          <div className="pills" role="group" aria-label="Filter products">
+            {FILTERS.map(([key, label]) => (
+              <button key={key} type="button" className={`pill ${filter === key ? 'active' : ''}`} aria-pressed={filter === key} onClick={() => setFilter(key)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="search-status sr-only" aria-live="polite" aria-atomic="true">
+            {debounced ? `${products.length} product${products.length !== 1 ? 's' : ''} found` : ''}
           </p>
-          <h2 id="testimonials-heading" className="heading--light">Loved by Gift-Givers</h2>
-          <p className="subheading--dim">Real reviews from real customers across India</p>
-        </header>
-        <div className="tgrid">
-          <article className="tcard">
-            <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
-            <blockquote className="t-quote">&quot;Ordered a hamper box for my mom&apos;s birthday and it arrived beautifully wrapped. She absolutely loved it. Will definitely order again!&quot;</blockquote>
-            <footer className="t-author"><div className="t-av" aria-hidden="true">PR</div><div><cite className="t-name">Priya Rajan</cite><p className="t-loc">Mumbai, Maharashtra</p></div></footer>
-          </article>
-          <article className="tcard">
-            <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
-            <blockquote className="t-quote">&quot;The engraved watch was exactly what I was looking for. Fast delivery, premium packaging, and the engraving quality was top-notch.&quot;</blockquote>
-            <footer className="t-author"><div className="t-av t-av--teal" aria-hidden="true">AK</div><div><cite className="t-name">Arjun Kapoor</cite><p className="t-loc">Pune, Maharashtra</p></div></footer>
-          </article>
-          <article className="tcard">
-            <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
-            <blockquote className="t-quote">&quot;GiftGenius made my anniversary so special. The surprise gift was perfectly curated and my wife couldn&apos;t stop smiling. Highly recommend!&quot;</blockquote>
-            <footer className="t-author"><div className="t-av t-av--rose" aria-hidden="true">RS</div><div><cite className="t-name">Rohit Sharma</cite><p className="t-loc">Delhi, India</p></div></footer>
-          </article>
-        </div>
-      </section>
+          {catalog.isPending && <ProductGridSkeleton count={8} />}
+          <ErrorNote error={catalog.error} onRetry={() => catalog.refetch()} />
+          {catalog.data && (products.length > 0 ? (
+            <ProductGrid products={products} id="productGrid" />
+          ) : (
+            <p className="home-no-match">No gifts match that search. <Link to="/gift-finder">Let GiftGenius AI suggest something →</Link></p>
+          ))}
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="features" aria-label="Why shop with us">
+          <div className="feat-item"><div className="feat-ico" aria-hidden="true">🚀</div><div className="feat-text"><strong>Same-Day Delivery</strong><span>Order before 2 PM in Mumbai</span></div></div>
+          <div className="feat-item"><div className="feat-ico" aria-hidden="true">🎀</div><div className="feat-text"><strong>Free Gift Wrapping</strong><span>On all orders above ₹499</span></div></div>
+          <div className="feat-item"><div className="feat-ico" aria-hidden="true">💬</div><div className="feat-text"><strong>Personalized Messages</strong><span>Add a heartfelt note, free</span></div></div>
+          <div className="feat-item"><div className="feat-ico" aria-hidden="true">🔄</div><div className="feat-text"><strong>Easy Returns</strong><span>7-day hassle-free returns</span></div></div>
+        </section>
+      </Reveal>
+
+      <Reveal>
+        <section className="testimonials" aria-labelledby="testimonials-heading">
+          <header className="sec-header sec-header--center">
+            <p className="sec-eyebrow sec-eyebrow--center sec-eyebrow--dim">
+              <span className="sec-line sec-line--faded" aria-hidden="true" /> Customer Stories <span className="sec-line sec-line--faded" aria-hidden="true" />
+            </p>
+            <h2 id="testimonials-heading" className="heading--light">Loved by Gift-Givers</h2>
+            <p className="subheading--dim">Real reviews from real customers across India</p>
+          </header>
+          <div className="tgrid">
+            <article className="tcard">
+              <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
+              <blockquote className="t-quote">&quot;Ordered a hamper box for my mom&apos;s birthday and it arrived beautifully wrapped. She absolutely loved it. Will definitely order again!&quot;</blockquote>
+              <footer className="t-author"><div className="t-av" aria-hidden="true">PR</div><div><cite className="t-name">Priya Rajan</cite><p className="t-loc">Mumbai, Maharashtra</p></div></footer>
+            </article>
+            <article className="tcard">
+              <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
+              <blockquote className="t-quote">&quot;The engraved watch was exactly what I was looking for. Fast delivery, premium packaging, and the engraving quality was top-notch.&quot;</blockquote>
+              <footer className="t-author"><div className="t-av t-av--teal" aria-hidden="true">AK</div><div><cite className="t-name">Arjun Kapoor</cite><p className="t-loc">Pune, Maharashtra</p></div></footer>
+            </article>
+            <article className="tcard">
+              <div className="t-stars" role="img" aria-label="5 out of 5 stars">★★★★★</div>
+              <blockquote className="t-quote">&quot;GiftGenius made my anniversary so special. The surprise gift was perfectly curated and my wife couldn&apos;t stop smiling. Highly recommend!&quot;</blockquote>
+              <footer className="t-author"><div className="t-av t-av--rose" aria-hidden="true">RS</div><div><cite className="t-name">Rohit Sharma</cite><p className="t-loc">Delhi, India</p></div></footer>
+            </article>
+          </div>
+        </section>
+      </Reveal>
 
       <Newsletter />
     </>

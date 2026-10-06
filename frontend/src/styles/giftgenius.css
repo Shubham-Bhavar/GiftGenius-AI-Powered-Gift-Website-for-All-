@@ -616,10 +616,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   width: 0;
 }
 
-@keyframes progressGrow {
-  to { width: var(--fill, 82%); }
-}
-
 /* Stats */
 .hero-stats {
   display: flex;
@@ -701,11 +697,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 
 .img-main img { width: 100%; height: 100%; object-fit: cover; }
 
-@keyframes floatMain {
-  0%, 100% { transform: translate(-50%, -52%); }
-  50%       { transform: translate(-50%, -59%); }
-}
-
 .img-tl {
   position: absolute; left: 3%; top: 5%;
   width: 138px; height: 150px;
@@ -717,11 +708,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 }
 
 .img-tl img { width: 100%; height: 100%; object-fit: cover; }
-
-@keyframes floatTL {
-  0%, 100% { transform: rotate(-5deg) translateY(0); }
-  50%       { transform: rotate(-5deg) translateY(-10px); }
-}
 
 .img-tr {
   position: absolute; right: 2%; top: 3%;
@@ -735,11 +721,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 
 .img-tr img { width: 100%; height: 100%; object-fit: cover; }
 
-@keyframes floatTR {
-  0%, 100% { transform: rotate(5deg) translateY(0); }
-  50%       { transform: rotate(5deg) translateY(-10px); }
-}
-
 .img-bl {
   position: absolute; left: 7%; bottom: 8%;
   width: 112px; height: 112px;
@@ -752,11 +733,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 
 .img-bl img { width: 100%; height: 100%; object-fit: cover; }
 
-@keyframes floatBL {
-  0%, 100% { transform: rotate(3deg) translateY(0); }
-  50%       { transform: rotate(3deg) translateY(-8px); }
-}
-
 .img-br {
   position: absolute; right: 4%; bottom: 10%;
   width: 118px; height: 118px;
@@ -768,11 +744,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 }
 
 .img-br img { width: 100%; height: 100%; object-fit: cover; }
-
-@keyframes floatBR {
-  0%, 100% { transform: rotate(-3deg) translateY(0); }
-  50%       { transform: rotate(-3deg) translateY(-10px); }
-}
 
 /* Sparkles */
 .sp {
@@ -798,11 +769,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 .sp:nth-child(3) { bottom: 30%; left: 26%; animation-delay: 1.6s; }
 .sp:nth-child(4) { bottom: 22%; right: 30%; animation-delay: 2.3s; }
 .sp:nth-child(5) { top: 18%; left: 58%; animation-delay: 0.5s; }
-
-@keyframes spFade {
-  0%, 100% { opacity: 0; transform: scale(0.5) rotate(0deg); }
-  50%       { opacity: 0.75; transform: scale(1) rotate(45deg); }
-}
 
 /* Info cards */
 .hcard {
@@ -830,11 +796,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   bottom: 6%; left: 50%;
   transform: translateX(-50%);
   animation: hcFloat 4.5s ease-in-out infinite 1s;
-}
-
-@keyframes hcFloat {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50%       { transform: translateX(-50%) translateY(-7px); }
 }
 
 .hcard-ico {
@@ -952,11 +913,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 }
 
 .marquee-track:hover { animation-play-state: paused; }
-
-@keyframes marqueeScroll {
-  from { transform: translateX(0); }
-  to   { transform: translateX(-50%); }
-}
 
 .marquee-item {
   display: flex;
@@ -1446,11 +1402,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 .pcard--skeleton .pcard-img { background: linear-gradient(90deg, var(--cream-dark) 25%, var(--parchment) 50%, var(--cream-dark) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 .pcard--skeleton .pcard-name, .pcard--skeleton .pcard-cat { height: 12px; border-radius: 4px; background: var(--cream-dark); animation: shimmer 1.5s infinite; }
 
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
 /* ─── 12. FEATURES STRIP ─── */
 .features {
   background: var(--gold-pale);
@@ -1788,11 +1739,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   animation: slideInR 0.25s ease;
 }
 
-@keyframes slideInR {
-  from { opacity: 0; transform: translateX(16px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
 .ci-img {
   width: 58px; height: 58px;
   border-radius: 10px;
@@ -2061,11 +2007,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   animation: hintPulse 2.2s ease-in-out infinite;
 }
 
-@keyframes hintPulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
 /* Gift box — large, premium */
 .gift-box-scene {
   position: relative;
@@ -2155,11 +2096,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   filter: drop-shadow(0 6px 16px rgba(0,0,0,0.5));
 }
 
-@keyframes bowBounce {
-  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
-  50% { transform: translateX(-50%) translateY(-10px) scale(1.06); }
-}
-
 /* Opened state */
 .gift-box-scene.opening .gift-box-lid {
   transform: translateX(-50%) rotate(-55deg) translateY(-30px);
@@ -2176,13 +2112,7 @@ button { font-family: var(--font-sans); cursor: pointer; }
     rgba(255,255,200,0.8) 50%,
     rgba(255,220,80,0.5) 55%,
     transparent 100%);
-  animation: shimmer 0.6s ease forwards;
-}
-
-@keyframes shimmer {
-  from { opacity: 0; }
-  50%  { opacity: 1; }
-  to   { opacity: 0; }
+  animation: goldShimmer 0.6s ease forwards;
 }
 
 /* Entry brand text */
@@ -2245,12 +2175,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   animation: confettiFall linear forwards;
 }
 
-@keyframes confettiFall {
-  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-  90%  { opacity: 1; }
-  100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-}
-
 /* ─── FIREWORK ─── */
 .firework-container {
   position: fixed;
@@ -2264,11 +2188,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   position: absolute;
   border-radius: 50%;
   animation: fireworkPop 0.8s ease-out forwards;
-}
-
-@keyframes fireworkPop {
-  0%   { transform: scale(0); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -2540,11 +2459,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   background: radial-gradient(circle, rgba(212,175,55,0.35) 0%, transparent 70%);
   pointer-events: none;
   animation: cartoonGlowPulse 1.8s ease-in-out infinite;
-}
-
-@keyframes cartoonGlowPulse {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.08); }
 }
 
 /* "Hi!" speech bubble */
@@ -2880,19 +2794,8 @@ button { font-family: var(--font-sans); cursor: pointer; }
 ═══════════════════════════════════════════════════════ */
 
 /* Penguin bounces gently after popping from box */
-@keyframes penguinBounce {
-  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
-  30%       { transform: translateX(-50%) translateY(-14px) scale(1.04); }
-  60%       { transform: translateX(-50%) translateY(-6px) scale(1.02); }
-}
 
 /* Subtle wave — arm/fin-like side sway */
-@keyframes penguinWave {
-  0%, 100% { transform: translateX(-50%) rotate(0deg); }
-  20%       { transform: translateX(-50%) rotate(-3deg); }
-  50%       { transform: translateX(-50%) rotate(2.5deg); }
-  80%       { transform: translateX(-50%) rotate(-2deg); }
-}
 
 .cartoon-popup.popped {
   animation: penguinBounce 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) forwards,
@@ -2947,11 +2850,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   animation: cartoonGlowPulse 1.8s ease-in-out infinite;
 }
 
-@keyframes cartoonGlowPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%       { opacity: 1; transform: scale(1.1); }
-}
-
 /* Entry overlay — teal dark */
 #entryOverlay {
   background: radial-gradient(ellipse at 50% 40%, #0A1E22 0%, #060D10 55%, #020608 100%);
@@ -2974,11 +2872,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   line-height: 1.1;
   background-size: 200% 200%;
   animation: brandGradientShift 3s ease infinite;
-}
-
-@keyframes brandGradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
 }
 
 .entry-brand h2 em {
@@ -3316,11 +3209,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
   animation: gf-sparkle 2.2s ease-in-out infinite;
 }
 
-@keyframes gf-sparkle {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%      { opacity: 1;   transform: scale(1.2); }
-}
-
 .gf-identity-role {
   font-family: var(--font-serif);
   font-size: 15px;
@@ -3386,11 +3274,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 /* Step transition */
 .gf-step {
   animation: gf-fade-in 0.3s ease;
-}
-
-@keyframes gf-fade-in {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* Option cards (recipient / occasion / interests) */
@@ -3607,10 +3490,6 @@ button { font-family: var(--font-sans); cursor: pointer; }
 .gf-checklist-item:nth-child(2) { animation-delay: 0.28s; }
 .gf-checklist-item:nth-child(3) { animation-delay: 0.51s; }
 .gf-checklist-item:nth-child(4) { animation-delay: 0.74s; }
-
-@keyframes gf-check-in {
-  to { opacity: 1; transform: translateY(0); }
-}
 
 .gf-checklist-check {
   color: var(--teal);

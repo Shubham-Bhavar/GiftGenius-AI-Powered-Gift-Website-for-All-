@@ -1,16 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { prefersReducedMotion } from '../../animations/motion.js';
 
 const STORAGE_KEY = 'gg-entry-shown';
 const CONFETTI_COLORS = ['#D4AF37', '#6EC6CF', '#FFA726', '#fff', '#4FB3BF', '#FFD700', '#a8f0f5', '#ffd93d', '#B8791A'];
 const FIREWORK_POSITIONS = [{ x: 20, y: 25 }, { x: 80, y: 20 }, { x: 15, y: 70 }, { x: 85, y: 65 }, { x: 50, y: 15 }, { x: 50, y: 80 }];
-
-const prefersReducedMotion = () => {
-  try {
-    return window.matchMedia?.('(prefers-reduced-motion: reduce)').matches === true;
-  } catch {
-    return false;
-  }
-};
 
 function alreadyShown() {
   try {
