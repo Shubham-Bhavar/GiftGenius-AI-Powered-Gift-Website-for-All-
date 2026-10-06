@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import SafeImg from '../common/SafeImg.jsx';
-import { inr } from '../../lib/format.js';
+import { inr } from '../../utils/format.js';
 
 const STEPS = ['Cart', 'Delivery', 'Payment', 'Confirmed'];
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { SITE } from '../../config/site.js';
+import { SITE } from '../../constants/site.js';
 import { supportApi } from '../../services/support.js';
 import { useToast } from '../../context/ToastContext.jsx';
 

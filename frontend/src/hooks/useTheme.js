@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { storage } from '../lib/storage.js';
+import { storage } from '../utils/storage.js';
 
 const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
 

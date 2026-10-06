@@ -4,8 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { EmptyState, ErrorNote, Field, Notice, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
-import { date, inr, orderItemsLabel, titleCase } from '../../lib/format.js';
-import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../lib/marketplace.js';
+import { date, inr, orderItemsLabel, titleCase } from '../../utils/format.js';
+import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../constants/marketplace.js';
 import { catalogKeys } from '../../services/catalog.js';
 
 /** Approve, reject, suspend or reactivate a store. Rejecting and suspending need a reason the seller sees. */

@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ErrorNote, Pagination, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { adminQueries } from '../../services/admin.js';
-import { date, inr } from '../../lib/format.js';
-import { SELLER_STATUS } from '../../lib/marketplace.js';
+import { date, inr } from '../../utils/format.js';
+import { SELLER_STATUS } from '../../constants/marketplace.js';
 
 export function AdminSellers() {
   const [params, setParams] = useSearchParams();

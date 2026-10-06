@@ -8,8 +8,9 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { usePayment } from '../../hooks/usePayment.js';
 import { ordersApi, ordersKeys, ordersQueries } from '../../services/orders.js';
-import { CANCELLABLE, DELIVERY_LABEL, dateTime, inr } from '../../lib/format.js';
+import { dateTime, inr } from '../../utils/format.js';
 import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
+import { CANCELLABLE, DELIVERY_LABEL } from '../../constants/orders.js';
 
 export default function OrderDetail() {
   const { number } = useParams();

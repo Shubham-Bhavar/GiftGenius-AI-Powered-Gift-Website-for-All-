@@ -10,7 +10,7 @@ import { useUi } from '../../context/UiContext.jsx';
 import { useWishlist } from '../../context/WishlistContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { catalogQueries } from '../../services/catalog.js';
-import { percentOff, rupees, titleCase } from '../../lib/format.js';
+import { percentOff, rupees, titleCase } from '../../utils/format.js';
 import { GiftMessageHelper } from '../../components/ai/GiftMessageHelper.jsx';
 import { Reveal } from '../../animations/Reveal.jsx';
 

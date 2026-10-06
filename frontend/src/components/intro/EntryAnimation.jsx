@@ -1,16 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { prefersReducedMotion } from '../../animations/motion.js';
+import { session } from '../../utils/storage.js';
 
 const STORAGE_KEY = 'gg-entry-shown';
 const CONFETTI_COLORS = ['#D4AF37', '#6EC6CF', '#FFA726', '#fff', '#4FB3BF', '#FFD700', '#a8f0f5', '#ffd93d', '#B8791A'];
 const FIREWORK_POSITIONS = [{ x: 20, y: 25 }, { x: 80, y: 20 }, { x: 15, y: 70 }, { x: 85, y: 65 }, { x: 50, y: 15 }, { x: 50, y: 80 }];
 
 function alreadyShown() {
-  try {
-    return !!sessionStorage.getItem(STORAGE_KEY);
-  } catch {
-    return true;
-  }
+  // Blocked storage counts as shown: better to skip the intro than to replay it on every page load.
+  return !!session.get(STORAGE_KEY, 'blocked');
 }
 
 function makeConfetti() {
@@ -65,11 +63,7 @@ export default function EntryAnimation({ onFinish }) {
     started.current = true;
     document.body.style.overflow = '';
     setOpening(true);
-    try {
-      sessionStorage.setItem(STORAGE_KEY, '1');
-    } catch {
-      /* ignore */
-    }
+    session.set(STORAGE_KEY, '1');
     if (prefersReducedMotion()) {
       setPopped(true);
       setBrand(true);

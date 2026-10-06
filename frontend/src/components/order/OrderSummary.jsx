@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
 import SafeImg from '../common/SafeImg.jsx';
 import { StatusPill } from '../common/ui.jsx';
-import { DELIVERY_LABEL, inr } from '../../lib/format.js';
-import { CUSTOMER_FULFILMENT } from '../../lib/marketplace.js';
+import { inr } from '../../utils/format.js';
+import { CUSTOMER_FULFILMENT } from '../../constants/marketplace.js';
+import { DELIVERY_LABEL } from '../../constants/orders.js';
 
 // An order's lines and totals: shown to customers (order page, tracking) and in Store Admin.
 

@@ -6,8 +6,9 @@ import { ErrorNote, Field, Pagination, PaymentPill, Spinner, StatusPill } from '
 import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
-import { trapFocus } from '../../lib/focus.js';
-import { ORDER_STATUS, date, dateTime, inr, orderItemsLabel } from '../../lib/format.js';
+import { trapFocus } from '../../utils/focus.js';
+import { date, dateTime, inr, orderItemsLabel } from '../../utils/format.js';
+import { ORDER_STATUS } from '../../constants/orders.js';
 
 const NEXT_STATUS = {
   PENDING_PAYMENT: ['CANCELLED'],

@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { cartApi, cartKeys, cartQueries } from '../services/cart.js';
-import { storage } from '../lib/storage.js';
+import { storage } from '../utils/storage.js';
 import { useAuth } from './AuthContext.jsx';
 
 export const GUEST_CART_KEY = 'gg-cart';

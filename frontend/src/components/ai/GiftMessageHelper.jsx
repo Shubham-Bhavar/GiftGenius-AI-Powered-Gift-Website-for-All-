@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ErrorNote } from '../common/ui.jsx';
 import { aiApi } from '../../services/ai.js';
-import { titleCase } from '../../lib/format.js';
+import { titleCase } from '../../utils/format.js';
 
 /**
  * "Help me write the message" on the product page: GiftGenius AI suggests gift-card messages for this

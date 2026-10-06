@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { adminApi, adminKeys } from '../../services/admin.js';
-import { PRODUCT_STATUS, productState } from '../../lib/marketplace.js';
+import { PRODUCT_STATUS, productState } from '../../constants/marketplace.js';
 import { catalogKeys } from '../../services/catalog.js';
 
 /** Approve or reject a seller's product, with a reason the seller sees. */

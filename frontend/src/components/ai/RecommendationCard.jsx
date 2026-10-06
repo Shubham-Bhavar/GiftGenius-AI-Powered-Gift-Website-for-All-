@@ -4,7 +4,7 @@ import SafeImg from '../common/SafeImg.jsx';
 import { staggerDelay } from '../../animations/motion.js';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
-import { percentOff, rupees } from '../../lib/format.js';
+import { percentOff, rupees } from '../../utils/format.js';
 
 /** What every AI pick card shares: its discount, and the "Add to cart" button's state and toast. */
 function usePick(pick, addedMessage) {

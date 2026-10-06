@@ -1,15 +1,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ordersQueries } from '../services/orders.js';
+import { session } from '../utils/storage.js';
 
 const KEY = 'gg-checkout';
 
 function read() {
-  try {
-    return JSON.parse(sessionStorage.getItem(KEY)) || {};
-  } catch {
-    return {};
-  }
+  return session.getJson(KEY, {});
 }
 
 /** Coupon and delivery choice, kept for the browser tab so they carry from the cart to checkout. */
@@ -18,11 +15,7 @@ export function useCheckoutPrefs() {
   const update = useCallback((changes) => {
     setPrefs((p) => {
       const next = { ...p, ...changes };
-      try {
-        sessionStorage.setItem(KEY, JSON.stringify(next));
-      } catch {
-        /* ignore */
-      }
+      session.setJson(KEY, next);
       return next;
     });
   }, []);

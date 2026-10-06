@@ -4,8 +4,8 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { StatusPill } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerQueries } from '../../services/seller.js';
-import { date, inr, orderItemsLabel } from '../../lib/format.js';
-import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../lib/marketplace.js';
+import { date, inr, orderItemsLabel } from '../../utils/format.js';
+import { FULFILMENT_STATUS, PRODUCT_STATUS, SELLER_STATUS, productState } from '../../constants/marketplace.js';
 import { canEditProducts, Kpi, LoadError, Skeleton } from './shared.jsx';
 
 function RecentOrders({ orders }) {

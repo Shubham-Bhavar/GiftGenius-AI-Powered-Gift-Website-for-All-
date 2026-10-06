@@ -1,15 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
-import { EMPTY_STORE, storeBody, storeErrors, validateStore } from '../../components/auth/AuthCard.jsx';
-import StoreFormFields from '../../components/seller/StoreForm.jsx';
+import StoreFormFields, { EMPTY_STORE, storeBody, storeErrors, validateStore } from '../../components/seller/StoreForm.jsx';
 import { ErrorNote, Field, Notice, PageHero, PasswordField, StatusPill } from '../../components/common/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { authApi } from '../../services/auth.js';
 import { sellerQueries } from '../../services/seller.js';
-import { SELLER_STATUS } from '../../lib/marketplace.js';
+import { SELLER_STATUS } from '../../constants/marketplace.js';
 
 /** A seller's store status, read fresh (an admin may have reviewed it since sign-in). */
 function YourStore({ fallbackStatus }) {

@@ -5,7 +5,7 @@ import SafeImg from '../../components/common/SafeImg.jsx';
 import { EmptyState, ErrorNote, PageHero, Pagination, PaymentPill, Spinner, StatusPill } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { ordersQueries } from '../../services/orders.js';
-import { date, inr, orderItemsLabel } from '../../lib/format.js';
+import { date, inr, orderItemsLabel } from '../../utils/format.js';
 
 export default function Orders() {
   useDocumentTitle('My Orders');

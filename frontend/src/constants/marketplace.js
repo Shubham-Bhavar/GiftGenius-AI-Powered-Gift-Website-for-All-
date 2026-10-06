@@ -44,10 +44,3 @@ export const CUSTOMER_FULFILMENT = {
 
 /** What a seller's product list shows: an approved product with no stock reads "Out of stock". */
 export const productState = (p) => (p.status === 'APPROVED' && p.stock === 0 ? 'OUT_OF_STOCK' : p.status);
-
-/** Where someone lands after signing in when nothing else was asked for. */
-export function homeFor(user) {
-  if (user?.role === 'ADMIN') return '/admin';
-  if (user?.role === 'SELLER') return '/seller';
-  return null;
-}

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { PageHero } from '../../components/common/ui.jsx';
-import { SITE } from '../../config/site.js';
+import { SITE } from '../../constants/site.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 
 // The legal pages, sharing one layout.

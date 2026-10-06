@@ -6,7 +6,8 @@ import { OrderItems } from '../../components/order/OrderSummary.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { ordersApi } from '../../services/orders.js';
-import { DELIVERY_LABEL, dateTime, inr } from '../../lib/format.js';
+import { dateTime, inr } from '../../utils/format.js';
+import { DELIVERY_LABEL } from '../../constants/orders.js';
 
 /** Public order tracking (structure of the original track page), backed by the real order timeline. */
 export default function Track() {

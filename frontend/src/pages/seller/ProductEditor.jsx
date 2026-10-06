@@ -6,17 +6,16 @@ import { EmptyState, Field, Notice, StatusPill } from '../../components/common/u
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
-import { titleCase } from '../../lib/format.js';
-import { PRODUCT_STATUS, SELLER_CATEGORIES, SELLER_OCCASIONS, productState } from '../../lib/marketplace.js';
+import { titleCase } from '../../utils/format.js';
+import { PRODUCT_STATUS, SELLER_CATEGORIES, SELLER_OCCASIONS, productState } from '../../constants/marketplace.js';
 import { canEditProducts, LoadError, Skeleton, useStore } from './shared.jsx';
 import { catalogKeys } from '../../services/catalog.js';
+import { HTTPS_URL_RE, MARKUP_RE } from '../../utils/validation.js';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', longDescription: '', category: '', occasion: [], tags: '', price: '', compareAtPrice: '',
   stock: '', image: '', alt: '',
 };
-const MARKUP = /[<>]/;
-const HTTPS_URL = /^https:\/\/[^\s<>"'`]{4,990}$/;
 const TAG = /^[A-Za-z0-9 &-]*$/;
 const tagList = (s) => s.split(',').map((t) => t.trim()).filter(Boolean);
 
@@ -51,12 +50,12 @@ export function validateProduct(f) {
   if (f.stock === '' || !Number.isInteger(stock)) e.stock = 'Enter the stock as a whole number.';
   else if (stock < 0 || stock > 100_000) e.stock = 'Use 0 to 100000.';
   if (!f.image.trim()) e.image = 'Add an image link.';
-  else if (!HTTPS_URL.test(f.image.trim())) e.image = 'Use an image link that starts with https://';
+  else if (!HTTPS_URL_RE.test(f.image.trim())) e.image = 'Use an image link that starts with https://';
   const tags = tagList(f.tags);
   if (tags.length > 10) e.tags = 'Use at most 10 tags.';
   else if (tags.some((t) => t.length > 30 || !TAG.test(t))) e.tags = 'Tags can use letters, numbers, spaces, & and - (up to 30 characters each).';
   ['name', 'description', 'longDescription', 'alt'].forEach((k) => {
-    if (!e[k] && MARKUP.test(f[k])) e[k] = 'Remove the < and > characters.';
+    if (!e[k] && MARKUP_RE.test(f[k])) e[k] = 'Remove the < and > characters.';
   });
   return e;
 }
@@ -126,7 +125,7 @@ function ProductEditorForm({ product, store }) {
   };
 
   const er = state.errors;
-  const previewable = HTTPS_URL.test(f.image.trim());
+  const previewable = HTTPS_URL_RE.test(f.image.trim());
   return (
     <form className="co-form-section sel-editor" noValidate onSubmit={(e) => { e.preventDefault(); save(canSubmit && !approved); }}>
       <div className="sel-card-head">

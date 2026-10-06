@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useUi } from '../../context/UiContext.jsx';
 import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
-import { trapFocus } from '../../lib/focus.js';
-import { markWelcomeAnswered, rememberGuestChoice } from '../../lib/welcome.js';
+import { trapFocus } from '../../utils/focus.js';
+import { markWelcomeAnswered, rememberGuestChoice } from './welcome.js';
 
 // After closing, focus goes back where it was; if that's gone (the entry animation), to the page content.
 const focusPageIfLost = () => setTimeout(() => {

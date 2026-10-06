@@ -6,7 +6,7 @@ import { EmptyState, ErrorNote, PageHero, Pagination } from '../../components/co
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { catalogQueries } from '../../services/catalog.js';
-import { titleCase } from '../../lib/format.js';
+import { titleCase } from '../../utils/format.js';
 import { Reveal } from '../../animations/Reveal.jsx';
 
 const OCCASIONS = [

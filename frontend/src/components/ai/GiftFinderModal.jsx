@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
-import { trapFocus } from '../../lib/focus.js';
+import { trapFocus } from '../../utils/focus.js';
 import { RecommendationCard } from './RecommendationCard.jsx';
 import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
 import { THINKING_MS } from '../../animations/motion.js';

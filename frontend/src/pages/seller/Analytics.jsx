@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerQueries } from '../../services/seller.js';
-import { inr } from '../../lib/format.js';
+import { inr } from '../../utils/format.js';
 import { Kpi, LoadError, Skeleton } from './shared.jsx';
 
 export function SellerAnalytics() {

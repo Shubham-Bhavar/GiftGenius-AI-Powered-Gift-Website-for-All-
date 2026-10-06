@@ -9,7 +9,7 @@
  * - Refreshes are serialised within the tab (shared promise) and across tabs (Web Locks API), so two
  *   tabs never present the same rotating refresh token at once.
  */
-import { storage } from '../../lib/storage.js';
+import { storage } from '../../utils/storage.js';
 
 const BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '') + '/api';
 const SESSION_HINT = 'gg-session';

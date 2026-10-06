@@ -1,4 +1,4 @@
-import { dateTime } from '../../lib/format.js';
+import { dateTime } from '../../utils/format.js';
 
 /** The track page's journey (placed → payment → packed → shipped → out for delivery → delivered). */
 const STEPS = [

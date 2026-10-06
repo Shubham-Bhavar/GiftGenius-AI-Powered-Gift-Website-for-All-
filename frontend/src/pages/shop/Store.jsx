@@ -6,7 +6,7 @@ import { ProductGrid, ProductGridSkeleton } from '../../components/product/Produ
 import { EmptyState, ErrorNote, PageHero, Pagination, Spinner } from '../../components/common/ui.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { catalogQueries } from '../../services/catalog.js';
-import { date, titleCase } from '../../lib/format.js';
+import { date, titleCase } from '../../utils/format.js';
 
 /** A seller's public storefront: their story and their approved products. Nothing private is shown. */
 export default function Store() {

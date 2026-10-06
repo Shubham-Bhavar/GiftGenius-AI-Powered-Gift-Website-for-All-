@@ -9,37 +9,21 @@
  *
  * Nothing here talks to the backend or creates an account: guests keep using the local cart and wishlist.
  */
-import { hasSessionHint } from '../services/api/client.js';
-import { storage } from './storage.js';
+import { hasSessionHint } from '../../services/api/client.js';
+import { session, storage } from '../../utils/storage.js';
 
 const GUEST_KEY = 'gg-guest';
 const ANSWERED_KEY = 'gg-welcome-answered';
 
-function sessionGet(key) {
-  try {
-    return sessionStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function sessionSet(key, value) {
-  try {
-    sessionStorage.setItem(key, value);
-  } catch {
-    /* storage blocked: the screen may simply show again next time */
-  }
-}
-
 export function shouldShowWelcome(user) {
   if (user || hasSessionHint()) return false;
   if (storage.get(GUEST_KEY) === '1') return false;
-  return sessionGet(ANSWERED_KEY) !== '1';
+  return session.get(ANSWERED_KEY) !== '1';
 }
 
 /** Log In, Sign Up or dismissing the screen: don't ask again during this visit. */
 export function markWelcomeAnswered() {
-  sessionSet(ANSWERED_KEY, '1');
+  session.set(ANSWERED_KEY, '1');
 }
 
 /** "Continue without an account": don't ask again on this device. */

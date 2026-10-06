@@ -2,9 +2,9 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import AuthCard, { authLabel } from './AuthCard.jsx';
 import { useUi } from '../../context/UiContext.jsx';
-import { homeFor } from '../../lib/marketplace.js';
 import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
-import { trapFocus } from '../../lib/focus.js';
+import { trapFocus } from '../../utils/focus.js';
+import { homeFor } from './guards.jsx';
 
 /** The 👤 sign-in modal from the homepage header. */
 export default function AuthModal() {

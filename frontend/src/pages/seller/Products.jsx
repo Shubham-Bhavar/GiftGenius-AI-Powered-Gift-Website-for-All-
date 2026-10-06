@@ -6,8 +6,8 @@ import { EmptyState, Pagination, StatusPill } from '../../components/common/ui.j
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
-import { date, inr, titleCase } from '../../lib/format.js';
-import { PRODUCT_STATUS, SELLER_CATEGORIES, productState } from '../../lib/marketplace.js';
+import { date, inr, titleCase } from '../../utils/format.js';
+import { PRODUCT_STATUS, SELLER_CATEGORIES, productState } from '../../constants/marketplace.js';
 import { canEditProducts, LoadError, Skeleton, useStore } from './shared.jsx';
 
 const STATUS_FILTERS = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'OUT_OF_STOCK', 'REJECTED', 'ARCHIVED'];

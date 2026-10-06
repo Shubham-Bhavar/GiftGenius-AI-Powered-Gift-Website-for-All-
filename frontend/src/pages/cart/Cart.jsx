@@ -8,7 +8,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useCheckoutOptions, useCheckoutPrefs, useQuote } from '../../hooks/useCheckout.js';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
-import { inr } from '../../lib/format.js';
+import { inr } from '../../utils/format.js';
 
 export default function Cart() {
   useDocumentTitle('Your Cart');

@@ -6,13 +6,13 @@ import { ProductGrid, ProductGridSkeleton } from '../../components/product/Produ
 import { Newsletter } from '../../components/layout/Footer.jsx';
 import { CategoryIcon, OCCASION_CARDS } from '../../components/product/occasions.jsx';
 import { ErrorNote } from '../../components/common/ui.jsx';
-import { SITE } from '../../config/site.js';
+import { SITE } from '../../constants/site.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useSearch } from '../../context/SearchContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { catalogQueries } from '../../services/catalog.js';
-import { shouldShowWelcome } from '../../lib/welcome.js';
+import { shouldShowWelcome } from '../../components/intro/welcome.js';
 import { Reveal } from '../../animations/Reveal.jsx';
 
 /* Fuzzy search from the original homepage: all query characters appear in order. */

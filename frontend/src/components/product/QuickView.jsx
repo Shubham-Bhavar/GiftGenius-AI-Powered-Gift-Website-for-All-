@@ -5,7 +5,7 @@ import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
 import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
-import { trapFocus } from '../../lib/focus.js';
+import { trapFocus } from '../../utils/focus.js';
 
 /** The homepage Quick View modal. */
 export default function QuickView() {

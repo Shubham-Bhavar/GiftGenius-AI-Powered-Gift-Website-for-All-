@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useLocation, useSearchParams } from 'react-router';
 import { EmptyState, ErrorNote, Field, PageHero } from '../../components/common/ui.jsx';
-import { SITE } from '../../config/site.js';
+import { SITE } from '../../constants/site.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { supportApi } from '../../services/support.js';

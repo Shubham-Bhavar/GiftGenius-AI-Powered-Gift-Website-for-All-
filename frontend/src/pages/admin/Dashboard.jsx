@@ -2,7 +2,7 @@ import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { ErrorNote, Spinner } from '../../components/common/ui.jsx';
 import { adminQueries } from '../../services/admin.js';
-import { inr } from '../../lib/format.js';
+import { inr } from '../../utils/format.js';
 import { TO_SHIP } from './Orders.jsx';
 
 export function AdminDashboard() {

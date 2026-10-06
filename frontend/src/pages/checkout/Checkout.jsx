@@ -11,9 +11,11 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation.js';
 import { usePayment } from '../../hooks/usePayment.js';
 import { ordersApi, ordersKeys } from '../../services/orders.js';
-import { inr, newIdempotencyKey } from '../../lib/format.js';
-import { INDIAN_STATES } from '../../lib/india.js';
+import { inr } from '../../utils/format.js';
+import { INDIAN_STATES } from '../../constants/india.js';
 import { catalogKeys } from '../../services/catalog.js';
+import { newIdempotencyKey } from '../../utils/ids.js';
+import { PINCODE_RE } from '../../utils/validation.js';
 
 const STATES = INDIAN_STATES;
 
@@ -21,7 +23,6 @@ const normalize = (s) => (s || '').toLowerCase().replace(/&/g, 'and').replace(/n
   .replace(/[^a-z]/g, '');
 /** The dropdown entry for a state name from the address lookup ("NCT of Delhi" → "Delhi"), or ''. */
 const matchState = (name) => STATES.find((st) => normalize(st) === normalize(name)) ?? '';
-const PINCODE_RE = /^[1-9][0-9]{5}$/;
 
 function splitName(full = '') {
   const parts = full.trim().split(/\s+/);

@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { authApi } from '../../services/auth.js';
-import { homeFor } from '../../lib/marketplace.js';
+import { homeFor } from '../../components/auth/guards.jsx';
 
 /** Only allow same-site relative redirects after sign-in (no open redirects). */
 export function safeNext(raw) {

@@ -6,9 +6,10 @@ import { EmptyState, Field, Pagination, StatusPill } from '../../components/comm
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerApi, sellerKeys, sellerQueries } from '../../services/seller.js';
-import { date, dateTime, inr, orderItemsLabel } from '../../lib/format.js';
-import { FULFILMENT_STATUS } from '../../lib/marketplace.js';
+import { date, dateTime, inr, orderItemsLabel } from '../../utils/format.js';
+import { FULFILMENT_STATUS } from '../../constants/marketplace.js';
 import { LoadError, Skeleton, useStore } from './shared.jsx';
+import { MARKUP_RE } from '../../utils/validation.js';
 
 export function SellerOrders() {
   useDocumentTitle('Seller Orders');
@@ -95,7 +96,7 @@ export function SellerOrderDetail() {
       setError(new Error('Choose the new status.'));
       return;
     }
-    if (/[<>]/.test(note)) {
+    if (MARKUP_RE.test(note)) {
       setError(new Error('Remove the < and > characters from the note.'));
       return;
     }

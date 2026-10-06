@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { Link } from 'react-router';
-import { ORDER_STATUS, PAYMENT_STATUS } from '../../lib/format.js';
+import { ORDER_STATUS, PAYMENT_STATUS } from '../../constants/orders.js';
 
 /** Dark hero band used by every inner page (the quiz page's hero from the original design). */
 export function PageHero({ eyebrow, title, em, after, children }) {

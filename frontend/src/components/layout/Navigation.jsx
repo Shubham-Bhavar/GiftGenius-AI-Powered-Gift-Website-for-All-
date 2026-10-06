@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router';
-import { NAV_LINKS } from '../../config/site.js';
+import { NAV_LINKS } from '../../constants/site.js';
 
 // The site navigation: the desktop pill nav and the phone menu, from the same NAV_LINKS.
 

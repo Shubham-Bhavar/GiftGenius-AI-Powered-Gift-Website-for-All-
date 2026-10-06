@@ -1,18 +1,17 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
-import StoreFormFields from '../../components/seller/StoreForm.jsx';
-import { storeErrors, validateStore } from '../../components/auth/AuthCard.jsx';
+import StoreFormFields, { storeErrors, validateStore } from '../../components/seller/StoreForm.jsx';
 import { Field, StatusPill } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { sellerApi, sellerKeys } from '../../services/seller.js';
-import { date } from '../../lib/format.js';
-import { SELLER_STATUS } from '../../lib/marketplace.js';
+import { date } from '../../utils/format.js';
+import { SELLER_STATUS } from '../../constants/marketplace.js';
 import { LoadError, Skeleton, useStore } from './shared.jsx';
+import { EMAIL_RE, HTTPS_URL_RE } from '../../utils/validation.js';
 
-const HTTPS_OR_EMPTY = /^$|^https:\/\/[^\s<>"'`]{4,990}$/;
-const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const httpsOrEmpty = (v) => v === '' || HTTPS_URL_RE.test(v);
 
 export function SellerSettings() {
   useDocumentTitle('Store Settings');
@@ -36,9 +35,9 @@ function SettingsForm({ store }) {
   const save = async (e) => {
     e.preventDefault();
     const errors = validateStore(f, f.phone);
-    if (f.supportEmail.trim() && !EMAIL.test(f.supportEmail.trim())) errors.supportEmail = 'Enter a valid email.';
-    if (!HTTPS_OR_EMPTY.test(f.logoUrl.trim())) errors.logoUrl = 'Use an image link that starts with https://';
-    if (!HTTPS_OR_EMPTY.test(f.bannerUrl.trim())) errors.bannerUrl = 'Use an image link that starts with https://';
+    if (f.supportEmail.trim() && !EMAIL_RE.test(f.supportEmail.trim())) errors.supportEmail = 'Enter a valid email.';
+    if (!httpsOrEmpty(f.logoUrl.trim())) errors.logoUrl = 'Use an image link that starts with https://';
+    if (!httpsOrEmpty(f.bannerUrl.trim())) errors.bannerUrl = 'Use an image link that starts with https://';
     if (Object.keys(errors).length) {
       setState({ busy: false, error: null, errors });
       return;

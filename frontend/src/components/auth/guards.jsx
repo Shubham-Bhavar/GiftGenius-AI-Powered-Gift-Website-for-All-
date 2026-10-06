@@ -67,3 +67,10 @@ export function RouteError() {
     </div>
   );
 }
+
+/** Where someone lands after signing in when nothing else was asked for. */
+export function homeFor(user) {
+  if (user?.role === 'ADMIN') return '/admin';
+  if (user?.role === 'SELLER') return '/seller';
+  return null;
+}

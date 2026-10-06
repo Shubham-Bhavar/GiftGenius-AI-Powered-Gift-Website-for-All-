@@ -3,7 +3,7 @@ import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-quer
 import { ErrorNote, Pagination, Spinner } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
-import { dateTime } from '../../lib/format.js';
+import { dateTime } from '../../utils/format.js';
 
 const TOPIC_LABEL = { general: 'General', order: 'Order help', bulk: 'Bulk order', partnership: 'Partnership' };
 

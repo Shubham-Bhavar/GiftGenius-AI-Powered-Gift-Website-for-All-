@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ErrorNote, Field, Spinner } from '../../components/common/ui.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { adminApi, adminKeys, adminQueries } from '../../services/admin.js';
-import { date, inr } from '../../lib/format.js';
+import { date, inr } from '../../utils/format.js';
 
 const EMPTY_COUPON = { code: '', type: 'PERCENT', discountValue: '', minOrderAmount: '', maxDiscount: '', usageLimit: '', perUserLimit: '1', validUntil: '', active: true };
 
