@@ -14,8 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
-import com.giftgenius.auth.PasswordResetTokenRepository;
-import com.giftgenius.auth.RefreshTokenRepository;
+import com.giftgenius.auth.repository.PasswordResetTokenRepository;
+import com.giftgenius.auth.repository.RefreshTokenRepository;
 import com.giftgenius.config.AdminBootstrap;
 import com.giftgenius.config.AppProperties;
 import com.giftgenius.user.UserRepository;

@@ -12,8 +12,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.giftgenius.auth.PasswordResetTokenRepository;
-import com.giftgenius.auth.RefreshTokenRepository;
+import com.giftgenius.auth.repository.PasswordResetTokenRepository;
+import com.giftgenius.auth.repository.RefreshTokenRepository;
 import com.giftgenius.user.Role;
 import com.giftgenius.user.User;
 import com.giftgenius.user.UserRepository;

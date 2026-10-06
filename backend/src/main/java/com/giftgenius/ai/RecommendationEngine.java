@@ -7,7 +7,7 @@ import java.util.Locale;
 
 import org.springframework.stereotype.Component;
 
-import com.giftgenius.catalog.ProductDtos.ProductDto;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 
 /**
  * Deterministic scoring, ported from the original front-end engine so results stay familiar.

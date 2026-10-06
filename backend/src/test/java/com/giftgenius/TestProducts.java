@@ -3,8 +3,8 @@ package com.giftgenius;
 import java.math.BigDecimal;
 import java.util.List;
 
-import com.giftgenius.catalog.ProductDtos.ProductDto;
-import com.giftgenius.catalog.ProductStatus;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.catalog.model.ProductStatus;
 
 public final class TestProducts {
 

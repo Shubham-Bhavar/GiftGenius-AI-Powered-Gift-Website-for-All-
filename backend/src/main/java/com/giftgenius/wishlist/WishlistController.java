@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.giftgenius.catalog.ProductDtos.ProductDto;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 import com.giftgenius.security.AuthUser;
 
 import jakarta.validation.constraints.Size;

@@ -2,7 +2,7 @@ package com.giftgenius.ai;
 
 import java.util.List;
 
-import com.giftgenius.catalog.ProductDtos.ProductDto;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;

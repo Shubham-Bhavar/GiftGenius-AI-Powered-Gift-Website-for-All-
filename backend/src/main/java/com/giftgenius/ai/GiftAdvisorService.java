@@ -24,8 +24,8 @@ import com.giftgenius.ai.AiDtos.RecommendationRequest;
 import com.giftgenius.ai.AiDtos.RecommendationResponse;
 import com.giftgenius.ai.RecommendationEngine.Criteria;
 import com.giftgenius.ai.RecommendationEngine.Scored;
-import com.giftgenius.catalog.ProductDtos.ProductDto;
-import com.giftgenius.catalog.ProductService;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.catalog.service.ProductService;
 
 /**
  * Retrieval-constrained AI: the scoring engine shortlists real, in-stock products; the model only

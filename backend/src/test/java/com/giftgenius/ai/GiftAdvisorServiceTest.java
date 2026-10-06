@@ -12,8 +12,8 @@ import tools.jackson.databind.ObjectMapper;
 import com.giftgenius.TestProducts;
 import com.giftgenius.ai.AiDtos.RecommendationRequest;
 import com.giftgenius.ai.AiDtos.RecommendationResponse;
-import com.giftgenius.catalog.ProductDtos.ProductDto;
-import com.giftgenius.catalog.ProductService;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.catalog.service.ProductService;
 
 class GiftAdvisorServiceTest {
 

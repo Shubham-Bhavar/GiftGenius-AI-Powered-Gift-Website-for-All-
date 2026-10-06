@@ -10,8 +10,8 @@ import org.springframework.util.StringUtils;
 import com.giftgenius.cart.CartDtos.AddItemRequest;
 import com.giftgenius.cart.CartDtos.CartDto;
 import com.giftgenius.cart.CartDtos.CartItemDto;
-import com.giftgenius.catalog.Product;
-import com.giftgenius.catalog.ProductRepository;
+import com.giftgenius.catalog.model.Product;
+import com.giftgenius.catalog.repository.ProductRepository;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.user.UserRepository;
 

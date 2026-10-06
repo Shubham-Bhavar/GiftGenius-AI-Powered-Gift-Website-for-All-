@@ -5,9 +5,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.giftgenius.catalog.Product;
-import com.giftgenius.catalog.ProductDtos.ProductDto;
-import com.giftgenius.catalog.ProductRepository;
+import com.giftgenius.catalog.model.Product;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.catalog.repository.ProductRepository;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.user.UserRepository;
 

@@ -9,12 +9,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.giftgenius.admin.AdminStatsDtos.LowStock;
 import com.giftgenius.admin.AdminStatsDtos.Stats;
-import com.giftgenius.catalog.ProductRepository;
-import com.giftgenius.catalog.ProductStatus;
-import com.giftgenius.order.OrderRepository;
-import com.giftgenius.order.OrderStatus;
-import com.giftgenius.seller.SellerProfileRepository;
-import com.giftgenius.seller.SellerStatus;
+import com.giftgenius.catalog.repository.ProductRepository;
+import com.giftgenius.catalog.model.ProductStatus;
+import com.giftgenius.order.repository.OrderRepository;
+import com.giftgenius.order.model.OrderStatus;
+import com.giftgenius.seller.repository.SellerProfileRepository;
+import com.giftgenius.seller.model.SellerStatus;
 
 /** The Store Admin dashboard's numbers: recent orders and revenue, work waiting, and low stock. */
 @Service
