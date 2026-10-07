@@ -1,4 +1,4 @@
-package com.giftgenius.ai;
+package com.giftgenius.ai.dto;
 
 import java.util.List;
 

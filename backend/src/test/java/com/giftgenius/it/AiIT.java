@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-import com.giftgenius.ai.LlmClient.LlmException;
+import com.giftgenius.ai.provider.AiProvider.AiException;
 
 import tools.jackson.databind.JsonNode;
 
@@ -28,7 +28,7 @@ class AiIT extends AbstractIT {
 
     @Test
     void ruleEngineAnswersWhenNoModelIsConfigured() throws Exception {
-        when(llm.isAvailable()).thenReturn(false);
+        when(ai.isAvailable()).thenReturn(false);
         JsonNode res = recommend();
         assertThat(res.path("source").asString()).isEqualTo("rules");
         assertThat(res.path("picks")).hasSize(3);
@@ -42,8 +42,8 @@ class AiIT extends AbstractIT {
 
     @Test
     void modelReRanksOnlyRealProductsAndShopperNotesAreDelimited() throws Exception {
-        when(llm.isAvailable()).thenReturn(true);
-        when(llm.generateJson(anyString(), anyString())).thenReturn("""
+        when(ai.isAvailable()).thenReturn(true);
+        when(ai.generateJson(anyString(), anyString())).thenReturn("""
                 {"summary":"Romantic, rose-forward picks.",
                  "picks":[{"productId":3,"reason":"Classic roses for a rose lover."},
                           {"productId":424242,"reason":"A car"},
@@ -58,15 +58,15 @@ class AiIT extends AbstractIT {
         assertThat(res.path("picks").toString()).doesNotContain("424242");
 
         ArgumentCaptor<String> user = ArgumentCaptor.forClass(String.class);
-        Mockito.verify(llm).generateJson(anyString(), user.capture());
+        Mockito.verify(ai).generateJson(anyString(), user.capture());
         assertThat(user.getValue()).contains("<shopper_notes>\nShe loves rose scents.");
         assertThat(user.getValue()).contains("CANDIDATES");
     }
 
     @Test
     void modelFailureFallsBackToRules() throws Exception {
-        when(llm.isAvailable()).thenReturn(true);
-        when(llm.generateJson(anyString(), anyString())).thenThrow(new LlmException("timeout"));
+        when(ai.isAvailable()).thenReturn(true);
+        when(ai.generateJson(anyString(), anyString())).thenThrow(new AiException("timeout"));
         assertThat(recommend().path("source").asString()).isEqualTo("rules");
     }
 
@@ -74,14 +74,14 @@ class AiIT extends AbstractIT {
     void giftMessagesFromModelOrTemplates() throws Exception {
         Map<String, Object> req = Map.of("recipient", "mother", "occasion", "birthday", "tone", "warm",
                 "productName", "Pashmina Shawl", "senderName", "Riya");
-        when(llm.isAvailable()).thenReturn(false);
+        when(ai.isAvailable()).thenReturn(false);
         JsonNode rules = body(mvc.perform(postJson("/api/ai/gift-message", req)).andReturn());
         assertThat(rules.path("source").asString()).isEqualTo("rules");
         assertThat(rules.path("messages")).hasSize(3);
         assertThat(rules.path("messages").get(0).asString()).contains("Happy birthday").contains("Riya");
 
-        when(llm.isAvailable()).thenReturn(true);
-        when(llm.generateJson(anyString(), anyString()))
+        when(ai.isAvailable()).thenReturn(true);
+        when(ai.generateJson(anyString(), anyString()))
                 .thenReturn("{\"messages\":[\"Happy birthday, Maa!\",\"Love you always.\",\"For the warmest hugs.\"]}");
         JsonNode ai = body(mvc.perform(postJson("/api/ai/gift-message", req)).andReturn());
         assertThat(ai.path("source").asString()).isEqualTo("ai");
@@ -90,7 +90,7 @@ class AiIT extends AbstractIT {
 
     @Test
     void tinyBudgetGetsAnHonestAnswer() throws Exception {
-        when(llm.isAvailable()).thenReturn(false);
+        when(ai.isAvailable()).thenReturn(false);
         JsonNode res = body(mvc.perform(postJson("/api/ai/recommendations", Map.of("budget", 50)))
                 .andExpect(status().isOk()).andReturn());
         assertThat(res.path("picks")).isEmpty();
@@ -108,7 +108,7 @@ class AiIT extends AbstractIT {
                 .andExpect(status().isBadRequest());
 
         // Every choice the quiz and product page actually send is accepted.
-        when(llm.isAvailable()).thenReturn(false);
+        when(ai.isAvailable()).thenReturn(false);
         mvc.perform(postJson("/api/ai/recommendations", Map.of("recipient", "colleague", "occasion", "valentine",
                 "interests", List.of("food & sweets", "home decor", "gift sets"), "personality", "minimalist")))
                 .andExpect(status().isOk());
