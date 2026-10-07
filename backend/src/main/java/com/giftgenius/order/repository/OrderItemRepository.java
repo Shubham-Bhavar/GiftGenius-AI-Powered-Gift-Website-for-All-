@@ -1,5 +1,6 @@
 package com.giftgenius.order.repository;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -13,10 +14,15 @@ import com.giftgenius.order.model.OrderItem;
 import com.giftgenius.order.model.OrderStatus;
 
 /**
- * Seller sales figures, computed in the database from the seller's own order lines. "Counted" orders are the
- * confirmed ones: not waiting for online payment and not cancelled.
+ * Sales figures computed in the database from order lines: per seller for seller dashboards, and per product for
+ * recommendations. "Counted" orders are the confirmed ones: not waiting for online payment and not cancelled.
  */
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
+
+    /** Units sold per product since a date, counting only orders that went ahead. Read-only, for recommendations. */
+    @Query("select i.productId, sum(i.quantity) from OrderItem i where i.order.createdAt >= :since "
+            + "and i.order.status not in :excluded group by i.productId")
+    List<Object[]> unitsSoldSince(@Param("since") Instant since, @Param("excluded") Collection<OrderStatus> excluded);
 
     /** One row: distinct orders, units sold, gross sales. */
     @Query("select count(distinct i.order.id), coalesce(sum(i.quantity), 0), coalesce(sum(i.lineTotal), 0) "

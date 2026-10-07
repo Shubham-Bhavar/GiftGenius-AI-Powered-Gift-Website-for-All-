@@ -8,7 +8,10 @@ import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 import com.giftgenius.catalog.service.ProductService;
 import com.giftgenius.recommendation.model.GiftPreferences;
 
-/** Where recommendations come from: only real, purchasable products, and never far over the budget. */
+/**
+ * Where recommendations come from: only real products that can be bought right now (listed, approved and in stock),
+ * and never far over the budget. Nothing else can ever be recommended.
+ */
 @Component
 public class CandidateGenerator {
 
@@ -20,17 +23,14 @@ public class CandidateGenerator {
         this.weights = weights;
     }
 
-    /** Everything that can be bought right now: listed and in stock (cached by the catalogue). */
+    /** Everything that can be bought right now (cached by the catalogue). */
     public List<ProductDto> catalog() {
         return products.purchasableCatalog();
     }
 
-    /** Hard filter: nothing priced above the budget tolerance. With a flexible budget, everything. */
+    /** Hard filters: in stock, and nothing priced above the budget tolerance. With a flexible budget, all of it. */
     public List<ProductDto> candidates(List<ProductDto> catalog, GiftPreferences prefs) {
-        if (!prefs.hasBudget()) {
-            return catalog;
-        }
-        double ceiling = prefs.budget() * weights.budgetTolerance();
-        return catalog.stream().filter(p -> p.price().doubleValue() <= ceiling).toList();
+        double ceiling = prefs.hasBudget() ? prefs.budget() * weights.budget().tolerance() : Double.MAX_VALUE;
+        return catalog.stream().filter(p -> p.inStock() && p.price().doubleValue() <= ceiling).toList();
     }
 }

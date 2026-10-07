@@ -66,6 +66,26 @@ class GiftAdvisorServiceTest {
     }
 
     @Test
+    void theRulesSummaryIsHonestWhenNothingMatched() {
+        LlmClient off = new LlmClient() {
+            public boolean isAvailable() { return false; }
+            public String generateJson(String s, String u) { throw new AssertionError("not called"); }
+        };
+        RecommendationResponse matched = service(off).recommend(request());
+        assertThat(matched.summary()).isEqualTo("3 gifts matched for your partner for their anniversary.");
+
+        RecommendationResponse nothing = service(off).recommend(
+                new RecommendationRequest(null, "retirement", null, List.of(), null, null, 3));
+        assertThat(nothing.summary())
+                .isEqualTo("Nothing matched everything you asked for, so here are our highest-rated gifts.");
+        assertThat(nothing.picks()).extracting(p -> p.reason()).containsOnly("One of our highest-rated gifts.");
+
+        RecommendationResponse blank = service(off).recommend(
+                new RecommendationRequest(null, null, null, List.of(), null, null, 3));
+        assertThat(blank.summary()).isEqualTo("Our highest-rated gifts right now.");
+    }
+
+    @Test
     void fallsBackWhenModelReturnsGarbage() {
         RecommendationResponse res = service(fakeLlm("not json")).recommend(request());
         assertThat(res.source()).isEqualTo("rules");

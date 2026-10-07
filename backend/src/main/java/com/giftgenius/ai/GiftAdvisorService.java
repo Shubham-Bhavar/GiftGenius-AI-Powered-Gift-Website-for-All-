@@ -97,7 +97,7 @@ public class GiftAdvisorService {
         }
         List<Recommendation> shortlist = found.items();
 
-        RecommendationResponse rules = fromRules(shortlist, limit, criteria);
+        RecommendationResponse rules = fromRules(shortlist, limit, criteria, found.outcome());
         if (!llm.isAvailable()) {
             return rules;
         }
@@ -169,12 +169,19 @@ public class GiftAdvisorService {
                 message.isEmpty() ? null : message));
     }
 
-    private RecommendationResponse fromRules(List<Recommendation> shortlist, int limit, GiftPreferences c) {
+    private RecommendationResponse fromRules(List<Recommendation> shortlist, int limit, GiftPreferences c,
+            Shortlist.Outcome outcome) {
         List<Pick> picks = shortlist.stream().limit(limit)
                 .map(s -> new Pick(s.product(), s.summary(), s.score())).toList();
-        String who = c.recipient() == null ? "your loved one" : "your " + c.recipient();
-        String summary = picks.size() + " gifts matched for " + who
-                + (c.occasion() == null ? "" : " for their " + c.occasion()) + ".";
+        String summary;
+        if (outcome == Shortlist.Outcome.TOP_RATED) {
+            summary = c.isEmpty() ? "Our highest-rated gifts right now."
+                    : "Nothing matched everything you asked for, so here are our highest-rated gifts.";
+        } else {
+            String who = c.recipient() == null ? "your loved one" : "your " + c.recipient();
+            summary = picks.size() + " gifts matched for " + who
+                    + (c.occasion() == null ? "" : " for their " + c.occasion()) + ".";
+        }
         return new RecommendationResponse("rules", summary, picks, templateMessage(c.occasion()));
     }
 
