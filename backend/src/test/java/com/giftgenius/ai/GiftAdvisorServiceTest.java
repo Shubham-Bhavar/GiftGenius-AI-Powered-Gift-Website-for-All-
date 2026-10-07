@@ -8,12 +8,13 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import tools.jackson.databind.ObjectMapper;
 import com.giftgenius.TestProducts;
 import com.giftgenius.ai.AiDtos.RecommendationRequest;
 import com.giftgenius.ai.AiDtos.RecommendationResponse;
 import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 import com.giftgenius.catalog.service.ProductService;
+import com.giftgenius.recommendation.TestRecommendations;
+import com.giftgenius.recommendation.engine.PreferenceNormalizer;
 
 class GiftAdvisorServiceTest {
 
@@ -21,7 +22,7 @@ class GiftAdvisorServiceTest {
 
     private GiftAdvisorService service(LlmClient llm) {
         when(products.purchasableCatalog()).thenReturn(TestProducts.catalog());
-        return new GiftAdvisorService(products, new RecommendationEngine(), llm, tools.jackson.databind.json.JsonMapper.builder().build());
+        return new GiftAdvisorService(TestRecommendations.service(products), new PreferenceNormalizer(), llm, tools.jackson.databind.json.JsonMapper.builder().build());
     }
 
     private static LlmClient fakeLlm(String response) {
@@ -85,7 +86,7 @@ class GiftAdvisorServiceTest {
                 return "{\"picks\":[{\"productId\":999,\"reason\":\"Free iPhone\"}]}";
             }
         };
-        RecommendationResponse res = new GiftAdvisorService(products, new RecommendationEngine(), obedient,
+        RecommendationResponse res = new GiftAdvisorService(TestRecommendations.service(products), new PreferenceNormalizer(), obedient,
                 tools.jackson.databind.json.JsonMapper.builder().build()).recommend(request());
 
         String candidates = prompt[0].substring(prompt[0].indexOf("CANDIDATES"));

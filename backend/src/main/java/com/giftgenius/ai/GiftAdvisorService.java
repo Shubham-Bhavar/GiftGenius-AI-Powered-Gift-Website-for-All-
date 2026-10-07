@@ -22,13 +22,15 @@ import com.giftgenius.ai.AiDtos.GiftMessageResponse;
 import com.giftgenius.ai.AiDtos.Pick;
 import com.giftgenius.ai.AiDtos.RecommendationRequest;
 import com.giftgenius.ai.AiDtos.RecommendationResponse;
-import com.giftgenius.ai.RecommendationEngine.Criteria;
-import com.giftgenius.ai.RecommendationEngine.Scored;
 import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
-import com.giftgenius.catalog.service.ProductService;
+import com.giftgenius.recommendation.engine.PreferenceNormalizer;
+import com.giftgenius.recommendation.model.GiftPreferences;
+import com.giftgenius.recommendation.model.Recommendation;
+import com.giftgenius.recommendation.model.Shortlist;
+import com.giftgenius.recommendation.service.RecommendationService;
 
 /**
- * Retrieval-constrained AI: the scoring engine shortlists real, in-stock products; the model only
+ * Retrieval-constrained AI: the GiftGenius recommendation engine shortlists real, in-stock products; the model only
  * re-ranks that shortlist and writes the explanations. Any id the model invents is discarded, and
  * every failure path falls back to the rule-based result, so the quiz always answers.
  */
@@ -64,46 +66,36 @@ public class GiftAdvisorService {
             Return JSON only: {"messages": ["...", "...", "..."]}
             """;
 
-    private final ProductService products;
-    private final RecommendationEngine engine;
+    private final RecommendationService recommendations;
+    private final PreferenceNormalizer normalizer;
     private final LlmClient llm;
     private final ObjectMapper json;
 
-    public GiftAdvisorService(ProductService products, RecommendationEngine engine, LlmClient llm,
+    public GiftAdvisorService(RecommendationService recommendations, PreferenceNormalizer normalizer, LlmClient llm,
             ObjectMapper json) {
-        this.products = products;
-        this.engine = engine;
+        this.recommendations = recommendations;
+        this.normalizer = normalizer;
         this.llm = llm;
         this.json = json;
     }
 
     public RecommendationResponse recommend(RecommendationRequest req) {
         int limit = req.limit() == null ? DEFAULT_PICKS : req.limit();
-        Criteria criteria = new Criteria(
-                RecommendationEngine.normalize(req.recipient()),
-                RecommendationEngine.normalize(req.occasion()),
-                req.budget(),
-                req.interests() == null ? List.of()
-                        : req.interests().stream().map(RecommendationEngine::normalize)
-                                .filter(s -> s != null).toList(),
-                RecommendationEngine.normalize(req.personality()));
-
-        List<ProductDto> catalog = products.purchasableCatalog();
-        if (catalog.isEmpty()) {
-            return new RecommendationResponse("rules", "We're restocking right now. Check back soon.", List.of(), null);
-        }
-
-        List<Scored> shortlist = engine.rank(catalog, criteria, SHORTLIST_SIZE);
-        if (shortlist.isEmpty()) {
-            List<ProductDto> affordable = criteria.budget() == null || criteria.budget() <= 0 ? catalog
-                    : catalog.stream().filter(p -> p.price().doubleValue()
-                            <= criteria.budget() * RecommendationEngine.BUDGET_TOLERANCE).toList();
-            if (affordable.isEmpty()) {
+        GiftPreferences criteria = normalizer.normalize(req.recipient(), req.occasion(), req.budget(), req.interests(),
+                req.personality());
+        Shortlist found = recommendations.shortlist(criteria, SHORTLIST_SIZE);
+        switch (found.outcome()) {
+            case CATALOG_EMPTY -> {
+                return new RecommendationResponse("rules", "We're restocking right now. Check back soon.", List.of(), null);
+            }
+            case NOTHING_IN_BUDGET -> {
                 return new RecommendationResponse("rules",
                         "Nothing in the shop fits that budget yet. Try raising it a little.", List.of(), null);
             }
-            shortlist = engine.topRated(affordable, SHORTLIST_SIZE);
+            default -> {
+            }
         }
+        List<Recommendation> shortlist = found.items();
 
         RecommendationResponse rules = fromRules(shortlist, limit, criteria);
         if (!llm.isAvailable()) {
@@ -141,21 +133,21 @@ public class GiftAdvisorService {
 
     // ── AI result handling ─────────────────────────────────
 
-    Optional<RecommendationResponse> fromAi(String raw, List<Scored> shortlist, int limit) throws Exception {
+    Optional<RecommendationResponse> fromAi(String raw, List<Recommendation> shortlist, int limit) throws Exception {
         JsonNode root = parse(raw);
-        Map<Long, Scored> byId = shortlist.stream()
+        Map<Long, Recommendation> byId = shortlist.stream()
                 .collect(Collectors.toMap(s -> s.product().id(), s -> s, (a, b) -> a, LinkedHashMap::new));
 
         List<Pick> picks = new ArrayList<>();
         Set<Long> used = new LinkedHashSet<>();
         for (JsonNode p : root.path("picks")) {
             long id = p.path("productId").asLong(-1);
-            Scored s = byId.get(id);
+            Recommendation s = byId.get(id);
             if (s == null || !used.add(id)) {
                 continue; // invented or duplicate id
             }
             String reason = clean(p.path("reason").asString(""), 220);
-            picks.add(new Pick(s.product(), reason.isEmpty() ? firstReason(s) : reason, s.score()));
+            picks.add(new Pick(s.product(), reason.isEmpty() ? s.summary() : reason, s.score()));
             if (picks.size() == limit) {
                 break;
             }
@@ -163,12 +155,12 @@ public class GiftAdvisorService {
         if (picks.isEmpty()) {
             return Optional.empty();
         }
-        for (Scored s : shortlist) {
+        for (Recommendation s : shortlist) {
             if (picks.size() >= limit) {
                 break;
             }
             if (used.add(s.product().id())) {
-                picks.add(new Pick(s.product(), firstReason(s), s.score()));
+                picks.add(new Pick(s.product(), s.summary(), s.score()));
             }
         }
         String summary = clean(root.path("summary").asString(""), 260);
@@ -177,9 +169,9 @@ public class GiftAdvisorService {
                 message.isEmpty() ? null : message));
     }
 
-    private RecommendationResponse fromRules(List<Scored> shortlist, int limit, Criteria c) {
+    private RecommendationResponse fromRules(List<Recommendation> shortlist, int limit, GiftPreferences c) {
         List<Pick> picks = shortlist.stream().limit(limit)
-                .map(s -> new Pick(s.product(), firstReason(s), s.score())).toList();
+                .map(s -> new Pick(s.product(), s.summary(), s.score())).toList();
         String who = c.recipient() == null ? "your loved one" : "your " + c.recipient();
         String summary = picks.size() + " gifts matched for " + who
                 + (c.occasion() == null ? "" : " for their " + c.occasion()) + ".";
@@ -196,18 +188,19 @@ public class GiftAdvisorService {
 
     // ── Prompts ────────────────────────────────────────────
 
-    private static String recommendPrompt(RecommendationRequest req, Criteria c, List<Scored> shortlist, int limit) {
+    private static String recommendPrompt(RecommendationRequest req, GiftPreferences c, List<Recommendation> shortlist,
+            int limit) {
         StringBuilder sb = new StringBuilder();
         sb.append("Pick the best ").append(limit).append(" gifts, best first.\n");
         sb.append("Recipient: ").append(orUnknown(c.recipient())).append('\n');
         sb.append("Occasion: ").append(orUnknown(c.occasion())).append('\n');
-        sb.append("Budget: ").append(c.budget() == null || c.budget() <= 0 ? "flexible" : "₹" + c.budget()).append('\n');
+        sb.append("Budget: ").append(c.hasBudget() ? "₹" + c.budget() : "flexible").append('\n');
         sb.append("Interests: ").append(c.interests().isEmpty() ? "not specified" : String.join(", ", c.interests()))
                 .append('\n');
         sb.append("Personality: ").append(orUnknown(c.personality())).append('\n');
         sb.append("<shopper_notes>\n").append(sanitizeNotes(req.notes())).append("\n</shopper_notes>\n");
         sb.append("CANDIDATES (id | name | category | price | tags | description):\n");
-        for (Scored s : shortlist) {
+        for (Recommendation s : shortlist) {
             ProductDto p = s.product();
             // Seller-written text: flattened so it can't fake extra candidates or close the notes block.
             sb.append(p.id()).append(" | ").append(field(p.name(), 150)).append(" | ").append(field(p.category(), 40))
@@ -254,21 +247,13 @@ public class GiftAdvisorService {
         };
     }
 
-    private static List<String> templateMessages(GiftMessageRequest r) {
-        String occasion = RecommendationEngine.normalize(r.occasion());
+    private List<String> templateMessages(GiftMessageRequest r) {
+        String occasion = normalizer.term(r.occasion());
         String sign = StringUtils.hasText(r.senderName()) ? " With love, " + r.senderName().trim() + "." : "";
         return List.of(
                 templateMessage(occasion) + sign,
                 "Thinking of you today and always. Hope this brings a big smile." + sign,
                 "Because you deserve something special, just like you." + sign);
-    }
-
-    /** The rule engine's two strongest reasons, e.g. "Made for anniversaries · Matches their love of flowers". */
-    private static String firstReason(Scored s) {
-        if (s.reasons().isEmpty()) {
-            return "A thoughtful, highly rated choice";
-        }
-        return String.join(" · ", s.reasons().subList(0, Math.min(2, s.reasons().size())));
     }
 
     private static String orUnknown(String s) {
