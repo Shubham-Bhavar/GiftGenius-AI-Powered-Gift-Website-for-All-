@@ -4,8 +4,10 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
+import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.cart.CartService;
 import com.giftgenius.order.model.Order;
 import com.giftgenius.order.model.OrderItem;
@@ -24,10 +26,12 @@ public class OrderPayments {
 
     private final CartService carts;
     private final OrderNotifier notifier;
+    private final ApplicationEventPublisher events;
 
-    OrderPayments(CartService carts, OrderNotifier notifier) {
+    OrderPayments(CartService carts, OrderNotifier notifier, ApplicationEventPublisher events) {
         this.carts = carts;
         this.notifier = notifier;
+        this.events = events;
     }
 
     /** Paid in full: the order is confirmed, its products leave the cart, and everyone is told. */
@@ -40,6 +44,8 @@ public class OrderPayments {
         notifier.customer(o, "Payment received: GiftGenius order " + o.getOrderNumber() + " is confirmed",
                 "Thank you! We've received your payment and your order is confirmed.");
         notifier.sellers(o);
+        events.publishEvent(InteractionEvent.purchase(
+                o.getItems().stream().map(OrderItem::getProductId).distinct().toList()));
     }
 
     /** Money arrived for an order that was cancelled meanwhile: it must go back, whatever the amount. */

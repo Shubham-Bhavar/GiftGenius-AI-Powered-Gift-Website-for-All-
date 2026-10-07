@@ -3,10 +3,12 @@ package com.giftgenius.cart;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.cart.CartDtos.AddItemRequest;
 import com.giftgenius.cart.CartDtos.CartDto;
 import com.giftgenius.cart.CartDtos.CartItemDto;
@@ -24,11 +26,14 @@ public class CartService {
     private final ProductRepository products;
 
     private final UserRepository users;
+    private final ApplicationEventPublisher events;
 
-    public CartService(CartRepository carts, ProductRepository products, UserRepository users) {
+    public CartService(CartRepository carts, ProductRepository products, UserRepository users,
+            ApplicationEventPublisher events) {
         this.carts = carts;
         this.products = products;
         this.users = users;
+        this.events = events;
     }
 
     /** Read-only: a shopper who never added anything simply has an empty cart (no row is created). */
@@ -43,6 +48,7 @@ public class CartService {
         addLine(cart, req);
         cart.touch();
         carts.flush(); // assign ids to new lines before they go to the client
+        events.publishEvent(InteractionEvent.cartAdd(req.productId()));
         return toDto(cart);
     }
 

@@ -3,12 +3,14 @@ package com.giftgenius.catalog.controller;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.catalog.dto.ProductDtos.CategoryDto;
 import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 import com.giftgenius.catalog.service.ProductService.ProductQuery;
@@ -20,9 +22,11 @@ import com.giftgenius.catalog.service.ProductService;
 public class ProductController {
 
     private final ProductService service;
+    private final ApplicationEventPublisher events;
 
-    public ProductController(ProductService service) {
+    public ProductController(ProductService service, ApplicationEventPublisher events) {
         this.service = service;
+        this.events = events;
     }
 
     @GetMapping
@@ -47,7 +51,9 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ProductDto get(@PathVariable Long id) {
-        return service.get(id);
+        ProductDto product = service.get(id);
+        events.publishEvent(InteractionEvent.productView(product.id()));
+        return product;
     }
 
     @GetMapping("/{id}/related")

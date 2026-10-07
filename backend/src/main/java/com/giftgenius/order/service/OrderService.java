@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -18,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
+import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.cart.Cart;
 import com.giftgenius.cart.CartItem;
 import com.giftgenius.cart.CartService;
@@ -68,12 +70,13 @@ public class OrderService {
     private final UserRepository users;
     private final OrderMapper mapper;
     private final OrderNotifier notifier;
+    private final ApplicationEventPublisher events;
     private final TransactionTemplate tx;
     private final AppProperties.Orders orderProps;
 
     public OrderService(OrderRepository orders, CartService carts, PricingService pricing,
             ProductRepository products, CouponRepository coupons, OnlinePayments payments,
-            UserRepository users, OrderMapper mapper, OrderNotifier notifier,
+            UserRepository users, OrderMapper mapper, OrderNotifier notifier, ApplicationEventPublisher events,
             PlatformTransactionManager txManager, AppProperties properties) {
         this.orders = orders;
         this.carts = carts;
@@ -84,6 +87,7 @@ public class OrderService {
         this.users = users;
         this.mapper = mapper;
         this.notifier = notifier;
+        this.events = events;
         this.tx = new TransactionTemplate(txManager);
         this.orderProps = properties.orders();
     }
@@ -226,6 +230,8 @@ public class OrderService {
             notifier.customer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
                     "Thank you! Your order is confirmed and we're getting it ready.");
             notifier.sellers(order);
+            events.publishEvent(InteractionEvent.purchase(
+                    order.getItems().stream().map(OrderItem::getProductId).distinct().toList()));
         }
         return new Placement(order.getId(), order.getOrderNumber(), order.getTotal(), needsPayment,
                 needsPayment ? null : mapper.toDto(order));

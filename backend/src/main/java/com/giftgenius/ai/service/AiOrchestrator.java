@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 import com.giftgenius.ai.dto.AiDtos.Pick;
@@ -19,6 +20,7 @@ import com.giftgenius.ai.dto.AiDtos.RecommendationRequest;
 import com.giftgenius.ai.dto.AiDtos.RecommendationResponse;
 import com.giftgenius.ai.provider.AiProvider;
 import com.giftgenius.ai.service.AiOutputValidator.ModelPick;
+import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.recommendation.engine.PreferenceNormalizer;
 import com.giftgenius.recommendation.model.GiftPreferences;
 import com.giftgenius.recommendation.model.Recommendation;
@@ -49,13 +51,15 @@ public class AiOrchestrator {
     private final PreferenceNormalizer normalizer;
     private final AiProvider ai;
     private final AiOutputValidator validator;
+    private final ApplicationEventPublisher events;
 
     public AiOrchestrator(RecommendationService recommendations, PreferenceNormalizer normalizer, AiProvider ai,
-            ObjectMapper json) {
+            ObjectMapper json, ApplicationEventPublisher events) {
         this.recommendations = recommendations;
         this.normalizer = normalizer;
         this.ai = ai;
         this.validator = new AiOutputValidator(json);
+        this.events = events;
     }
 
     /** The gift quiz: structured answers plus optional free-text notes. */
@@ -66,6 +70,15 @@ public class AiOrchestrator {
     }
 
     private RecommendationResponse recommend(GiftPreferences prefs, String notes, int limit) {
+        RecommendationResponse res = answer(prefs, notes, limit);
+        if (!res.picks().isEmpty()) {
+            events.publishEvent(InteractionEvent.recommendationView(
+                    res.picks().stream().map(p -> p.product().id()).toList(), res.source()));
+        }
+        return res;
+    }
+
+    private RecommendationResponse answer(GiftPreferences prefs, String notes, int limit) {
         // Exactly the picks to show, so each is explained alongside the others on screen.
         Shortlist found = recommendations.shortlist(prefs, limit);
         switch (found.outcome()) {

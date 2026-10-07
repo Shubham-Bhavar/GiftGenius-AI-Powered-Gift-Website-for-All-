@@ -29,7 +29,7 @@ class AiOrchestratorTest {
     private AiOrchestrator orchestrator(AiProvider ai) {
         when(products.purchasableCatalog()).thenReturn(TestProducts.catalog());
         return new AiOrchestrator(TestRecommendations.service(products), new PreferenceNormalizer(), ai,
-                JsonMapper.builder().build());
+                JsonMapper.builder().build(), event -> { });
     }
 
     /** A model that is available and gives this answer. */
@@ -159,7 +159,7 @@ class AiOrchestratorTest {
         assertThat(tiny.summary()).contains("budget");
 
         AiOrchestrator empty = new AiOrchestrator(TestRecommendations.service(products), new PreferenceNormalizer(),
-                UNAVAILABLE, JsonMapper.builder().build());
+                UNAVAILABLE, JsonMapper.builder().build(), event -> { });
         when(products.purchasableCatalog()).thenReturn(List.of());
         assertThat(empty.recommend(request()).summary()).contains("restocking");
     }
@@ -179,7 +179,7 @@ class AiOrchestratorTest {
             }
         };
         AiOrchestrator orchestrator = new AiOrchestrator(TestRecommendations.service(products),
-                new PreferenceNormalizer(), obedient, JsonMapper.builder().build());
+                new PreferenceNormalizer(), obedient, JsonMapper.builder().build(), event -> { });
         when(products.purchasableCatalog()).thenReturn(List.of(sneaky, TestProducts.catalog().get(1)));
 
         RecommendationResponse res = orchestrator.recommend(request());
