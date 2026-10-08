@@ -4,25 +4,22 @@ import { Spinner } from '../components/common/ui.jsx';
 import Home from '../pages/home/Home.jsx';
 import Shop from '../pages/shop/Shop.jsx';
 import Product from '../pages/product/Product.jsx';
-import Cart from '../pages/cart/Cart.jsx';
-import Checkout from '../pages/checkout/Checkout.jsx';
-import Orders from '../pages/orders/Orders.jsx';
-import OrderDetail from '../pages/orders/OrderDetail.jsx';
-import Track from '../pages/orders/Track.jsx';
-import Wishlist from '../pages/wishlist/Wishlist.jsx';
-import Account from '../pages/account/Account.jsx';
-import { AuthPage, ResetPassword } from '../pages/auth/Auth.jsx';
-import { About } from '../pages/info/About.jsx';
-import { Collections } from '../pages/shop/Collections.jsx';
-import { Contact } from '../pages/info/Contact.jsx';
-import { Help } from '../pages/info/Help.jsx';
-import { Privacy, Terms } from '../pages/info/Legal.jsx';
 import { NotFound } from '../pages/info/NotFound.jsx';
 
-// Every URL in the site and the screen it shows. Admin, Seller Center, the quiz and storefronts load on demand.
+// Every URL in the site and the screen it shows. Home, Shop and Product are in the first download; every other
+// page loads the first time it is visited (Admin and Seller Center as one chunk each).
+
+/** A lazily loaded page: its module's default export, or the named one picked. */
+const page = (load, pick = (m) => m.default) => () => load().then((m) => ({ Component: pick(m) }));
+/** The same, behind sign-in. */
+const signedIn = (load, pick = (m) => m.default) => () => load().then((m) => {
+  const Page = pick(m);
+  return { element: <RequireAuth><Page /></RequireAuth> };
+});
 
 const admin = () => import('../pages/admin/index.js');
 const seller = () => import('../pages/seller/index.js');
+const auth = () => import('../pages/auth/Auth.jsx');
 
 export const routes = [
   {
@@ -34,23 +31,23 @@ export const routes = [
       { path: 'shop', element: <Shop /> },
       { path: 'product/:id', element: <Product /> },
       { path: 'gift-finder', lazy: () => import('../pages/ai/GiftFinder.jsx').then((m) => ({ Component: m.default })) },
-      { path: 'collections', element: <Collections /> },
-      { path: 'about', element: <About /> },
-      { path: 'contact', element: <Contact /> },
-      { path: 'help', element: <Help /> },
-      { path: 'privacy', element: <Privacy /> },
-      { path: 'terms', element: <Terms /> },
-      { path: 'cart', element: <Cart /> },
-      { path: 'checkout', element: <RequireAuth><Checkout /></RequireAuth> },
-      { path: 'wishlist', element: <Wishlist /> },
-      { path: 'track', element: <Track /> },
-      { path: 'login', element: <AuthPage mode="login" /> },
-      { path: 'register', element: <AuthPage mode="register" /> },
-      { path: 'forgot-password', element: <AuthPage mode="forgot" /> },
-      { path: 'reset-password', element: <ResetPassword /> },
-      { path: 'account', element: <RequireAuth><Account /></RequireAuth> },
-      { path: 'account/orders', element: <RequireAuth><Orders /></RequireAuth> },
-      { path: 'account/orders/:number', element: <RequireAuth><OrderDetail /></RequireAuth> },
+      { path: 'collections', lazy: page(() => import('../pages/shop/Collections.jsx'), (m) => m.Collections) },
+      { path: 'about', lazy: page(() => import('../pages/info/About.jsx'), (m) => m.About) },
+      { path: 'contact', lazy: page(() => import('../pages/info/Contact.jsx'), (m) => m.Contact) },
+      { path: 'help', lazy: page(() => import('../pages/info/Help.jsx'), (m) => m.Help) },
+      { path: 'privacy', lazy: page(() => import('../pages/info/Legal.jsx'), (m) => m.Privacy) },
+      { path: 'terms', lazy: page(() => import('../pages/info/Legal.jsx'), (m) => m.Terms) },
+      { path: 'cart', lazy: page(() => import('../pages/cart/Cart.jsx')) },
+      { path: 'checkout', lazy: signedIn(() => import('../pages/checkout/Checkout.jsx')) },
+      { path: 'wishlist', lazy: page(() => import('../pages/wishlist/Wishlist.jsx')) },
+      { path: 'track', lazy: page(() => import('../pages/orders/Track.jsx')) },
+      { path: 'login', lazy: () => auth().then((m) => ({ element: <m.AuthPage mode="login" /> })) },
+      { path: 'register', lazy: () => auth().then((m) => ({ element: <m.AuthPage mode="register" /> })) },
+      { path: 'forgot-password', lazy: () => auth().then((m) => ({ element: <m.AuthPage mode="forgot" /> })) },
+      { path: 'reset-password', lazy: page(auth, (m) => m.ResetPassword) },
+      { path: 'account', lazy: signedIn(() => import('../pages/account/Account.jsx')) },
+      { path: 'account/orders', lazy: signedIn(() => import('../pages/orders/Orders.jsx')) },
+      { path: 'account/orders/:number', lazy: signedIn(() => import('../pages/orders/OrderDetail.jsx')) },
       { path: 'sell', element: <SellEntry /> },
       { path: 'store/:slug', lazy: () => import('../pages/shop/Store.jsx').then((m) => ({ Component: m.default })) },
       {

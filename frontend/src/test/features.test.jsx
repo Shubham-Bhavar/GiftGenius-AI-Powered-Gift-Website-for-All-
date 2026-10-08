@@ -117,7 +117,8 @@ describe('connected pages', () => {
     await user.click(within(nav).getByRole('link', { name: 'Collections' }));
     expect(await screen.findByRole('heading', { name: 'Shop by Category' })).toBeInTheDocument();
     await user.click(within(nav).getByRole('link', { name: 'About' }));
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Gifts That Mean Something');
+    // Pages after the first load on demand, so wait for this one's heading.
+    expect(await screen.findByRole('heading', { level: 1, name: /Gifts That Mean Something/ })).toBeInTheDocument();
     await user.click(within(nav).getByRole('link', { name: 'Gifts' }));
     expect(await screen.findByRole('heading', { level: 1 })).toHaveTextContent('All Gifts');
     expect(within(nav).getByRole('link', { name: 'Gifts' })).toHaveAttribute('aria-current', 'page');
@@ -125,7 +126,7 @@ describe('connected pages', () => {
 
   it('sends the contact form to the API', async () => {
     const { user } = renderApp('/contact?topic=bulk');
-    expect(screen.getByLabelText('Topic')).toHaveValue('bulk');
+    expect(await screen.findByLabelText('Topic')).toHaveValue('bulk');
     await user.type(screen.getByLabelText('Your Name'), 'Riya Shah');
     await user.type(screen.getByLabelText('Email'), 'riya@example.com');
     await user.type(screen.getByLabelText('Message'), 'We need 40 hampers for Diwali.');
