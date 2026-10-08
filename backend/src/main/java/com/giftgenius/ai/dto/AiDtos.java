@@ -6,6 +6,7 @@ import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -48,5 +49,22 @@ public final class AiDtos {
     }
 
     public record GiftMessageResponse(String source, List<String> messages) {
+    }
+
+    /** A gift request in the shopper's own words, e.g. "a birthday gift for my mom under 1500, she loves perfume". */
+    public record GiftRequest(
+            @NotBlank(message = "Tell us a little about the gift you're looking for")
+            @Size(max = 500, message = "Keep it under 500 characters") String text,
+            @Min(1) @Max(8) Integer limit) {
+    }
+
+    /** What was understood from a gift request, in the catalogue's terms; by is "ai" or "rules". */
+    public record Understood(String recipient, String occasion, Integer budget, List<String> interests,
+            String personality, String by) {
+    }
+
+    /** source is who ranked and explained the picks ("ai" or "rules"), as for the quiz. */
+    public record GiftRequestResponse(String source, Understood understood, String summary, List<Pick> picks,
+            String giftMessage) {
     }
 }

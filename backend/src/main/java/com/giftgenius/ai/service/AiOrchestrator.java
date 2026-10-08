@@ -69,7 +69,8 @@ public class AiOrchestrator {
         return recommend(prefs, req.notes(), req.limit() == null ? DEFAULT_PICKS : req.limit());
     }
 
-    private RecommendationResponse recommend(GiftPreferences prefs, String notes, int limit) {
+    /** Preferences already read (from the quiz, or from a sentence), with the shopper's free text as notes. */
+    RecommendationResponse recommend(GiftPreferences prefs, String notes, int limit) {
         RecommendationResponse res = answer(prefs, notes, limit);
         if (!res.picks().isEmpty()) {
             events.publishEvent(InteractionEvent.recommendationView(

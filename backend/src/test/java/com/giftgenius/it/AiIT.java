@@ -122,4 +122,71 @@ class AiIT extends AbstractIT {
         mvc.perform(postJson("/api/ai/recommendations", Map.of("notes", "x".repeat(601))))
                 .andExpect(status().isBadRequest());
     }
+
+    // ── POST /api/ai/gift-request ──────────────────────────
+
+    private JsonNode giftRequest(Map<String, Object> body) throws Exception {
+        return body(mvc.perform(postJson("/api/ai/gift-request", body)).andExpect(status().isOk()).andReturn());
+    }
+
+    @Test
+    void aGiftRequestInPlainWordsIsAnsweredWithRealProducts() throws Exception {
+        when(ai.isAvailable()).thenReturn(false);
+        JsonNode res = giftRequest(Map.of("text", "A birthday gift for my mom under ₹1,500, she loves perfume", "limit", 3));
+        assertThat(res.path("understood").path("by").asString()).isEqualTo("rules");
+        assertThat(res.path("understood").path("recipient").asString()).isEqualTo("parent");
+        assertThat(res.path("understood").path("occasion").asString()).isEqualTo("birthday");
+        assertThat(res.path("understood").path("budget").asInt()).isEqualTo(1500);
+        assertThat(res.path("understood").path("interests").get(0).asString()).isEqualTo("fragrance");
+        assertThat(res.path("source").asString()).isEqualTo("rules");
+        assertThat(res.path("picks")).hasSize(3);
+        for (JsonNode p : res.path("picks")) {
+            assertThat(p.path("product").path("price").asDouble()).isLessThanOrEqualTo(1500 * 1.15);
+            assertThat(p.path("product").path("inStock").asBoolean()).isTrue();
+            assertThat(p.path("reason").asString()).isNotBlank();
+        }
+    }
+
+    @Test
+    void aGiftRequestReadAndRefinedByTheModelStaysWithinTheCatalogue() throws Exception {
+        when(ai.isAvailable()).thenReturn(true);
+        when(ai.generateJson(anyString(), anyString())).thenReturn(
+                "{\"recipient\":\"wife\",\"occasion\":\"anniversary\",\"budget\":1500,\"interests\":[\"perfume\"]}",
+                "{\"summary\":\"Scents she'll love.\",\"picks\":[{\"productId\":4,\"reason\":\"Her signature scent.\"},"
+                        + "{\"productId\":424242,\"reason\":\"A car\"}]}");
+        JsonNode res = giftRequest(Map.of("text", "Anniversary gift for my wife, she adores perfume, about 1500", "limit", 2));
+        assertThat(res.path("understood").path("by").asString()).isEqualTo("ai");
+        assertThat(res.path("understood").path("recipient").asString()).isEqualTo("partner");
+        assertThat(res.path("source").asString()).isEqualTo("ai");
+        assertThat(res.path("picks").get(0).path("product").path("id").asLong()).isEqualTo(4L);
+        assertThat(res.path("picks")).hasSize(2);
+        assertThat(res.path("picks").toString()).doesNotContain("424242");
+    }
+
+    @Test
+    void aMalformedModelAnswerFallsBackToRulesAtEveryStep() throws Exception {
+        when(ai.isAvailable()).thenReturn(true);
+        when(ai.generateJson(anyString(), anyString())).thenReturn("not json");
+        JsonNode res = giftRequest(Map.of("text", "Diwali sweets for my colleague under 800"));
+        assertThat(res.path("understood").path("by").asString()).isEqualTo("rules");
+        assertThat(res.path("understood").path("occasion").asString()).isEqualTo("festival");
+        assertThat(res.path("source").asString()).isEqualTo("rules");
+        assertThat(res.path("picks")).isNotEmpty();
+    }
+
+    @Test
+    void aGiftRequestWithNothingInBudgetGetsAnHonestAnswer() throws Exception {
+        when(ai.isAvailable()).thenReturn(false);
+        JsonNode res = giftRequest(Map.of("text", "a little something under ₹50"));
+        assertThat(res.path("picks")).isEmpty();
+        assertThat(res.path("summary").asString()).contains("budget");
+    }
+
+    @Test
+    void aGiftRequestMustSaySomethingAndNotTooMuch() throws Exception {
+        mvc.perform(postJson("/api/ai/gift-request", Map.of("text", "  "))).andExpect(status().isBadRequest());
+        mvc.perform(postJson("/api/ai/gift-request", Map.of())).andExpect(status().isBadRequest());
+        mvc.perform(postJson("/api/ai/gift-request", Map.of("text", "x".repeat(501)))).andExpect(status().isBadRequest());
+        mvc.perform(postJson("/api/ai/gift-request", Map.of("text", "a gift", "limit", 0))).andExpect(status().isBadRequest());
+    }
 }
