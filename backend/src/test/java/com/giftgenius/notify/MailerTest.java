@@ -9,8 +9,12 @@ import static org.mockito.Mockito.verifyNoInteractions;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.core.task.SyncTaskExecutor;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -18,6 +22,9 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionSynchronizationUtils;
 
 import com.giftgenius.TestProps;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 class MailerTest {
 
@@ -50,6 +57,22 @@ class MailerTest {
         verify(sender).send(msg.capture());
         assertThat(msg.getValue().getTo()).containsExactly("a@example.com");
         assertThat(msg.getValue().getFrom()).isEqualTo("test@giftgenius.local");
+    }
+
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void loggedMailNeverShowsTheAddressOrAResetToken(CapturedOutput output) {
+        Logger logger = (Logger) LoggerFactory.getLogger(Mailer.class);
+        Level before = logger.getLevel();
+        logger.setLevel(Level.DEBUG); // the body is logged at DEBUG: the most revealing setting
+        try {
+            mailer("").send("asha.rao@example.com", "Reset your GiftGenius password",
+                    "Open this link: https://shop.example/reset-password?token=abc123SECRET");
+        } finally {
+            logger.setLevel(before);
+        }
+        assertThat(output).contains("a***@example.com").contains("reset-password?token=[redacted]")
+                .doesNotContain("asha.rao@example.com").doesNotContain("abc123SECRET");
     }
 
     @Test
