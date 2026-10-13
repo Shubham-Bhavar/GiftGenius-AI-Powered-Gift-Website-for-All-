@@ -51,6 +51,8 @@ public abstract class AbstractIT {
     protected static final String ADMIN_PASSWORD = "admin-password-123";
     protected static final String RZP_KEY_SECRET = "it-key-secret";
     protected static final String RZP_WEBHOOK_SECRET = "it-webhook-secret";
+    /** The one browser site allowed to call the API cross-origin, like the Vercel site in production. */
+    protected static final String SITE_ORIGIN = "https://shop.giftgenius.test";
     protected static final JsonMapper JSON = JsonMapper.builder().build();
 
     /** Fake Razorpay: POST /v1/orders returns a new order id, or 500 while {@link #RAZORPAY_DOWN} is set. */
@@ -85,6 +87,7 @@ public abstract class AbstractIT {
         r.add("management.server.port", () -> "-1");
         r.add("app.security.jwt-secret", () -> "integration-test-secret-that-is-long-enough-1234");
         r.add("app.security.cookie-secure", () -> "false");
+        r.add("app.security.allowed-origins", () -> SITE_ORIGIN);
         r.add("app.admin.email", () -> ADMIN_EMAIL);
         r.add("app.admin.password", () -> ADMIN_PASSWORD);
         r.add("app.payment.razorpay-enabled", () -> "true");
