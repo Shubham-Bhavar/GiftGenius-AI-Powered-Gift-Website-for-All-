@@ -12,8 +12,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import com.giftgenius.auth.PasswordResetTokenRepository;
-import com.giftgenius.auth.RefreshTokenRepository;
+import com.giftgenius.auth.repository.PasswordResetTokenRepository;
+import com.giftgenius.auth.repository.RefreshTokenRepository;
+import com.giftgenius.common.LogSafe;
 import com.giftgenius.user.Role;
 import com.giftgenius.user.User;
 import com.giftgenius.user.UserRepository;
@@ -68,12 +69,12 @@ public class AdminBootstrap implements ApplicationRunner {
         if (existing.isPresent() && existing.get().getRole() == Role.SELLER) {
             // A store's owner is never silently turned into an admin (their store and products would be orphaned).
             log.warn("ADMIN_EMAIL {} belongs to a seller account; it was not promoted. Use a different email "
-                    + "for the admin account.", email);
+                    + "for the admin account.", LogSafe.email(email));
             return;
         }
         if (admin.password().length() < MIN_PASSWORD_LENGTH) {
             log.warn("ADMIN_PASSWORD is shorter than {} characters; admin account {} not {}.", MIN_PASSWORD_LENGTH,
-                    email, existing.isPresent() ? "promoted" : "created");
+                    LogSafe.email(email), existing.isPresent() ? "promoted" : "created");
             return;
         }
 
@@ -86,7 +87,7 @@ public class AdminBootstrap implements ApplicationRunner {
             refreshTokens.revokeAllForUser(user.getId(), now);
             resetTokens.invalidateAllForUser(user.getId(), now);
             log.warn("Promoted existing customer account {} to ADMIN (ADMIN_EMAIL). It now signs in with "
-                    + "ADMIN_PASSWORD, and its previous sessions were signed out.", email);
+                    + "ADMIN_PASSWORD, and its previous sessions were signed out.", LogSafe.email(email));
             return;
         }
 
@@ -96,6 +97,6 @@ public class AdminBootstrap implements ApplicationRunner {
         user.setPasswordHash(encoder.encode(admin.password()));
         user.setRole(Role.ADMIN);
         users.save(user);
-        log.info("Created admin account {}", email);
+        log.info("Created admin account {}", LogSafe.email(email));
     }
 }

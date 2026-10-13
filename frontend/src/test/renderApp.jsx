@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient } from '@tanstack/react-query';
-import App from '../App.jsx';
+import App from '../app/App.jsx';
 
 /** Renders the real app (router, providers, pages) at a URL, with a fresh query cache. */
 export function renderApp(path = '/') {

@@ -13,13 +13,15 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
+import com.giftgenius.common.LogSafe;
 import com.giftgenius.config.AppProperties;
 
 import jakarta.annotation.PostConstruct;
 
 /**
  * Sends plain-text email in the background, after the surrounding transaction commits (so a
- * rolled-back order never emails the customer). Without SMTP settings, mail is logged instead.
+ * rolled-back order never emails the customer). Without SMTP settings, mail is logged instead: the recipient
+ * masked, and one-time link tokens (password resets) removed from the body.
  */
 @Component
 public class Mailer {
@@ -65,8 +67,8 @@ public class Mailer {
     private void deliver(String to, String subject, String body) {
         JavaMailSender sender = configured ? senderProvider.getIfAvailable() : null;
         if (sender == null) {
-            log.info("Email not sent (SMTP not configured) to {}: {}", to, subject);
-            log.debug("Email body for {}:\n{}", to, body);
+            log.info("Email not sent (SMTP not configured) to {}: {}", LogSafe.email(to), subject);
+            log.debug("Email body for {}:\n{}", LogSafe.email(to), LogSafe.withoutLinkTokens(body));
             return;
         }
         try {
@@ -77,7 +79,7 @@ public class Mailer {
             msg.setText(body);
             sender.send(msg);
         } catch (Exception e) {
-            log.error("Failed to send email '{}' to {}: {}", subject, to, e.getMessage());
+            log.error("Failed to send email '{}' to {}: {}", subject, LogSafe.email(to), e.getMessage());
         }
     }
 }

@@ -1,0 +1,267 @@
+/* Product grid, product cards, sort and filter pills, loading skeletons. */
+
+/* ─── 11. PRODUCTS ─── */
+.products-section { padding: 0 5% var(--sp-9); }
+
+.sec-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-3);
+}
+
+.sec-topbar h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.link-arrow {
+  font-size: 13px;
+  color: var(--gold);
+  font-weight: 500;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: gap 0.2s;
+}
+
+.link-arrow:hover { gap: 10px; }
+
+/* Sort */
+.sort-row { margin-bottom: var(--sp-2); }
+
+.sort-select {
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: var(--trans);
+}
+
+.sort-select:focus { border-color: var(--gold); outline: none; box-shadow: 0 0 0 3px var(--gold-dim); }
+
+/* Filter pills */
+.pills {
+  display: flex;
+  gap: var(--sp-1);
+  flex-wrap: wrap;
+  margin-bottom: var(--sp-4);
+}
+
+.pill {
+  background: var(--surface);
+  border: 1.5px solid var(--border-soft);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 400;
+  padding: 6px 18px;
+  border-radius: 999px;
+  transition: var(--trans);
+}
+
+.pill:hover,
+.pill.active {
+  background: var(--gold-pale);
+  border-color: var(--gold);
+  color: var(--gold);
+  font-weight: 500;
+}
+
+/* Product grid */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px;
+}
+
+/* Product card */
+.pcard {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border-soft);
+  overflow: hidden;
+  transition: var(--trans);
+  cursor: pointer;
+  position: relative;
+}
+
+.pcard:hover {
+  transform: translateY(-6px);
+  border-color: rgba(184,121,26,0.35);
+  box-shadow: var(--shadow-lg);
+}
+
+.pcard-img {
+  position: relative;
+  overflow: hidden;
+  background: var(--cream-dark);
+  aspect-ratio: 4 / 3;
+}
+
+.pcard-img img {
+  width: 100%; height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s ease;
+}
+
+.pcard:hover .pcard-img img { transform: scale(1.06); }
+
+/* Gradient overlay on image */
+.pcard-img::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(transparent 55%, rgba(26,22,18,0.35) 100%);
+  pointer-events: none;
+}
+
+/* Badges */
+.pbadge {
+  position: absolute;
+  top: 11px; left: 11px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 4px 9px;
+  border-radius: 4px;
+  letter-spacing: 0.06em;
+  z-index: 2;
+}
+
+.pbadge--bestseller { background: var(--charcoal); color: var(--gold-light); }
+.pbadge--new        { background: var(--teal-dark); color: #fff; }
+.pbadge--sale       { background: var(--danger); color: #fff; }
+.pbadge--rated      { background: #1A5E3A; color: #7FE4B0; }
+
+/* Wishlist button — always visible */
+.wish-btn {
+  position: absolute;
+  top: 9px; right: 9px;
+  width: 34px; height: 34px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  transition: var(--trans);
+  opacity: 1;
+  z-index: 3;
+}
+
+.wish-btn.active { opacity: 1; border-color: #fdc7c7; background: #fff0f0; }
+.wish-btn:hover { transform: scale(1.1); box-shadow: 0 4px 12px rgba(184,121,26,0.2); }
+
+/* Quick view button */
+.quickview-btn {
+  position: absolute;
+  bottom: var(--sp-1);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  opacity: 0;
+  background: rgba(26,22,18,0.88);
+  color: var(--cream);
+  border: none;
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: var(--trans);
+  z-index: 4;
+  letter-spacing: 0.02em;
+}
+
+.pcard:hover .quickview-btn {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Card body */
+.pcard-body { padding: 17px 16px 16px; }
+
+.pcard-cat {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--gold);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.pcard-name {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.pcard-rating {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--warm-light);
+  margin-bottom: var(--sp-2);
+}
+
+.stars { color: var(--gold); font-size: 11.5px; }
+
+.pcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.pcard-price { display: flex; flex-direction: column; gap: 1px; }
+
+.price-og {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--warm-light);
+  text-decoration: line-through;
+}
+
+.price-now {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.03em;
+}
+
+/* Add to cart button */
+.add-btn {
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  padding: 9px 17px;
+  border-radius: var(--radius-xs);
+  font-size: 13px;
+  font-weight: 500;
+  transition: var(--trans);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 72px;
+  justify-content: center;
+}
+
+.add-btn:hover { background: var(--gold); color: var(--ink); box-shadow: 0 4px 16px rgba(184,121,26,0.3); }
+.add-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+
+/* Skeleton loader */
+.pcard--skeleton .pcard-img { background: linear-gradient(90deg, var(--cream-dark) 25%, var(--parchment) 50%, var(--cream-dark) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
+.pcard--skeleton .pcard-name, .pcard--skeleton .pcard-cat { height: 12px; border-radius: 4px; background: var(--cream-dark); animation: shimmer 1.5s infinite; }

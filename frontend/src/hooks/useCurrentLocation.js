@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
-import { api } from '../lib/api.js';
+import { locationApi } from '../services/location.js';
 
 export const LOCATION_MESSAGES = {
   idle: '',
@@ -71,7 +71,7 @@ export function useCurrentLocation() {
         setStatus('unavailable');
         return null;
       }
-      const address = await api.reverseGeocode(round5(coords.latitude), round5(coords.longitude));
+      const address = await locationApi.reverseGeocode(round5(coords.latitude), round5(coords.longitude));
       if (!address || (address.countryCode && address.countryCode !== 'IN')) {
         setStatus(address ? 'outside' : 'failed');
         return null;

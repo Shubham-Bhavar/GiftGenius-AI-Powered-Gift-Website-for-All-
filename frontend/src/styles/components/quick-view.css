@@ -1,0 +1,80 @@
+/* Quick view modal. */
+
+/* ─── 17. QUICK VIEW MODAL ─── */
+/* Dimmed backdrop behind the centered modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,22,18,0.6);
+  backdrop-filter: blur(8px);
+  z-index: 400;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+
+/* The centered modal box */
+.quickview-modal {
+  position: fixed;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  width: min(640px, 90vw);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 20px;
+  padding: var(--sp-4);
+  z-index: 401;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.quickview-modal[open],
+.quickview-modal.open {
+  opacity: 1;
+  pointer-events: all;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.quickview-modal::backdrop { display: none; }
+
+/* Close (✕) button */
+.modal-close {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  width: 32px; height: 32px;
+  background: var(--cream-dark);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: var(--warm-mid);
+  transition: var(--trans);
+}
+
+.modal-close:hover { background: var(--parchment); color: var(--text); }
+
+/* Two-column layout: product image + product info */
+.modal-content { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+
+.modal-img {
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 1;
+}
+
+.modal-img img { width: 100%; height: 100%; object-fit: cover; }
+
+.modal-info { display: flex; flex-direction: column; gap: var(--sp-2); }
+.modal-cat { font-family: var(--font-mono); font-size: 10px; color: var(--gold); letter-spacing: 0.12em; text-transform: uppercase; }
+.modal-name { font-family: var(--font-serif); font-size: 22px; font-weight: 600; color: var(--text); }
+.modal-rating { font-size: 12px; color: var(--warm-light); }
+.modal-price { font-family: var(--font-serif); font-size: 26px; font-weight: 700; color: var(--text); }
+.modal-price .price-og { font-size: 13px; font-family: var(--font-mono); display: block; }
+.modal-desc { font-size: 14px; color: var(--text-muted); line-height: 1.7; }

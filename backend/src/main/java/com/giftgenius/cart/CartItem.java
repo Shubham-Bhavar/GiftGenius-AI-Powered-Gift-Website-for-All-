@@ -2,7 +2,7 @@ package com.giftgenius.cart;
 
 import java.util.Objects;
 
-import com.giftgenius.catalog.Product;
+import com.giftgenius.catalog.model.Product;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;

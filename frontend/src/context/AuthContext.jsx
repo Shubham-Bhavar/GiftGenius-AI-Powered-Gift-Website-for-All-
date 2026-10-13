@@ -1,6 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api, forgetSession, hasSessionHint, onSessionChange, refreshSession } from '../lib/api.js';
+import { forgetSession, hasSessionHint, onSessionChange, refreshSession } from '../services/api/client.js';
+import { authApi } from '../services/auth.js';
+import { cartKeys } from '../services/cart.js';
+import { wishlistKeys } from '../services/wishlist.js';
+import { ordersKeys } from '../services/orders.js';
+import { sellerKeys } from '../services/seller.js';
+import { adminKeys } from '../services/admin.js';
 
 const AuthContext = createContext(null);
 
@@ -29,17 +35,17 @@ export function AuthProvider({ children }) {
   // Drop every per-user cache on sign-out.
   useEffect(() => {
     if (!user) {
-      qc.removeQueries({ queryKey: ['cart'] });
-      qc.removeQueries({ queryKey: ['wishlist'] });
-      qc.removeQueries({ queryKey: ['orders'] });
-      qc.removeQueries({ queryKey: ['admin'] });
-      qc.removeQueries({ queryKey: ['seller'] });
+      qc.removeQueries({ queryKey: cartKeys.cart() });
+      qc.removeQueries({ queryKey: wishlistKeys.wishlist() });
+      qc.removeQueries({ queryKey: ordersKeys.all() });
+      qc.removeQueries({ queryKey: adminKeys.all() });
+      qc.removeQueries({ queryKey: sellerKeys.all() });
     }
   }, [user, qc]);
 
-  const login = useCallback((email, password) => api.login(email, password), []);
-  const register = useCallback((body) => api.register(body), []);
-  const logout = useCallback(() => api.logout(), []);
+  const login = useCallback((email, password) => authApi.login(email, password), []);
+  const register = useCallback((body) => authApi.register(body), []);
+  const logout = useCallback(() => authApi.logout(), []);
 
   const value = useMemo(
     // Role flags only choose what to show; the API enforces every role on every request.

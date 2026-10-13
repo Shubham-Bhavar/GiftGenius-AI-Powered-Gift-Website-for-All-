@@ -7,17 +7,26 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+
+import com.giftgenius.order.model.OrderStatus;
+import com.giftgenius.order.repository.OrderItemRepository;
 
 import tools.jackson.databind.JsonNode;
 
 class CheckoutIT extends AbstractIT {
+
+    @Autowired
+    private OrderItemRepository orderItems;
 
     private Map<String, Object> order(Session s, String payment, String coupon) {
         Map<String, Object> m = new HashMap<>(Map.of("shipping", shipping(s.email()), "deliveryType", "STANDARD",
@@ -157,6 +166,29 @@ class CheckoutIT extends AbstractIT {
         mvc.perform(b.auth(postJson("/api/orders", order(b, "COD", null))))
                 .andExpect(status().isConflict());
         assertThat(stockOf(id)).isZero();
+    }
+
+    @Test
+    void confirmedSalesCountTowardsRecommendationPopularityAndCancelledOnesDoNot() throws Exception {
+        Session admin = admin();
+        Map<String, Object> req = new HashMap<>(Map.of("name", "Popular Candle " + System.nanoTime(),
+                "category", "home decor", "description", "Sells well.", "price", 300, "originalPrice", 350,
+                "image", "https://example.com/candle.jpg", "stock", 10));
+        long id = body(mvc.perform(admin.auth(postJson("/api/admin/products", req))).andReturn()).path("id").asLong();
+        Session s = register(uniqueEmail("popular"));
+        addToCart(s, id, 3);
+        String number = placeCod(s, null, UUID.randomUUID().toString()).path("orderNumber").asString();
+
+        assertThat(unitsSold(id)).isEqualTo(3);
+        mvc.perform(s.auth(post("/api/orders/" + number + "/cancel"))).andExpect(status().isOk());
+        assertThat(unitsSold(id)).isZero();
+    }
+
+    private long unitsSold(long productId) {
+        return orderItems.unitsSoldSince(Instant.now().minus(Duration.ofDays(90)),
+                        List.of(OrderStatus.CANCELLED, OrderStatus.PENDING_PAYMENT)).stream()
+                .filter(r -> ((Number) r[0]).longValue() == productId)
+                .mapToLong(r -> ((Number) r[1]).longValue()).sum();
     }
 
     @Test

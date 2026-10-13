@@ -90,6 +90,8 @@ app:
     model: ${GEMINI_MODEL:gemini-2.5-flash}
     base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com}
     timeout: ${AI_TIMEOUT:12s}
+    daily-call-limit: ${AI_DAILY_CALL_LIMIT:500}
+    quota-cooldown: ${AI_QUOTA_COOLDOWN:5m}
   payment:
     razorpay-enabled: ${RAZORPAY_ENABLED:false}
     razorpay-key-id: ${RAZORPAY_KEY_ID:}

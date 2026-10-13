@@ -32,7 +32,12 @@ public record AppProperties(
             List<String> allowedOrigins) {
     }
 
-    public record Ai(boolean enabled, String apiKey, String model, String baseUrl, Duration timeout) {
+    /**
+     * @param dailyCallLimit cost safeguard: at most this many model calls per day (then rules answer)
+     * @param quotaCooldown  after the provider reports its quota is exhausted, no calls for this long
+     */
+    public record Ai(boolean enabled, String apiKey, String model, String baseUrl, Duration timeout,
+            int dailyCallLimit, Duration quotaCooldown) {
     }
 
     public record Payment(

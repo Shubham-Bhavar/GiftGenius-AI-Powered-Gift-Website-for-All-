@@ -4,7 +4,7 @@ import java.time.Instant;
 
 import org.hibernate.annotations.CreationTimestamp;
 
-import com.giftgenius.catalog.Product;
+import com.giftgenius.catalog.model.Product;
 import com.giftgenius.user.User;
 
 import jakarta.persistence.Column;
