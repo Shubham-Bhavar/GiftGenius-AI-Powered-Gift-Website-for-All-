@@ -1,0 +1,36 @@
+/*
+ * GiftGenius styles, one file per part of the interface.
+ *
+ * ORDER MATTERS. These files are the old giftgenius.css cut at its section boundaries and imported
+ * back in the same order, so every rule keeps its place in the cascade; later files may override
+ * earlier ones (responsive breakpoints, themes, inner pages). Add new rules to the file that owns
+ * them, and keep this order.
+ */
+@import './tokens.css';
+@import './base.css';
+@import './layout/header.css';
+@import './components/buttons.css';
+@import './home/hero.css';
+@import './components/section-headings.css';
+@import './home/showcase.css';
+@import './components/product-card.css';
+@import './home/highlights.css';
+@import './layout/footer.css';
+@import './components/cart-drawer.css';
+@import './components/quick-view.css';
+@import './components/toast.css';
+@import './reveal.css';
+@import './layout/responsive.css';
+@import './reduced-motion.css';
+@import './intro/entry-scene.css';
+@import './themes/dark-teal.css';
+@import './themes/accents.css';
+@import './intro/penguin.css';
+@import './ai/gift-finder-modal.css';
+@import './ai/gift-finder-results.css';
+
+/* Every page other than the homepage, built on the same tokens (with accessibility and contrast fixes). */
+@import './pages.css';
+
+/* All @keyframes. Order doesn't matter for these. */
+@import './animations.css';

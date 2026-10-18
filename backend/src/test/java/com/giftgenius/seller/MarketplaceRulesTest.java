@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
-import com.giftgenius.catalog.Product;
-import com.giftgenius.catalog.ProductStatus;
+import com.giftgenius.catalog.model.Product;
+import com.giftgenius.catalog.model.ProductStatus;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.common.SafeText;
-import com.giftgenius.order.FulfillmentStatus;
+import com.giftgenius.order.model.FulfillmentStatus;
+import com.giftgenius.seller.model.SellerProfile;
+import com.giftgenius.seller.model.SellerStatus;
 
 /** The small rules the marketplace rests on: listing, fulfilment steps, links and store addresses. */
 class MarketplaceRulesTest {

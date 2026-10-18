@@ -1,0 +1,165 @@
+/* Features strip, testimonials and newsletter. */
+
+/* ─── 12. FEATURES STRIP ─── */
+.features {
+  background: var(--gold-pale);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  padding: 34px 5%;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.feat-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 24px;
+}
+
+.feat-item + .feat-item { border-left: 1px solid var(--border); }
+
+.feat-ico {
+  width: 44px; height: 44px;
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-sm);
+}
+
+.feat-text strong { display: block; font-size: 14px; font-weight: 600; color: var(--text); letter-spacing: -0.01em; }
+.feat-text span { font-size: 12.5px; color: var(--text-muted); }
+
+/* ─── 13. TESTIMONIALS ─── */
+.testimonials { background: var(--charcoal); padding: var(--sp-9) 5%; }
+
+.tgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-top: var(--sp-5);
+}
+
+.tcard {
+  background: rgba(230,247,250,0.04);
+  border: 1px solid rgba(230,247,250,0.09);
+  border-radius: var(--radius);
+  padding: 28px;
+  transition: var(--trans);
+  position: relative;
+  overflow: hidden;
+}
+
+.tcard::before {
+  content: '\201C';
+  position: absolute;
+  top: 8px; right: 18px;
+  font-family: var(--font-serif);
+  font-size: 90px;
+  color: rgba(184,121,26,0.08);
+  line-height: 1;
+  pointer-events: none;
+}
+
+.tcard:hover {
+  background: rgba(230,247,250,0.08);
+  border-color: rgba(184,121,26,0.25);
+  transform: translateY(-4px);
+}
+
+.t-stars { color: var(--gold); font-size: 13px; letter-spacing: 2px; margin-bottom: 13px; }
+
+.t-quote {
+  font-family: var(--font-serif);
+  font-size: 15.5px;
+  font-style: italic;
+  color: rgba(240,252,255,0.78);
+  line-height: 1.75;
+  margin-bottom: 20px;
+}
+
+.t-author { display: flex; align-items: center; gap: 11px; }
+
+.t-av {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--gold), var(--gold-light));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-serif);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--charcoal);
+  flex-shrink: 0;
+  border: 1.5px solid rgba(184,121,26,0.3);
+}
+
+.t-av--teal { background: linear-gradient(135deg, #00B89A, #006B5A); }
+.t-av--rose { background: linear-gradient(135deg, #e8a0bf, #9B1D56); }
+
+.t-name { font-size: 13.5px; font-weight: 600; color: var(--cream); letter-spacing: -0.01em; }
+.t-loc  { font-family: var(--font-mono); font-size: 10.5px; color: rgba(230,247,250,0.45); letter-spacing: 0.06em; margin-top: 2px; }
+
+/* ─── 14. NEWSLETTER ─── */
+.newsletter {
+  background: var(--bg);
+  padding: var(--sp-9) 5%;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.newsletter::before {
+  content: '';
+  position: absolute;
+  top: -120px; left: 50%;
+  transform: translateX(-50%);
+  width: 700px; height: 300px;
+  background: radial-gradient(ellipse, rgba(184,121,26,0.08) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.newsletter h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 3vw, 40px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  position: relative;
+}
+
+.newsletter p {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-top: var(--sp-1);
+  margin-bottom: var(--sp-4);
+  font-weight: 300;
+  position: relative;
+}
+
+.nl-form {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  max-width: 460px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.nl-form input {
+  flex: 1;
+  padding: 13px 18px;
+  background: var(--surface);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: var(--trans);
+}
+
+.nl-form input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-dim); }
+.nl-form input::placeholder { color: var(--warm-light); }

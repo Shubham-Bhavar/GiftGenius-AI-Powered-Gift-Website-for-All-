@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { api, hasSessionHint, refreshSession, request } from '../lib/api.js';
+import { hasSessionHint, refreshSession, request } from '../services/api/client.js';
+import { authApi } from '../services/auth.js';
+import { cartApi } from '../services/cart.js';
 import { API } from './mockApi.js';
 import { db, server } from './setup.js';
 
 describe('api client', () => {
   it('turns problem+json errors into ApiError with field errors', async () => {
-    await expect(api.register({ fullName: 'A', email: 'new@example.com', password: 'x' })).rejects.toMatchObject({
+    await expect(authApi.register({ fullName: 'A', email: 'new@example.com', password: 'x' })).rejects.toMatchObject({
       status: 400,
       message: 'Some fields need attention.',
       errors: { password: 'Use 8 to 72 characters' },
@@ -14,22 +16,22 @@ describe('api client', () => {
   });
 
   it('refreshes once on 401 and retries the call', async () => {
-    await api.login('asha@example.com', 'correct-horse');
+    await authApi.login('asha@example.com', 'correct-horse');
     db.tokens = {}; // the access token "expires"
-    const me = await api.me();
+    const me = await authApi.me();
     expect(me.email).toBe('asha@example.com');
     expect(db.refreshCount).toBe(1);
   });
 
   it('shares one refresh between parallel 401s', async () => {
-    await api.login('asha@example.com', 'correct-horse');
+    await authApi.login('asha@example.com', 'correct-horse');
     db.tokens = {};
-    await Promise.all([api.me(), api.me(), api.cart()]);
+    await Promise.all([authApi.me(), authApi.me(), cartApi.cart()]);
     expect(db.refreshCount).toBe(1);
   });
 
   it('sends the CSRF header on refresh and stores a session hint', async () => {
-    await api.login('asha@example.com', 'correct-horse');
+    await authApi.login('asha@example.com', 'correct-horse');
     expect(hasSessionHint()).toBe(true);
     const user = await refreshSession();
     expect(user.email).toBe('asha@example.com');
@@ -38,7 +40,7 @@ describe('api client', () => {
   });
 
   it('keeps the session when the server is briefly unavailable, ends it on 401', async () => {
-    await api.login('asha@example.com', 'correct-horse');
+    await authApi.login('asha@example.com', 'correct-horse');
     db.refreshStatus = 502;
     expect(await refreshSession()).toBeNull();
     expect(hasSessionHint()).toBe(true);

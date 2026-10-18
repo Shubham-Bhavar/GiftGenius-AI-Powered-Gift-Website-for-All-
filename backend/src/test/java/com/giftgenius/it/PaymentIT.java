@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import com.giftgenius.payment.RazorpaySignatures;
+import com.giftgenius.payment.service.RazorpaySignatures;
 
 import tools.jackson.databind.JsonNode;
 

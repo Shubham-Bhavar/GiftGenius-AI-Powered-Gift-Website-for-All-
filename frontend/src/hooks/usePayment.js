@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
-import { payWithRazorpay } from '../lib/razorpay.js';
+import { paymentApi, payWithRazorpay } from '../services/payment.js';
 import { useCart } from '../context/CartContext.jsx';
 import { useToast } from '../context/ToastContext.jsx';
+import { ordersKeys } from '../services/orders.js';
 
 const retryable = (e) => e?.status === 0 || e?.status >= 500;
 
@@ -11,7 +11,7 @@ const retryable = (e) => e?.status === 0 || e?.status >= 500;
 async function verify(orderNumber, result) {
   for (let attempt = 1; ; attempt += 1) {
     try {
-      return await api.verifyPayment(orderNumber, result);
+      return await paymentApi.verifyPayment(orderNumber, result);
     } catch (e) {
       if (!retryable(e) || attempt >= 3) throw e;
       await new Promise((r) => setTimeout(r, attempt * 1500));
@@ -46,7 +46,7 @@ export function usePayment() {
         }
         try {
           const updated = await verify(order.orderNumber, result);
-          qc.setQueryData(['orders', order.orderNumber], updated);
+          qc.setQueryData(ordersKeys.detail(order.orderNumber), updated);
           if (updated.paymentStatus === 'PAID') {
             toast('Payment received. Thank you!');
             return 'paid';
@@ -62,7 +62,7 @@ export function usePayment() {
           return 'failed';
         }
       } finally {
-        qc.invalidateQueries({ queryKey: ['orders'] });
+        qc.invalidateQueries({ queryKey: ordersKeys.all() });
         cart.refresh();
       }
     },

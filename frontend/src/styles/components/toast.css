@@ -1,0 +1,25 @@
+/* Toast notifications. */
+
+/* ─── 18. TOAST ─── */
+.toast {
+  position: fixed;
+  bottom: 26px; left: 50%;
+  transform: translateX(-50%) translateY(70px);
+  background: var(--ink);
+  color: var(--cream);
+  padding: 12px 22px;
+  border-radius: var(--radius-xs);
+  font-size: 13.5px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  z-index: 500;
+  transition: transform 0.34s cubic-bezier(.4,0,.2,1);
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(184,121,26,0.2);
+}
+
+.toast.show { transform: translateX(-50%) translateY(0); }
+.toast-ico { color: var(--gold); }

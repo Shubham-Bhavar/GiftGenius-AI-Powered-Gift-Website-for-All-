@@ -1,0 +1,177 @@
+/* Cart sidebar. */
+
+/* ─── 16. CART SIDEBAR ─── */
+/* Dimmed backdrop behind the sliding cart panel */
+.cart-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(26,22,18,0.55);
+  backdrop-filter: blur(6px);
+  z-index: 300;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+}
+
+.cart-overlay.open { opacity: 1; pointer-events: all; }
+
+/* Sliding panel itself */
+.cart-side {
+  position: fixed;
+  top: 0; right: 0;
+  width: 390px; height: 100%;
+  background: var(--bg);
+  border-left: 1px solid var(--border-soft);
+  z-index: 301;
+  transform: translateX(100%);
+  transition: transform 0.36s cubic-bezier(.4,0,.2,1);
+  display: flex;
+  flex-direction: column;
+}
+
+.cart-side:not([hidden]) { transform: translateX(0); }
+
+/* Free-shipping progress bar */
+.cart-progress {
+  height: 3px;
+  background: var(--border-soft);
+  position: relative;
+  overflow: hidden;
+}
+
+.cart-progress-fill {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--teal-dark), var(--fx-teal));
+  border-radius: 0 99px 99px 0;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 8px rgba(110,198,207,0.4);
+}
+
+/* Header — title, item count, close button */
+.cart-hd {
+  padding: 22px 22px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cart-hd h2 {
+  font-family: var(--font-serif);
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.cart-item-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--warm-light);
+  margin-left: 4px;
+}
+
+.cart-close-btn {
+  background: var(--cream-dark);
+  border: 1px solid var(--border-soft);
+  width: 34px; height: 34px;
+  border-radius: var(--radius-xs);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+  color: var(--warm-mid);
+  transition: var(--trans);
+}
+
+.cart-close-btn:hover { background: var(--parchment); color: var(--text); }
+
+.cart-body { flex: 1; overflow-y: auto; padding: 16px 22px; }
+
+/* Empty-cart placeholder */
+.cart-empty { text-align: center; padding: 60px 20px; color: var(--warm-light); }
+.cart-empty .ei { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+.cart-empty p { font-size: 14px; font-weight: 300; line-height: 1.7; }
+
+/* "Add ₹X more for free shipping" message banner */
+.cart-msg {
+  border-radius: 6px;
+  padding: 9px 12px;
+  font-size: 12.5px;
+  margin-bottom: 12px;
+}
+
+.cart-msg--ship { background: var(--gold-dim); border: 1px solid var(--border); color: var(--warm-mid); }
+.cart-msg--free { background: rgba(110,198,207,0.08); border: 1px solid rgba(110,198,207,0.25); color: #3A8F98; }
+.cart-msg--ship strong { color: var(--gold); }
+
+/* Individual line item row */
+.cart-item {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border-soft);
+  animation: slideInR 0.25s ease;
+}
+
+.ci-img {
+  width: 58px; height: 58px;
+  border-radius: 10px;
+  object-fit: cover;
+  border: 1px solid var(--border-soft);
+  flex-shrink: 0;
+  background: var(--cream-dark);
+}
+
+.ci-info { flex: 1; }
+.ci-name  { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; letter-spacing: -0.01em; }
+.ci-price { font-family: var(--font-serif); font-size: 15px; font-weight: 700; color: var(--gold); }
+
+.ci-del {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: var(--warm-light);
+  transition: var(--trans);
+  align-self: flex-start;
+  padding: 2px;
+}
+
+.ci-del:hover { color: var(--danger); }
+
+/* Footer — total + checkout button */
+.cart-ft { padding: 20px 22px; border-top: 1px solid var(--border-soft); }
+
+.cart-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--sp-2);
+}
+
+.cart-total-row span:first-child { font-size: 14px; color: var(--text-muted); }
+
+.cart-total-val {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.03em;
+}
+
+.checkout-btn {
+  display: block;
+  width: 100%;
+  background: var(--ink);
+  color: var(--cream);
+  border: none;
+  padding: 14px;
+  border-radius: var(--radius-xs);
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: var(--trans);
+  letter-spacing: 0.01em;
+}
+
+.checkout-btn:hover { background: var(--gold); color: var(--ink); box-shadow: 0 6px 24px rgba(184,121,26,0.3); }

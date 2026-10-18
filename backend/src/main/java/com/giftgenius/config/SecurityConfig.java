@@ -45,7 +45,7 @@ public class SecurityConfig {
                 // Actuator lives on the management port, which is never published through nginx.
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/stores/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/stores/**", "/api/search").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login",
                         "/api/auth/refresh", "/api/auth/logout",
                         "/api/auth/password/forgot", "/api/auth/password/reset").permitAll()

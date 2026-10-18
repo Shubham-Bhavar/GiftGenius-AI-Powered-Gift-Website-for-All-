@@ -3,7 +3,7 @@ import { cleanup, configure } from '@testing-library/react';
 import { setupServer } from 'msw/node';
 import { afterAll, afterEach, beforeAll, beforeEach } from 'vitest';
 import { createDb, handlers } from './mockApi.js';
-import { __resetApiForTests } from '../lib/api.js';
+import { __resetApiForTests } from '../services/api/client.js';
 
 // findBy*/waitFor wait up to 5s (default 1s): busy CI machines can be slow to render a page's data.
 configure({ asyncUtilTimeout: 5000 });

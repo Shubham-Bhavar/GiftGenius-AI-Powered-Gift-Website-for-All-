@@ -2,12 +2,14 @@ package com.giftgenius.wishlist;
 
 import java.util.List;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.giftgenius.catalog.Product;
-import com.giftgenius.catalog.ProductDtos.ProductDto;
-import com.giftgenius.catalog.ProductRepository;
+import com.giftgenius.analytics.InteractionEvent;
+import com.giftgenius.catalog.model.Product;
+import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.catalog.repository.ProductRepository;
 import com.giftgenius.common.ApiException;
 import com.giftgenius.user.UserRepository;
 
@@ -17,11 +19,14 @@ public class WishlistService {
     private final WishlistRepository wishlist;
     private final ProductRepository products;
     private final UserRepository users;
+    private final ApplicationEventPublisher events;
 
-    public WishlistService(WishlistRepository wishlist, ProductRepository products, UserRepository users) {
+    public WishlistService(WishlistRepository wishlist, ProductRepository products, UserRepository users,
+            ApplicationEventPublisher events) {
         this.wishlist = wishlist;
         this.products = products;
         this.users = users;
+        this.events = events;
     }
 
     @Transactional(readOnly = true)
@@ -36,7 +41,9 @@ public class WishlistService {
     @Transactional
     public List<ProductDto> add(Long userId, Long productId) {
         users.lockById(userId); // serialise one shopper's writes (e.g. a double-clicked heart)
-        addIfMissing(userId, productId);
+        if (addIfMissing(userId, productId)) {
+            events.publishEvent(InteractionEvent.wishlistAdd(productId));
+        }
         return list(userId);
     }
 
@@ -59,7 +66,8 @@ public class WishlistService {
         return list(userId);
     }
 
-    private void addIfMissing(Long userId, Long productId) {
+    /** True when it was added (it wasn't already there). */
+    private boolean addIfMissing(Long userId, Long productId) {
         Product product = products.findByIdAndActiveTrue(productId)
                 .orElseThrow(() -> ApiException.notFound("That gift is no longer available."));
         if (!wishlist.existsByUserIdAndProductId(userId, productId)) {
@@ -67,6 +75,8 @@ public class WishlistService {
             item.setUser(users.getReferenceById(userId));
             item.setProduct(product);
             wishlist.save(item);
+            return true;
         }
+        return false;
     }
 }

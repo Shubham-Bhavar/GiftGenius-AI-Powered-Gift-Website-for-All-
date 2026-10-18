@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api.js';
-import { storage } from '../lib/storage.js';
+import { cartApi, cartKeys, cartQueries } from '../services/cart.js';
+import { storage } from '../utils/storage.js';
 import { useAuth } from './AuthContext.jsx';
 
 export const GUEST_CART_KEY = 'gg-cart';
@@ -33,7 +33,7 @@ export function CartProvider({ children }) {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  const server = useQuery({ queryKey: ['cart'], queryFn: api.cart, enabled: !!user });
+  const server = useQuery({ ...cartQueries.cart(), enabled: !!user });
 
   // Fold the guest cart into the account once, right after sign-in. Until it lands, the cart
   // reports "loading" so checkout doesn't see a half-merged (empty) cart.
@@ -43,10 +43,10 @@ export function CartProvider({ children }) {
     if (!user || guest.length === 0 || merging.current) return;
     merging.current = true;
     setMergePending(true);
-    api
+    cartApi
       .mergeCart(guest.map(({ productId, quantity, customName, customMessage }) => ({ productId, quantity, customName, customMessage })))
       .then((cart) => {
-        qc.setQueryData(['cart'], cart);
+        qc.setQueryData(cartKeys.cart(), cart);
         setGuest([]);
       })
       .catch(() => {
@@ -78,14 +78,14 @@ export function CartProvider({ children }) {
     return guest.map((l) => ({ ...l, lineTotal: l.unitPrice * l.quantity, available: true }));
   }, [user, server.data, guest]);
 
-  const setServerCart = useCallback((cart) => qc.setQueryData(['cart'], cart), [qc]);
+  const setServerCart = useCallback((cart) => qc.setQueryData(cartKeys.cart(), cart), [qc]);
 
   const add = useCallback(
     async (product, quantity = 1, { customName, customMessage } = {}) => {
       const name = clean(customName);
       const message = clean(customMessage);
       if (user) {
-        setServerCart(await api.addToCart({ productId: product.id, quantity, customName: name, customMessage: message }));
+        setServerCart(await cartApi.addToCart({ productId: product.id, quantity, customName: name, customMessage: message }));
         return;
       }
       const key = lineKey(product.id, name, message);
@@ -118,7 +118,7 @@ export function CartProvider({ children }) {
     async (key, quantity) => {
       const q = Math.max(1, Math.min(MAX_QTY, quantity));
       if (user) {
-        setServerCart(await api.updateCartItem(key, q));
+        setServerCart(await cartApi.updateCartItem(key, q));
         return;
       }
       setGuest((lines) => lines.map((l) => (l.key === key ? { ...l, quantity: Math.min(q, l.stock ?? MAX_QTY) } : l)));
@@ -129,7 +129,7 @@ export function CartProvider({ children }) {
   const remove = useCallback(
     async (key) => {
       if (user) {
-        setServerCart(await api.removeCartItem(key));
+        setServerCart(await cartApi.removeCartItem(key));
         return;
       }
       setGuest((lines) => lines.filter((l) => l.key !== key));
@@ -139,14 +139,14 @@ export function CartProvider({ children }) {
 
   const clear = useCallback(async () => {
     if (user) {
-      await api.clearCart();
+      await cartApi.clearCart();
       setServerCart({ items: [], itemCount: 0, subtotal: 0 });
       return;
     }
     setGuest([]);
   }, [user, setServerCart]);
 
-  const refresh = useCallback(() => (user ? qc.invalidateQueries({ queryKey: ['cart'] }) : Promise.resolve()), [user, qc]);
+  const refresh = useCallback(() => (user ? qc.invalidateQueries({ queryKey: cartKeys.cart() }) : Promise.resolve()), [user, qc]);
 
   const value = useMemo(() => {
     const count = items.reduce((n, i) => n + i.quantity, 0);

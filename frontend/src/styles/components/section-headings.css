@@ -1,0 +1,50 @@
+/* Section headings shared by many pages. */
+
+/* ─── 7. SECTION SHARED ─── */
+.section { padding: var(--sp-9) 5%; }
+
+.sec-header { margin-bottom: var(--sp-5); }
+.sec-header--center { text-align: center; }
+
+.sec-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--gold);
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sec-eyebrow--center { justify-content: center; }
+.sec-eyebrow--dim { color: rgba(184,121,26,0.7); }
+
+.sec-line {
+  width: 28px; height: 1px;
+  background: var(--gold);
+  opacity: 0.6;
+  flex-shrink: 0;
+}
+
+.sec-line--faded { opacity: 0.4; }
+
+.sec-header h2 {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 3vw, 38px);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  line-height: 1.15;
+}
+
+.sec-header p {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-top: var(--sp-1);
+  font-weight: 300;
+}
+
+.heading--light { color: var(--cream) !important; }
+.subheading--dim { color: rgba(230,247,250,0.55) !important; }

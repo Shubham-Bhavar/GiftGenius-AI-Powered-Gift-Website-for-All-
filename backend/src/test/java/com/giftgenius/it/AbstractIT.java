@@ -28,7 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import com.giftgenius.ai.LlmClient;
+import com.giftgenius.ai.provider.AiProvider;
 import com.giftgenius.notify.Mailer;
 import com.sun.net.httpserver.HttpServer;
 
@@ -69,7 +69,7 @@ public abstract class AbstractIT {
     protected MockMvc mvc;
 
     @MockitoBean
-    protected LlmClient llm;
+    protected AiProvider ai;
 
     @MockitoBean
     protected Mailer mailer;

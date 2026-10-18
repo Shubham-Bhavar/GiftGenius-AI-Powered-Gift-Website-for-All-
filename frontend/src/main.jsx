@@ -12,10 +12,10 @@ import '@fontsource/outfit/500.css';
 import '@fontsource/outfit/600.css';
 import '@fontsource/dm-mono/400.css';
 import '@fontsource/dm-mono/500.css';
-// The homepage stylesheet (unchanged), then the inner pages built on the same design tokens.
-import './styles/giftgenius.css';
-import './styles/pages.css';
-import App, { createQueryClient } from './App.jsx';
+// The design system, in cascade order (see styles/index.css).
+import './styles/index.css';
+import App from './app/App.jsx';
+import { createQueryClient } from './app/queryClient.js';
 
 const queryClient = createQueryClient();
 
