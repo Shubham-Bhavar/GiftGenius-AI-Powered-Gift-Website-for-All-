@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
-import { hasSessionHint, refreshSession, request } from '../services/api/client.js';
+import { apiBase, hasSessionHint, refreshSession, request } from '../services/api/client.js';
 import { authApi } from '../services/auth.js';
 import { cartApi } from '../services/cart.js';
 import { API } from './mockApi.js';
@@ -48,6 +48,16 @@ describe('api client', () => {
     db.refreshStatus = 401;
     expect(await refreshSession()).toBeNull();
     expect(hasSessionHint()).toBe(false);
+  });
+
+  it('builds the API root from VITE_API_BASE without doubling /api', () => {
+    expect(apiBase(undefined)).toBe('/api');
+    expect(apiBase('')).toBe('/api');
+    expect(apiBase('https://api.example.com')).toBe('https://api.example.com/api');
+    expect(apiBase('https://api.example.com/')).toBe('https://api.example.com/api');
+    // A common way to fill in the setting; it used to send every call to /api/api/… and get 404s.
+    expect(apiBase('https://api.example.com/api')).toBe('https://api.example.com/api');
+    expect(apiBase(' https://api.example.com/api/ ')).toBe('https://api.example.com/api');
   });
 
   it('reports network failures in plain language', async () => {

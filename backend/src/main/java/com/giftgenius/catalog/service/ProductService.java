@@ -223,16 +223,18 @@ public class ProductService {
         return slug;
     }
 
-    private static Sort sortFor(String sort) {
+    /** Every order ends on the id, so products that tie (same price, rating or creation time) page consistently. */
+    static Sort sortFor(String sort) {
+        Sort byId = Sort.by("id");
         if (sort == null) {
-            return Sort.by("id");
+            return byId;
         }
         return switch (sort) {
-            case "price_asc", "price-asc" -> Sort.by("price").ascending();
-            case "price_desc", "price-desc" -> Sort.by("price").descending();
-            case "rating" -> Sort.by("rating").descending().and(Sort.by("reviewCount").descending());
-            case "newest" -> Sort.by("createdAt").descending();
-            default -> Sort.by("id");
+            case "price_asc", "price-asc" -> Sort.by("price").ascending().and(byId);
+            case "price_desc", "price-desc" -> Sort.by("price").descending().and(byId);
+            case "rating" -> Sort.by("rating").descending().and(Sort.by("reviewCount").descending()).and(byId);
+            case "newest" -> Sort.by("createdAt").descending().and(Sort.by("id").descending());
+            default -> byId;
         };
     }
 }

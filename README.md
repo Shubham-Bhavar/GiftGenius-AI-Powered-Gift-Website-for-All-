@@ -2,7 +2,7 @@
 
 A production-ready gift e-commerce site: a **React 19** storefront, a **Spring Boot 4** API on **Java 21**, **MySQL 8** and an **AI gift advisor** (Google Gemini, with a rule-based fallback so it always answers).
 
-The storefront keeps the original GiftGenius homepage ([Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-](https://github.com/Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-)) exactly as designed: the same sections, colours, fonts, gift-box entry animation, confetti, sliding nav pill and cards. Its stylesheet is used verbatim (`frontend/src/styles/giftgenius.css`), and every other page is built from the same design tokens and components (`frontend/src/styles/pages.css`), so the whole site looks and feels like the homepage. All pages are connected to the live API.
+The storefront keeps the original GiftGenius homepage ([Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-](https://github.com/Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-)) exactly as designed: the same sections, colours, fonts, gift-box entry animation, confetti, sliding nav pill and cards. Its styles are kept as designed, split by area under `frontend/src/styles/` and loaded in cascade order by `frontend/src/styles/index.css`, and every other page is built from the same design tokens and components (`frontend/src/styles/pages.css`), so the whole site looks and feels like the homepage. All pages are connected to the live API.
 
 ```
 giftgenius/
@@ -40,7 +40,7 @@ giftgenius/
 - **Orders.** A cart can mix GiftGenius and seller products, and still produces one customer order. Each order line remembers its seller. A seller sees only their own lines, their share of the money and the delivery address, and moves their part through packed → shipped → delivered, optionally with a *seller fulfilment/tracking note* for the customer. That note is free text from the seller, not live carrier tracking. When every line of an order belongs to sellers, the customer's order status follows the slowest seller.
 - **Sales revenue, not payouts.** Seller figures are **sales revenue**: what shoppers paid for that seller's lines in confirmed orders, before order-wide coupons, excluding cancelled orders. They are not profit, since costs aren't recorded. They are also not a **seller payout**: GiftGenius doesn't settle money with sellers yet, so nothing in the app says a seller has been paid.
 
-**Store details** (support email, phone, city, social links, nav menu, and the end date on the homepage sale banner) live in one file: `frontend/src/config/site.js`.
+**Store details** (support email, phone, city, social links, nav menu, and the end date on the homepage sale banner) live in one file: `frontend/src/constants/site.js`.
 
 ## Quick start (Docker)
 
@@ -123,9 +123,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (49)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (71)
-cd frontend && npm run lint && npm test   # 129 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (242)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (110)
+cd frontend && npm run lint && npm test   # 140 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -191,7 +191,8 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 | Wishlist | `GET /api/wishlist`, `PUT/DELETE /api/wishlist/{productId}`, `POST /api/wishlist/merge` |
 | Checkout | `GET /api/checkout/options`, `POST /api/checkout/quote` |
 | Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `GET /api/orders/track?orderNumber&email` |
-| AI | `POST /api/ai/recommendations`, `POST /api/ai/gift-message` |
+| AI | `POST /api/ai/recommendations`, `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; backend only, not yet used by the storefront) |
+| Search | `GET /api/search?q&page&size` (gift-aware search; backend only, the storefront uses `/api/products?q`) |
 | Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
 | Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |
 | Seller (SELLER role) | `GET /api/seller/me · dashboard · analytics`, `PUT /api/seller/profile`, `POST /api/seller/profile/reapply`, `GET/POST /api/seller/products`, `GET/PUT/DELETE /api/seller/products/{id}`, `POST /api/seller/products/{id}/submit`, `GET /api/seller/orders`, `GET /api/seller/orders/{n}`, `PATCH /api/seller/orders/{n}/status` |
@@ -210,5 +211,5 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 - [ ] Backups copied off the server, and a restore tried once.
 - [ ] Product photos: the seed catalog uses external image URLs for demo purposes. Replace them with photos you own (Store admin → Products).
 - [ ] Review the seeded coupons (`WELCOME`, `GIFT20`: one use per customer) in Store admin → Coupons.
-- [ ] Put your real support email, phone, city and social links in `frontend/src/config/site.js`.
-- [ ] Have the Privacy Policy and Terms pages (`frontend/src/pages/Info.jsx`) reviewed for your business. The text provided is a sensible starting point, not legal advice.
+- [ ] Put your real support email, phone, city and social links in `frontend/src/constants/site.js`.
+- [ ] Have the Privacy Policy and Terms pages (`frontend/src/pages/info/Legal.jsx`) reviewed for your business. The text provided is a sensible starting point, not legal advice.

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -64,15 +65,19 @@ public class PricingService {
         }
         DeliveryType delivery = deliveryType == null ? DeliveryType.STANDARD : deliveryType;
 
-        Map<Long, Product> byId = products.findAllById(
-                requested.stream().map(QuoteLineRequest::productId).distinct().toList())
+        // Personalised cart lines of one product arrive as separate lines; they share its price and stock.
+        Map<Long, Integer> qtyByProduct = new LinkedHashMap<>();
+        requested.forEach(r -> qtyByProduct.merge(r.productId(), r.quantity(), Integer::sum));
+
+        Map<Long, Product> byId = products.findAllById(List.copyOf(qtyByProduct.keySet()))
                 .stream().collect(Collectors.toMap(Product::getId, Function.identity()));
 
         List<QuoteLine> lines = new ArrayList<>();
         List<String> warnings = new ArrayList<>();
         BigDecimal subtotal = BigDecimal.ZERO;
 
-        for (QuoteLineRequest r : requested) {
+        for (QuoteLineRequest r : qtyByProduct.entrySet().stream()
+                .map(e -> new QuoteLineRequest(e.getKey(), e.getValue())).toList()) {
             Product p = byId.get(r.productId());
             if (p == null || !p.isActive()) {
                 fail(strict, warnings, "One of the gifts in your cart is no longer available.");

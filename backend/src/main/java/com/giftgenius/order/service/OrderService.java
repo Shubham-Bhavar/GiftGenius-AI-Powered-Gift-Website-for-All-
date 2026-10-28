@@ -115,6 +115,9 @@ public class OrderService {
         } catch (RuntimeException e) {
             tx.executeWithoutResult(s -> orders.findById(p.orderId()).ifPresent(o -> {
                 o.setPaymentStatus(PaymentStatus.FAILED);
+                // This attempt never became payable, so it gives its Idempotency-Key back: the shopper's retry
+                // (the same checkout, or Cash on Delivery as the error suggests) places a new order.
+                o.setIdempotencyKey(null);
                 doCancel(o, "Online payment couldn't be started");
             }));
             throw e instanceof ApiException ? e

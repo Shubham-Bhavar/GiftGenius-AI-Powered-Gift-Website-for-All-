@@ -86,6 +86,40 @@ class CheckoutIT extends AbstractIT {
                 .andExpect(jsonPath("$.delivery.length()").value(3));
     }
 
+    /**
+     * Personalised lines of one product are separate cart lines (up to 10 units each) but share its stock. The quote
+     * takes the cart's lines as they are and prices them per product, like order placement does, so the total
+     * shown at checkout is the total charged and the stock warning covers the lines together.
+     */
+    @Test
+    void quotePricesPersonalisedLinesOfOneProductTogether() throws Exception {
+        Session s = register(uniqueEmail("lines"));
+        mvc.perform(s.auth(postJson("/api/cart/items", Map.of("productId", 15, "quantity", 10, "customName", "Asha"))))
+                .andExpect(status().isOk());
+        mvc.perform(s.auth(postJson("/api/cart/items", Map.of("productId", 15, "quantity", 5, "customName", "Ravi"))))
+                .andExpect(status().isOk());
+
+        JsonNode q = body(mvc.perform(postJson("/api/checkout/quote", Map.of("items", List.of(
+                Map.of("productId", 15, "quantity", 10), Map.of("productId", 15, "quantity", 5)))))
+                .andExpect(status().isOk()).andReturn());
+        assertThat(q.path("lines")).hasSize(1);
+        assertThat(q.path("lines").get(0).path("quantity").asInt()).isEqualTo(15);
+        assertThat(q.path("total").asDouble()).isEqualTo(11235.0); // 15 × 749, free standard delivery
+        assertThat(q.path("warnings")).isEmpty();
+        assertThat(placeCod(s, null, UUID.randomUUID().toString()).path("total").asDouble()).isEqualTo(11235.0);
+
+        // Lines that each fit the stock but together exceed it are flagged before checkout, not at "Place order".
+        int stock = stockOf(15);
+        List<Map<String, Object>> lines = new java.util.ArrayList<>();
+        for (int left = stock + 5; left > 0; left -= 10) {
+            lines.add(Map.of("productId", 15, "quantity", Math.min(10, left)));
+        }
+        JsonNode over = body(mvc.perform(postJson("/api/checkout/quote", Map.of("items", lines)))
+                .andExpect(status().isOk()).andReturn());
+        assertThat(over.path("warnings").get(0).asString()).isEqualTo("Only " + stock + " left of Leather Wallet & Card Holder.");
+        assertThat(over.path("lines").get(0).path("quantity").asInt()).isEqualTo(stock);
+    }
+
     @Test
     void codOrderReservesStockIsIdempotentAndCanBeTracked() throws Exception {
         Session s = register(uniqueEmail("cod"));

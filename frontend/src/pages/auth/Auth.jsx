@@ -7,9 +7,13 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { authApi } from '../../services/auth.js';
 import { homeFor } from '../../components/auth/guards.jsx';
 
-/** Only allow same-site relative redirects after sign-in (no open redirects). */
+/**
+ * Only allow same-site relative redirects after sign-in (no open redirects). Browsers read "\" as "/" and drop
+ * tabs and line breaks in URLs, so "/\evil.example" or "/<tab>/evil.example" would mean //evil.example too.
+ */
 export function safeNext(raw) {
-  return raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/';
+  // eslint-disable-next-line no-control-regex
+  return raw && raw.startsWith('/') && !raw.startsWith('//') && !/[\\\u0000-\u001f\u007f]/.test(raw) ? raw : '/';
 }
 
 const PATHS = { login: '/login', register: '/register', forgot: '/forgot-password' };

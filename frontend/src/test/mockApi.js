@@ -113,7 +113,10 @@ function addLine(db, userId, { productId, quantity, customName = null, customMes
 }
 
 function quote(db, items, couponCode, deliveryType = 'STANDARD') {
-  const lines = items.map(({ productId, quantity }) => {
+  // Like the API: lines of one product (personalised lines) are priced together.
+  const byProduct = new Map();
+  items.forEach(({ productId, quantity }) => byProduct.set(productId, (byProduct.get(productId) ?? 0) + quantity));
+  const lines = [...byProduct].map(([productId, quantity]) => {
     const p = db.products.find((x) => x.id === productId);
     return { productId, name: p.name, image: p.image, unitPrice: p.price, quantity, lineTotal: p.price * quantity, available: p.stock };
   });
@@ -206,6 +209,8 @@ export function handlers(db) {
       HttpResponse.json([...new Set(db.products.map((p) => p.category))].map((category) => ({ category, count: 1 })))),
     http.get(`${API}/products/:id/related`, ({ params }) => HttpResponse.json(db.products.filter((p) => p.id !== Number(params.id)).slice(0, 2))),
     http.get(`${API}/products/:id`, ({ params }) => {
+      // Like the API: an id that isn't a number fails the path's type conversion.
+      if (!/^\d+$/.test(params.id)) return problem(400, `Failed to convert 'id' with value: '${params.id}'`);
       const p = db.products.find((x) => x.id === Number(params.id) && x.active);
       return p ? HttpResponse.json(productDto(p)) : problem(404, "We couldn't find that gift.");
     }),
@@ -263,6 +268,9 @@ export function handlers(db) {
     })),
     http.post(`${API}/checkout/quote`, async ({ request }) => {
       const { items, couponCode, deliveryType } = await request.json();
+      db.lastQuoteItems = items;
+      // The API validates each line like a cart line: 1 to 10 units.
+      if (items.some((i) => i.quantity < 1 || i.quantity > 10)) return problem(400, 'Some fields need attention.');
       return HttpResponse.json(quote(db, items, couponCode, deliveryType));
     }),
     http.post(`${API}/orders`, authed(async ({ request, user }) => {
