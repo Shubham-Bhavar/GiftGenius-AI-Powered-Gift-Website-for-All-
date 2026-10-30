@@ -32,5 +32,8 @@
 /* Every page other than the homepage, built on the same tokens (with accessibility and contrast fixes). */
 @import './pages.css';
 
+/* The Gift Studio (/studio): 3D box, card, reveal, compare and box composer. */
+@import './studio/gift-studio.css';
+
 /* All @keyframes. Order doesn't matter for these. */
 @import './animations.css';

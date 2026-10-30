@@ -158,7 +158,8 @@ public class ExplanationService {
         return out;
     }
 
-    static String occasionLabel(String occasion) {
+    /** "birthdays", "Valentine's Day": as in "made for …". */
+    public static String occasionLabel(String occasion) {
         return switch (occasion) {
             case "birthday" -> "birthdays";
             case "anniversary" -> "anniversaries";
@@ -172,7 +173,7 @@ public class ExplanationService {
     }
 
     /** Indian digit grouping, as the shop shows prices: ₹1,500 and ₹1,50,000. */
-    static String rupees(int amount) {
+    public static String rupees(int amount) {
         String digits = Integer.toString(amount);
         if (digits.length() <= 3) {
             return "₹" + digits;
@@ -185,7 +186,8 @@ public class ExplanationService {
         return ("aeiou".indexOf(word.charAt(0)) >= 0 ? "an " : "a ") + word;
     }
 
-    static String joinNaturally(List<String> parts) {
+    /** "a", "a and b", "a, b and c". */
+    public static String joinNaturally(List<String> parts) {
         if (parts.size() == 1) {
             return parts.get(0);
         }

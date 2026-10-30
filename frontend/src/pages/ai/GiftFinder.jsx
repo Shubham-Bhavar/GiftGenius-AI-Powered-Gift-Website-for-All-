@@ -129,9 +129,11 @@ export default function GiftFinder() {
   const picked = q ? (q.multi ? (answers[q.field] ?? []).length > 0 : answers[q.field] !== undefined) : true;
   const answered = q?.optional || picked;
 
+  // The catalogue interests picked: some choices are two ("Flowers & Fragrance").
+  const interests = (answers.interests ?? []).flatMap((o) => [o.value, o.also].filter(Boolean));
+
   const submit = () => {
     const notes = [answers.recipient?.note, answers.occasion?.note, extra.trim()].filter(Boolean).join(' ');
-    const interests = (answers.interests ?? []).flatMap((o) => [o.value, o.also].filter(Boolean));
     const avoid = (answers.avoid ?? []).map((o) => o.value);
     recommend({
       recipient: answers.recipient?.value || undefined,
@@ -158,6 +160,12 @@ export default function GiftFinder() {
   const who = answers.recipient?.label ?? 'them';
   const budget = answers.budget?.value;
   const avoided = (result?.avoided ?? []).map((a) => AVOID_LABEL[a] ?? a);
+  // The Gift Studio gets the answers it can use for theme suggestions and boxes (not the name, not the notes).
+  const studioContext = new URLSearchParams(Object.entries({
+    style: answers.personality?.value, occasion: answers.occasion?.value, recipient: answers.recipient?.value,
+    budget: budget || undefined, interests: interests.join(','),
+  }).filter(([, v]) => v)).toString();
+  const studioHref = (ids) => `/studio?${ids.length === 1 ? `product=${ids[0]}` : `products=${ids.join(',')}`}${studioContext ? `&${studioContext}` : ''}`;
 
   return (
     <div className="quiz-page">
@@ -251,7 +259,7 @@ export default function GiftFinder() {
             {phase === 'results' && result && (
               result.picks.length > 0 ? (
                 <div className="results-grid">
-                  {result.picks.map((p, i) => <RecommendationCard key={p.product.id} pick={p} index={i} />)}
+                  {result.picks.map((p, i) => <RecommendationCard key={p.product.id} pick={p} index={i} studioHref={studioHref([p.product.id])} />)}
                 </div>
               ) : (
                 <div className="no-results-box">
@@ -261,7 +269,9 @@ export default function GiftFinder() {
               )
             )}
 
-            {phase === 'results' && <GiftPlan plan={result?.plan} />}
+            {phase === 'results' && (
+              <GiftPlan plan={result?.plan} boxHref={result?.plan ? studioHref(result.plan.options.map((o) => o.product.id)) : null} />
+            )}
 
             {phase === 'results' && result?.giftMessage && (
               <div className="qz-message">

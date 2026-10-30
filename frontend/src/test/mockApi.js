@@ -388,6 +388,61 @@ export function handlers(db) {
       });
     }),
     http.post(`${API}/ai/gift-message`, () => HttpResponse.json({ source: 'ai', messages: ['Happy birthday, Maa!', 'Love you always.', 'For the warmest hugs.'] })),
+    http.post(`${API}/ai/gift-request`, async ({ request }) => {
+      db.lastGiftRequest = await request.json();
+      // Like the API: "understood" holds only what the words said; the picks are catalogue products.
+      return HttpResponse.json({
+        source: 'rules',
+        understood: { recipient: 'sibling', occasion: null, budget: null, interests: [], personality: null, avoid: [], by: 'rules' },
+        summary: 'Gifts to thank your sister.',
+        picks: [
+          { product: productDto(db.products[0]), reason: 'A favourite for siblings, and a hamper to share.', score: 80, match: 100, checks: [] },
+          { product: productDto(db.products[3]), reason: 'Something sweet for someone who has your back.', score: 70, match: 100, checks: [] },
+        ],
+        giftMessage: 'Thank you for always being there.',
+        plan: null,
+      });
+    }),
+
+    // Gift Studio: boxes of several gifts. Like the API, a suggestion never goes over the budget.
+    http.post(`${API}/gift-box/suggestions`, async ({ request }) => {
+      const body = await request.json();
+      db.lastBoxSuggestion = body;
+      const items = [db.products[0], db.products[1], db.products[3]]; // hamper ₹499, roses ₹599, chocolates ₹299
+      const total = items.reduce((n, p) => n + p.price, 0);
+      if (total > body.budget) {
+        return HttpResponse.json({ budget: body.budget, boxes: [], note: `There aren't ${body.size} different kinds of gift within ₹${body.budget} yet. Try a bigger budget or fewer gifts.` });
+      }
+      return HttpResponse.json({
+        budget: body.budget,
+        boxes: [{
+          items: items.map((p) => ({ product: productDto(p), reason: `${p.name}: rated ${p.rating}★.` })),
+          total,
+          checks: [
+            { dimension: 'occasion', status: 'warn', text: '2 of 3 are made for birthdays; the Classic Rose Bouquet isn’t' },
+            { dimension: 'price', status: 'good', text: `₹${total.toLocaleString('en-IN')} of your ₹${body.budget.toLocaleString('en-IN')} budget (₹${body.budget - total} to spare)` },
+            { dimension: 'packaging', status: 'unknown', text: 'Packaging fit isn’t checked yet: the catalogue doesn’t record product sizes' },
+          ],
+        }],
+        note: null,
+      });
+    }),
+    http.post(`${API}/gift-box/check`, async ({ request }) => {
+      const body = await request.json();
+      db.lastBoxCheck = body;
+      const items = body.productIds.map((id) => db.products.find((p) => p.id === id)).filter(Boolean);
+      const total = items.reduce((n, p) => n + p.price, 0);
+      const over = body.budget && total > body.budget;
+      return HttpResponse.json({
+        total,
+        budget: body.budget ?? null,
+        checks: [
+          { dimension: 'price', status: over ? 'bad' : 'good', text: over ? `₹${total}: ₹${total - body.budget} over your ₹${body.budget} budget` : `₹${total} in all` },
+          { dimension: 'packaging', status: 'unknown', text: 'Packaging fit isn’t checked yet: the catalogue doesn’t record product sizes' },
+        ],
+        missing: body.productIds.filter((id) => !items.some((p) => p.id === id)),
+      });
+    }),
     http.post(`${API}/newsletter/subscribe`, () => HttpResponse.json({ status: 'subscribed' })),
     http.post(`${API}/contact`, async ({ request }) => {
       const body = await request.json();

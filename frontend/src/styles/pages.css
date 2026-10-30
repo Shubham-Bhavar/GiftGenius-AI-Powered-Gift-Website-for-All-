@@ -968,6 +968,8 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 [data-theme="dark"] .q-number { color: var(--gold-light); }
 [data-theme="dark"] .adm-link { color: var(--gold-light); }
 [data-theme="dark"] :is(.pd-btn-wishlist:hover, .pd-btn-wishlist.is-saved, .od-id) { color: var(--gold-light); }
+/* The message helper on a raised surface (the Gift Studio's controls) measured 4.06:1 in the brand gold. */
+[data-theme="dark"] .pd-ai-link { color: var(--gold-light); }
 [data-theme="dark"] .t-time { color: #8AABB0; }
 [data-theme="dark"] .t-item.active .t-title { color: var(--gold-light); }
 [data-theme="dark"] .gg-password-toggle { color: var(--teal); }

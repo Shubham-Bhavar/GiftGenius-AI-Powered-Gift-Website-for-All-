@@ -138,3 +138,11 @@
 @keyframes qdot { 0%, 80%, 100% { transform: scale(0.75); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
 
 @keyframes selPulse { 50% { opacity: 0.55; } }
+
+/* ─── Gift Studio ─── */
+
+/* A gift rising out of the tissue (to its own resting transform). */
+@keyframes gbRise { from { opacity: 0; transform: translateY(100%); } }
+
+/* The gift card arriving centre stage in the reveal. */
+@keyframes ggCardIn { from { opacity: 0; transform: translate(-50%, -32%) rotate(-8deg) scale(0.92); } }

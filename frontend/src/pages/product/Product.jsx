@@ -155,6 +155,7 @@ export default function Product() {
           }}>
             {saved ? '❤️ Saved to Wishlist' : '♡ Save to Wishlist'}
           </button>
+          {!soldOut && <Link to={`/studio?product=${p.id}`} className="pd-btn-studio">🎁 Preview it as a gift</Link>}
 
           <div className="pd-trust">
             <div><span>🚀</span><p>Same-Day Delivery</p></div>

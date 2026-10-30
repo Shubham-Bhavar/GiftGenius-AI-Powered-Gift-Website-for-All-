@@ -40,7 +40,7 @@ function PlanCard({ option }) {
  * The budget-first plan: one practical, one emotional and one experience gift, each within the budget, so the
  * shopper weighs three different ideas instead of scrolling. Shown only when the server planned something.
  */
-export function GiftPlan({ plan }) {
+export function GiftPlan({ plan, boxHref }) {
   if (!plan?.options?.length) return null;
   const missing = plan.missing.map((k) => kindOf(k).label.toLowerCase());
   return (
@@ -55,6 +55,9 @@ export function GiftPlan({ plan }) {
       </div>
       {missing.length > 0 && (
         <p className="gift-plan-missing">No {missing.join(' or ')} gift within {rupees(plan.budget)} yet.</p>
+      )}
+      {boxHref && plan.options.length > 1 && (
+        <Link to={boxHref} className="rpc-studio-link">🎁 Preview them together in one gift box</Link>
       )}
     </section>
   );

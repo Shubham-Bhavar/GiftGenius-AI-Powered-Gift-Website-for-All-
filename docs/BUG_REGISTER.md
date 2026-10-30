@@ -154,6 +154,17 @@ On branch `feat/gift-decision-assistant`; see [GIFT_DECISION_ASSISTANT.md](GIFT_
 - **Fix:** the light-theme text joins the existing deeper-teal list; the dark-theme buttons use the deeper teal (5.2:1), and their gold hover is unchanged.
 - **Verification:** 0 contrast violations in the results section in both themes.
 
+## Found while building the Gift Studio (2026-10-30)
+
+On branch `feat/gift-decision-assistant`; see [GIFT_STUDIO.md](GIFT_STUDIO.md). Defects in the studio's own new code, found and fixed before it was committed, are listed there.
+
+### GG-20 · Low · Message helper link contrast on raised surfaces (dark theme)
+
+- **Where:** `frontend/src/styles/pages.css`, `.pd-ai-link` ("✨ Help me write the message with GiftGenius AI"), used on product pages and in the Gift Studio's controls.
+- **Found by:** axe-core's colour-contrast rule in a real browser with style transitions paused: 4.06:1 (`#b8791a` on the raised panel `#1e2a2d`) in the dark theme.
+- **Fix:** the dark theme uses the light gold (`--gold-light`), as the other small gold text in the dark theme already does.
+- **Verification:** 0 contrast violations on every Gift Studio view, in both themes.
+
 ## Checked and not defective
 
 - Payment verification: HMAC with constant-time comparison, order ownership via a locked per-user lookup, amount and currency checked on webhooks, duplicate and out-of-order webhooks handled, client-sent amounts never trusted (server pricing only).

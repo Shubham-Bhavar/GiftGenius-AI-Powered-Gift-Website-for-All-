@@ -18,11 +18,13 @@ giftgenius/
 
 ## Features
 
-**Pages**: Home, Gifts (`/shop`), product, AI Gift Quiz (`/gift-finder`), Collections, About, Contact, Help & FAQ, Privacy, Terms, cart, checkout (Cart → Details → Payment → Done), wishlist, order tracking, account, my orders and order detail, sign in, register, password reset, a 404 page and the store admin.
+**Pages**: Home, Gifts (`/shop`), product, AI Gift Quiz (`/gift-finder`), Gift Studio (`/studio`), Collections, About, Contact, Help & FAQ, Privacy, Terms, cart, checkout (Cart → Details → Payment → Done), wishlist, order tracking, account, my orders and order detail, sign in, register, password reset, a 404 page and the store admin.
 
 **Shoppers**: browse and search with filters (category, occasion, price, sort), product pages with free personalisation (engraved name, card message) and **AI-written card messages**, a guest cart and wishlist that merge into the account at sign-in, server-priced checkout with coupons and three delivery speeds, cash on delivery or Razorpay (UPI, cards, net banking), order history, live tracking, cancellation until dispatch, public order tracking by number and email, password reset and account settings. Light and dark themes, keyboard and screen-reader friendly, and responsive down to phone width.
 
 **AI Gift Finder**: the homepage's four-step Gift Finder pop-up and the full seven-question quiz at `/gift-finder` both call the AI advisor. It returns ranked picks with a reason for each, a summary and a ready-to-use card message. Each pick shows how well it matches the answers ("92% match") with a ✓/✕ check per answer; the quiz asks what the recipient doesn't like, and those gifts are never suggested; and with a budget it plans one practical, one emotional and one experience gift within it. See [docs/GIFT_DECISION_ASSISTANT.md](docs/GIFT_DECISION_ASSISTANT.md).
+
+**Gift Studio** (`/studio`, linked from product pages, quiz picks and the budget plan): see the gift before giving it. A 3D gift box in five themes with any box colour, ribbon, wrap and card style, the recipient's name, the card message, a printed name on personalisable gifts and the shopper's own photos (kept on the device, never uploaded). *Their view* plays the unboxing step by step with no prices; *Your view* shows the prices, the budget fit and Add to cart, which carries only the card message and printed name (the packaging is a preview). *Compare* shows one gift in every theme and option A against option B. *Gift box* suggests boxes of several gifts within a budget and builds one by hand (drag and drop or buttons) with live compatibility checks. A share link (nothing stored on the server) opens for friends, or as a surprise that plays only the reveal. Shoppers can also start from what they want to say. See [docs/GIFT_STUDIO.md](docs/GIFT_STUDIO.md).
 
 **Contact form**: messages are saved to the database and emailed to `ADMIN_EMAIL` (when SMTP is configured). The store owner reads and closes them in Store admin → Messages.
 
@@ -123,9 +125,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (281)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (114)
-cd frontend && npm run lint && npm test   # 142 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (290)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (117)
+cd frontend && npm run lint && npm test   # 159 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -147,6 +149,7 @@ The **integration tests** start the whole application against a real MySQL datab
   - fulfilment and the order roll-up, including two sellers shipping at once and a cancellation racing a shipment;
   - cancelled orders not counting as sales, and each order counted once whatever its number of lines;
   - the original 20 products unchanged.
+- **Gift Studio:** box suggestions open to anyone, each box of different gifts within the budget; a hand-made box checked, with unknown gifts reported; requests validated like the quiz.
 
 The **frontend tests** render the real app, with its router, providers and pages, against an in-memory API built on MSW. They cover:
 - the original homepage: hero, occasions, filter pills, sort, live header search, Quick View, the "+ Add → ✓ Added" feedback, the cart sidebar, the newsletter and the once-per-session entry animation;
@@ -191,7 +194,8 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 | Wishlist | `GET /api/wishlist`, `PUT/DELETE /api/wishlist/{productId}`, `POST /api/wishlist/merge` |
 | Checkout | `GET /api/checkout/options`, `POST /api/checkout/quote` |
 | Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `GET /api/orders/track?orderNumber&email` |
-| AI | `POST /api/ai/recommendations` (quiz answers, optional `avoid`; picks with `match` and `checks`, plus `avoided` and a budget `plan`), `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; backend only, not yet used by the storefront) |
+| AI | `POST /api/ai/recommendations` (quiz answers, optional `avoid`; picks with `match` and `checks`, plus `avoided` and a budget `plan`), `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; used by the Gift Studio's *Start from what you want to say*) |
+| Gift Studio | `POST /api/gift-box/suggestions` (`budget`, 2–4 gifts and the quiz answers; boxes of different kinds within the budget, each gift with its reason, plus compatibility checks), `POST /api/gift-box/check` (up to 6 product ids; total and checks). Public; nothing is stored |
 | Search | `GET /api/search?q&page&size` (gift-aware search; backend only, the storefront uses `/api/products?q`) |
 | Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
 | Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |

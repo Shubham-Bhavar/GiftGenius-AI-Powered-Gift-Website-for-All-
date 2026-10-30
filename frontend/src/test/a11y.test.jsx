@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { renderApp, seedGuestCart } from './renderApp.jsx';
 import { db } from './setup.js';
+import { sanitizeConfig, shareFragment } from '../components/studio/look.js';
 
 /*
  * Automated accessibility checks (axe-core, WCAG 2.x A/AA + best practices) on every page and overlay.
@@ -64,6 +65,34 @@ describe('accessibility (axe-core)', () => {
 
     renderApp('/account');
     await screen.findByRole('heading', { level: 1, name: /Account Settings/ });
+    expect(await violations()).toEqual([]);
+  });
+
+  it('Gift Studio: each view, the start screen and a surprise link', async () => {
+    const { user, unmount } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
+    await screen.findByRole('heading', { level: 1, name: /See the gift/ });
+    await screen.findByText('Step 1 of 7');
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(await violations()).toEqual([]);
+    for (const tab of ['Your view', 'Compare', 'Gift box']) {
+      await user.click(screen.getByRole('tab', { name: tab }));
+      if (tab === 'Gift box') {
+        await user.click(screen.getByRole('button', { name: '✨ Suggest boxes' }));
+        await user.click(await screen.findByRole('button', { name: 'Edit this box' }));
+        await screen.findByText('₹1397 in all');
+      }
+      expect(await violations()).toEqual([]);
+    }
+    unmount();
+
+    const start = renderApp('/studio');
+    await screen.findByRole('button', { name: 'Dress up Luxury Hamper Box' });
+    expect(await violations()).toEqual([]);
+    start.unmount();
+
+    renderApp(`/studio#${shareFragment(sanitizeConfig({ products: [4], name: 'Aditi' }), 'reveal')}`);
+    await screen.findByRole('heading', { level: 1, name: 'A gift preview, just for you' });
+    await screen.findByText('Step 1 of 7');
     expect(await violations()).toEqual([]);
   });
 

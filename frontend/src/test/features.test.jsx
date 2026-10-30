@@ -40,6 +40,10 @@ describe('AI gift quiz (original design, plus what they don\'t like)', () => {
       '✓Yes: Matches their love of fragrance', '✓Yes: ₹1,199: well within your ₹1,500 budget', '✕No: Not especially minimalist',
     ]);
     expect(screen.getByText('Happy anniversary, my love.')).toBeInTheDocument();
+    // Each pick opens in the Gift Studio with the answers it uses for themes and boxes: never the name or the notes.
+    const studio = screen.getAllByRole('link', { name: '🎁 Preview as a gift' })[0].getAttribute('href');
+    expect(studio).toBe('/studio?product=4&style=expressive&occasion=anniversary&recipient=partner&budget=1500&interests=flowers%2Cfragrance');
+    expect(studio).not.toMatch(/Priya|rose/i);
     // The name stays on the page: only the answers go to the server.
     expect(db.lastRecommendation).toEqual({
       recipient: 'partner', occasion: 'anniversary', budget: 1500, interests: ['flowers', 'fragrance'],
@@ -69,6 +73,9 @@ describe('AI gift quiz (original design, plus what they don\'t like)', () => {
     expect(within(plan).getByText('Classic Rose Bouquet')).toBeInTheDocument();
     expect(within(plan).getByText('Artisan Chocolate Box')).toBeInTheDocument();
     expect(within(plan).getByText('No practical gift within ₹1,500 yet.')).toBeInTheDocument();
+    expect(within(plan).getByRole('link', { name: '🎁 Preview them together in one gift box' })).toHaveAttribute(
+      'href', '/studio?products=3,6&style=practical&occasion=anniversary&recipient=partner&budget=1500&interests=flowers%2Cfragrance',
+    );
     expect(db.lastRecommendation.avoid).toBeUndefined();
     await user.click(within(plan).getByRole('button', { name: 'Add Artisan Chocolate Box to cart' }));
     expect(screen.getByTestId('cart-count')).toHaveTextContent('1');

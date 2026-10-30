@@ -50,8 +50,8 @@ export function FitChecks({ checks }) {
   );
 }
 
-/** The quiz page's design (pages/ai/GiftFinder). */
-function PageCard({ pick, index }) {
+/** The quiz page's design (pages/ai/GiftFinder). `studioHref` opens the pick in the Gift Studio. */
+function PageCard({ pick, index, studioHref }) {
   const { p, discount, added, add } = usePick(pick, (x) => `${x.name} added to cart 🛒`);
   return (
     <div className="result-pcard" style={{ animationDelay: staggerDelay(index) }}>
@@ -68,6 +68,7 @@ function PageCard({ pick, index }) {
         <p className="rpc-desc">{p.description}</p>
         <div className="rpc-reason">✨ {pick.reason}</div>
         <FitChecks checks={pick.checks} />
+        {studioHref && <Link to={studioHref} className="rpc-studio-link">🎁 Preview as a gift</Link>}
         <div className="rpc-foot">
           <div className="rpc-prices">
             {discount > 0 && <span className="rpc-og">{rupees(p.originalPrice)}</span>}
