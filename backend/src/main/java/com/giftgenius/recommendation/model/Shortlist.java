@@ -12,6 +12,8 @@ public record Shortlist(List<Recommendation> items, Outcome outcome) {
         TOP_RATED,
         /** Nothing in the shop is within the budget. */
         NOTHING_IN_BUDGET,
+        /** Everything within the budget is something they don't like. */
+        EVERYTHING_AVOIDED,
         /** Nothing can be bought right now. */
         CATALOG_EMPTY
     }

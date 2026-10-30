@@ -23,6 +23,9 @@ import com.giftgenius.recommendation.model.Signal;
  * Across a set of picks, each sentence leads with the pick's strongest reason and then says what sets it apart:
  * reasons every pick shares (the occasion, the budget) give way to its own (their interest, its rating), so four picks
  * don't read the same. Being over budget is always said.
+ * <p>
+ * Each recommendation also gets its match against the shopper's answers, with a check per answer (see
+ * {@link FitReporter}).
  */
 @Component
 public class ExplanationService {
@@ -35,32 +38,35 @@ public class ExplanationService {
     private static final int SENTENCE_CLAUSES = 3;
     /** Ratings are quoted ("rated 4.8★ by 120 shoppers") from this rating, with enough reviews. */
     private static final double QUOTE_RATING_FROM = 4.5;
-    private static final Map<String, String> PLURAL = Map.of("parent", "parents", "mother", "mothers",
+    static final Map<String, String> PLURAL = Map.of("parent", "parents", "mother", "mothers",
             "father", "fathers", "partner", "partners", "friend", "friends", "sibling", "siblings",
             "colleague", "colleagues");
-    private static final Map<String, String> INTEREST_LABEL = Map.of("cultural", "art and culture",
+    static final Map<String, String> INTEREST_LABEL = Map.of("cultural", "art and culture",
             "food & sweets", "food and sweets", "gift sets", "gift hampers");
     /** In the shopper's words: the quiz's "Luxury & Premium" is the catalogue's "expressive", and so on. */
-    private static final Map<String, String> PERSONALITY_CLAUSE = Map.of(
+    static final Map<String, String> PERSONALITY_CLAUSE = Map.of(
             "expressive", "for someone who loves a little luxury",
             "creative", "for their fun, creative side",
             "practical", "practical and useful");
 
     private final RecommendationWeights weights;
+    private final FitReporter fits;
 
     public ExplanationService(RecommendationWeights weights) {
         this.weights = weights;
+        this.fits = new FitReporter(weights);
     }
 
-    /** The final picks, each with its reasons and its sentence. */
+    /** The final picks, each with its reasons, its sentence and its match. */
     public List<Recommendation> explain(List<ScoredProduct> picks, GiftPreferences prefs) {
         List<List<Clause>> clauses = picks.stream().map(s -> clauses(s, prefs)).toList();
         Set<Signal> shared = shared(clauses);
         List<Recommendation> out = new ArrayList<>();
         for (int i = 0; i < picks.size(); i++) {
             ScoredProduct s = picks.get(i);
+            FitReporter.Report fit = fits.report(s, prefs);
             out.add(new Recommendation(s.product(), s.score(), texts(clauses.get(i)),
-                    sentence(s, prefs, clauses.get(i), shared)));
+                    sentence(s, prefs, clauses.get(i), shared), fit.match(), fit.checks()));
         }
         return out;
     }
@@ -175,18 +181,18 @@ public class ExplanationService {
         return "₹" + thousands.replaceAll("\\B(?=(\\d{2})+$)", ",") + "," + digits.substring(digits.length() - 3);
     }
 
-    private static String withArticle(String word) {
+    static String withArticle(String word) {
         return ("aeiou".indexOf(word.charAt(0)) >= 0 ? "an " : "a ") + word;
     }
 
-    private static String joinNaturally(List<String> parts) {
+    static String joinNaturally(List<String> parts) {
         if (parts.size() == 1) {
             return parts.get(0);
         }
         return String.join(", ", parts.subList(0, parts.size() - 1)) + " and " + parts.get(parts.size() - 1);
     }
 
-    private static String capitalise(String s) {
+    static String capitalise(String s) {
         return s.isEmpty() ? s : Character.toUpperCase(s.charAt(0)) + s.substring(1);
     }
 }

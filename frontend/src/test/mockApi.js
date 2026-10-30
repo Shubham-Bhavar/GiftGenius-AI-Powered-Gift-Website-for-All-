@@ -360,14 +360,31 @@ export function handlers(db) {
       const body = await request.json();
       db.lastRecommendation = body;
       if (db.aiDown) return problem(429, 'Too many requests. Wait a minute and try again.');
+      // Like the API: the match and its checks come from the engine; the plan only with a budget; what was avoided is echoed.
       return HttpResponse.json({
         source: db.aiSource,
         summary: 'Romantic, rose-forward picks for your partner.',
         picks: [
-          { product: db.products[2], reason: 'A signature scent she will wear every day.', score: 90 },
-          { product: db.products[1], reason: 'Classic roses for a rose lover.', score: 80 },
+          {
+            product: db.products[2], reason: 'A signature scent she will wear every day.', score: 90, match: 92,
+            checks: [
+              { criterion: 'interest', met: true, text: 'Matches their love of fragrance' },
+              { criterion: 'budget', met: true, text: '₹1,199: well within your ₹1,500 budget' },
+              { criterion: 'style', met: false, text: 'Not especially minimalist' },
+            ],
+          },
+          { product: db.products[1], reason: 'Classic roses for a rose lover.', score: 80, match: 64, checks: [] },
         ],
         giftMessage: 'Happy anniversary, my love.',
+        avoided: body.avoid ?? [],
+        plan: body.budget ? {
+          budget: body.budget,
+          options: [
+            { kind: 'emotional', product: db.products[1], reason: 'Made for anniversaries.', match: 80, checks: [] },
+            { kind: 'experience', product: db.products[3], reason: 'Well within your budget.', match: 55, checks: [] },
+          ],
+          missing: ['practical'],
+        } : undefined,
       });
     }),
     http.post(`${API}/ai/gift-message`, () => HttpResponse.json({ source: 'ai', messages: ['Happy birthday, Maa!', 'Love you always.', 'For the warmest hugs.'] })),

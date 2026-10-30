@@ -63,6 +63,45 @@ class TextPreferenceParserTest {
     }
 
     @Test
+    void whatTheyDontLikeIsAvoidedNeverAnInterest() {
+        assertThat(parser.parse("A birthday gift for my wife under ₹1,500, she hates perfume")).isEqualTo(
+                new Parsed("wife", "birthday", 1500, List.of(), null, List.of("perfume")));
+        Parsed both = parser.parse("She loves flowers but not chocolates, and no watches please");
+        assertThat(both.interests()).containsExactly("flowers");
+        assertThat(both.avoid()).containsExactly("chocolates", "watches");
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "she doesn't like perfume or sweets | perfume, sweets",
+            "he doesn't really like watches | watches",
+            "she isn't a big fan of roses | roses",
+            "anything except flowers | flowers",
+            "he already has a watch and plenty of gadgets | watch, gadgets",
+            "my brother already buys gym equipment | gym equipment",
+            "she can't stand candles | candles",
+            "a gift without chocolate | chocolate",
+            "perfume pasand nahi hai | perfume",
+            "तिला perfume आवडत नाही | perfume",
+            "chocolates नको, flowers चालतील | chocolates" })
+    void negativeCuesBeforeOrAfter(String text, String avoid) {
+        assertThat(parser.parse(text).avoid()).containsExactly(avoid.split(",\\s*"));
+    }
+
+    @ParameterizedTest
+    @CsvSource(delimiter = '|', value = {
+            "she hates crowds and noisy places, so something calm like candles | wellness",
+            "not sure what she likes, maybe perfume | fragrance",
+            "she has no perfume yet | fragrance",
+            "perfume pasand hai, chocolates nahi | fragrance",
+            "no more than ₹2000, she loves flowers | flowers" })
+    void cuesThatDontRuleTheThingOut(String text, String interest) {
+        Parsed p = parser.parse(text);
+        assertThat(p.interests()).contains(interest);
+        assertThat(p.avoid()).doesNotContain("perfume", "flowers", "candles");
+    }
+
+    @Test
     void nothingToReadIsNothingAnswered() {
         Parsed none = new Parsed(null, null, null, List.of(), null);
         assertThat(parser.parse("   ")).isEqualTo(none);

@@ -1,5 +1,7 @@
 package com.giftgenius.ai.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.giftgenius.ai.dto.AiDtos.GiftRequest;
@@ -39,7 +41,8 @@ public class GiftRequestService {
         RecommendationResponse res = orchestrator.recommend(p, req.text(),
                 req.limit() == null ? DEFAULT_PICKS : req.limit());
         Understood understood = new Understood(p.recipient(), p.occasion(), p.hasBudget() ? p.budget() : null,
-                p.interests(), p.personality(), read.by());
-        return new GiftRequestResponse(res.source(), understood, res.summary(), res.picks(), res.giftMessage());
+                p.interests(), p.personality(), List.copyOf(p.avoid()), read.by());
+        return new GiftRequestResponse(res.source(), understood, res.summary(), res.picks(), res.giftMessage(),
+                res.plan());
     }
 }

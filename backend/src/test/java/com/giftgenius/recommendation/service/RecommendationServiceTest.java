@@ -17,6 +17,8 @@ import com.giftgenius.catalog.service.ProductService;
 import com.giftgenius.order.repository.OrderItemRepository;
 import com.giftgenius.recommendation.TestRecommendations;
 import com.giftgenius.recommendation.engine.PreferenceNormalizer;
+import com.giftgenius.recommendation.model.FitCheck;
+import com.giftgenius.recommendation.model.GiftPlan;
 import com.giftgenius.recommendation.model.GiftPreferences;
 import com.giftgenius.recommendation.model.Recommendation;
 import com.giftgenius.recommendation.model.Shortlist;
@@ -156,5 +158,66 @@ class RecommendationServiceTest {
         Shortlist first = shortlist(TestProducts.catalog(), p, 4);
         assertThat(first.items()).allSatisfy(r -> assertThat(r.summary()).isNotBlank().endsWith("."));
         assertThat(shortlist(TestProducts.catalog(), p, 4)).isEqualTo(first);
+    }
+
+    // ── Match, avoid list and budget planner ──
+
+    @Test
+    void everyRecommendationCarriesItsMatchAndAChecklist() {
+        Recommendation top = rank(prefs("partner", "anniversary", 1500, List.of("fragrance"), null), 4).get(0);
+        assertThat(top.product().name()).isEqualTo("Signature Perfume");
+        assertThat(top.match()).isEqualTo(100);
+        assertThat(top.checks()).extracting(FitCheck::criterion)
+                .containsExactly("interest", "budget", "occasion", "recipient");
+    }
+
+    @Test
+    void avoidedProductsAreNeverRecommendedNorPlanned() {
+        GiftPreferences p = normalizer.normalize("partner", "anniversary", 1500, List.of("fragrance"), null,
+                List.of("perfume"));
+        assertThat(p.interests()).isEmpty(); // the fragrance interest gave way to the avoid list
+        assertThat(names(shortlist(TestProducts.catalog(), p, 5).items()))
+                .isNotEmpty().doesNotContain("Signature Perfume");
+        assertThat(engine.plan(p).orElseThrow().options()).extracting(o -> o.pick().product().name())
+                .doesNotContain("Signature Perfume");
+    }
+
+    @Test
+    void whenEverythingWithinTheBudgetIsAvoidedTheOutcomeSaysSo() {
+        // Within ₹700 (plus tolerance): the chocolates, the hamper and the Warli frame. All three ruled out.
+        GiftPreferences p = normalizer.normalize(null, null, 700, List.of(), null, List.of("sweets", "hampers", "art"));
+        Shortlist s = shortlist(TestProducts.catalog(), p, 3);
+        assertThat(s.outcome()).isEqualTo(Outcome.EVERYTHING_AVOIDED);
+        assertThat(s.items()).isEmpty();
+    }
+
+    @Test
+    void thePlannerOffersOneGiftOfEachKindWithinTheBudget() {
+        when(products.purchasableCatalog()).thenReturn(TestProducts.catalog());
+        GiftPlan plan = engine.plan(prefs("partner", "anniversary", 1500, List.of("fragrance"), null)).orElseThrow();
+
+        assertThat(plan.budget()).isEqualTo(1500);
+        assertThat(plan.options()).extracting(GiftPlan.Option::kind).containsExactly("emotional", "experience");
+        assertThat(plan.options()).extracting(o -> o.pick().product().name())
+                .containsExactly("Handmade Warli Art Frame", "Signature Perfume");
+        assertThat(plan.missing()).containsExactly("practical"); // the only accessory is the ₹1,999 earbuds
+        assertThat(plan.options()).allSatisfy(o -> assertThat(o.pick().match()).isNotNull());
+    }
+
+    @Test
+    void thePlanNeverGoesOverTheBudgetEvenWhereTheShortlistMay() {
+        GiftPreferences p = prefs("partner", "anniversary", 1100, List.of("fragrance"), null);
+        // The shortlist allows a little over (₹1,199 for ₹1,100, flagged); the plan doesn't.
+        assertThat(names(shortlist(TestProducts.catalog(), p, 5).items())).contains("Signature Perfume");
+        GiftPlan plan = engine.plan(p).orElseThrow();
+        assertThat(plan.options()).extracting(o -> o.pick().product().name()).doesNotContain("Signature Perfume");
+        assertThat(plan.options()).allSatisfy(o -> assertThat(o.pick().product().price().intValue())
+                .isLessThanOrEqualTo(1100));
+    }
+
+    @Test
+    void thereIsNoPlanWithoutABudget() {
+        when(products.purchasableCatalog()).thenReturn(TestProducts.catalog());
+        assertThat(engine.plan(prefs("partner", "anniversary", null, List.of(), null))).isEmpty();
     }
 }

@@ -2,15 +2,18 @@ import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
+import { GiftPlan } from '../../components/ai/GiftPlan.jsx';
 import { RecommendationCard } from '../../components/ai/RecommendationCard.jsx';
 import { useGiftRecommendations } from '../../hooks/useGiftRecommendations.js';
 import { THINKING_MS } from '../../animations/motion.js';
+import { rupees } from '../../utils/format.js';
 
 /*
- * The AI Gift Quiz: the original 6-question quiz page, answered by the backend gift advisor
+ * The AI Gift Quiz: the original quiz page, answered by the backend gift advisor
  * (Gemini re-ranking a shortlist of real, in-stock products, with a rule-based fallback).
  * Each option carries what it means for the API: recipient/occasion/interest/personality values,
  * plus a note for answers the catalog has no field for (e.g. "Wedding", "Child").
+ * The "don't like" question is optional; whatever is picked there is never recommended.
  */
 const QUESTIONS = [
   {
@@ -36,7 +39,8 @@ const QUESTIONS = [
     ],
   },
   {
-    field: 'interests', multi: true, title: 'What are their interests? 🌟', label: 'Getting to know them', hint: 'Pick up to three',
+    field: 'interests', multi: true, max: 3, maxMessage: 'Pick up to three interests.',
+    title: 'What are their interests? 🌟', label: 'Getting to know them', hint: 'Pick up to three',
     options: [
       { icon: '👗', label: 'Fashion & Style', value: 'accessories' },
       { icon: '🍫', label: 'Food & Sweets', value: 'food & sweets' },
@@ -46,6 +50,20 @@ const QUESTIONS = [
       { icon: '🧘', label: 'Wellness & Self-Care', value: 'wellness' },
       { icon: '🏡', label: 'Home & Decor', value: 'home decor' },
       { icon: '🎁', label: 'A Bit of Everything', value: 'gift sets' },
+    ],
+  },
+  {
+    field: 'avoid', multi: true, optional: true, title: "Anything they don't like? 🚫", label: 'Steering clear of misses',
+    hint: "Optional. We'll leave these out completely.",
+    options: [
+      { icon: '🌸', label: 'Perfume', value: 'perfume' },
+      { icon: '💐', label: 'Flowers', value: 'flowers' },
+      { icon: '🍫', label: 'Sweets & chocolates', value: 'sweets' },
+      { icon: '⌚', label: 'Watches', value: 'watches' },
+      { icon: '💍', label: 'Jewellery', value: 'jewellery' },
+      { icon: '🕯️', label: 'Candles', value: 'candles' },
+      { icon: '🪴', label: 'Plants', value: 'plants' },
+      { icon: '🎧', label: 'Gadgets', value: 'gadgets' },
     ],
   },
   {
@@ -68,6 +86,8 @@ const QUESTIONS = [
   },
 ];
 const TOTAL = QUESTIONS.length + 1; // + the free-text question
+/** The words the server uses for what it left out, as the quiz labels them ("sweets" → "Sweets & chocolates"). */
+const AVOID_LABEL = Object.fromEntries(QUESTIONS.find((q) => q.field === 'avoid').options.map((o) => [o.value, o.label]));
 
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -77,6 +97,7 @@ export default function GiftFinder() {
   const [step, setStep] = useState(1);
   const [answers, setAnswers] = useState({}); // field -> selected option(s)
   const [extra, setExtra] = useState('');
+  const [name, setName] = useState(''); // only shown on this page, never sent
   const { phase, result, error, submit: recommend, reset } = useGiftRecommendations({ minThinkingMs: THINKING_MS.quizPage });
   const card = useRef(null);
 
@@ -96,8 +117,8 @@ export default function GiftFinder() {
     }
     const cur = answers[q.field] ?? [];
     // Side effects (the toast) stay out of the state updater, which React may call more than once.
-    if (!cur.includes(opt) && cur.length >= 3) {
-      toast('Pick up to three interests.', 'bad');
+    if (q.max && !cur.includes(opt) && cur.length >= q.max) {
+      toast(q.maxMessage, 'bad');
       return;
     }
     setAnswers((s) => {
@@ -105,11 +126,13 @@ export default function GiftFinder() {
       return { ...s, [q.field]: list.includes(opt) ? list.filter((o) => o !== opt) : [...list, opt] };
     });
   };
-  const answered = q ? (q.multi ? (answers[q.field] ?? []).length > 0 : answers[q.field] !== undefined) : true;
+  const picked = q ? (q.multi ? (answers[q.field] ?? []).length > 0 : answers[q.field] !== undefined) : true;
+  const answered = q?.optional || picked;
 
   const submit = () => {
     const notes = [answers.recipient?.note, answers.occasion?.note, extra.trim()].filter(Boolean).join(' ');
     const interests = (answers.interests ?? []).flatMap((o) => [o.value, o.also].filter(Boolean));
+    const avoid = (answers.avoid ?? []).map((o) => o.value);
     recommend({
       recipient: answers.recipient?.value || undefined,
       occasion: answers.occasion?.value || undefined,
@@ -118,12 +141,14 @@ export default function GiftFinder() {
       personality: answers.personality?.value || undefined,
       notes: notes || undefined,
       limit: 4,
+      avoid: avoid.length ? avoid : undefined,
     });
   };
 
   const restart = () => {
     setAnswers({});
     setExtra('');
+    setName('');
     reset();
     setStep(1);
   };
@@ -131,6 +156,8 @@ export default function GiftFinder() {
   const progressStep = phase === 'form' ? step : TOTAL;
   const progressLabel = phase === 'results' ? 'Your matches are ready' : phase === 'thinking' ? 'Finding your matches' : (q?.label ?? 'Almost done');
   const who = answers.recipient?.label ?? 'them';
+  const budget = answers.budget?.value;
+  const avoided = (result?.avoided ?? []).map((a) => AVOID_LABEL[a] ?? a);
 
   return (
     <div className="quiz-page">
@@ -167,7 +194,9 @@ export default function GiftFinder() {
             </div>
             <div className="nav-btns">
               {step > 1 && <button type="button" className="btn-back" onClick={() => setStep((s) => s - 1)}>← Back</button>}
-              <button type="button" className="btn-next" disabled={!answered} onClick={() => setStep((s) => s + 1)}>Next →</button>
+              <button type="button" className="btn-next" disabled={!answered} onClick={() => setStep((s) => s + 1)}>
+                {q.optional && !picked ? 'Skip →' : 'Next →'}
+              </button>
             </div>
           </div>
         )}
@@ -176,6 +205,11 @@ export default function GiftFinder() {
           <div className="question-card active">
             <div className="q-number">Question {pad(TOTAL)}</div>
             <h2 className="q-text" tabIndex={-1}>Any extra details? <span className="q-optional">(optional)</span></h2>
+            <label htmlFor="their-name" className="q-field-label">
+              Their first name <span className="q-optional">(only shown on this page)</span>
+            </label>
+            <input className="text-input q-name-input" id="their-name" maxLength={40} value={name} autoComplete="off"
+              placeholder="e.g. Priya" onChange={(e) => setName(e.target.value)} />
             <label htmlFor="extra-details" className="sr-only">Extra details about them</label>
             <textarea className="text-input" id="extra-details" rows={4} maxLength={600} value={extra}
               placeholder="e.g. She loves coffee, hates jewellery, recently started yoga…" onChange={(e) => setExtra(e.target.value)} />
@@ -188,7 +222,7 @@ export default function GiftFinder() {
           </div>
         )}
 
-        {phase !== 'quiz' && (
+        {phase !== 'form' && (
           <div className="result-section">
             <div className="result-header">
               <div className="result-icon" aria-hidden="true">🎁</div>
@@ -196,11 +230,13 @@ export default function GiftFinder() {
               {phase === 'results' && result && (
                 <>
                   <p>
-                    {result.picks.length} gifts for your <strong>{who}</strong>
+                    {result.picks.length} gifts for {name.trim() ? <strong>{name.trim()}</strong> : <>your <strong>{who}</strong></>}
                     {answers.occasion?.value ? <> · <strong>{answers.occasion.label}</strong></> : null}
+                    {budget > 0 ? <> · <strong>up to {rupees(budget)}</strong></> : null}
                     {' · '}<span className={`rpc-source rpc-source--${result.source}`}>{result.source === 'ai' ? '✨ Picked by GiftGenius AI' : 'Matched from our curated catalog'}</span>
                   </p>
                   {result.summary && <p className="result-summary">{result.summary}</p>}
+                  {avoided.length > 0 && <p className="result-avoided">🚫 Leaving out: {avoided.join(', ')}</p>}
                 </>
               )}
             </div>
@@ -224,6 +260,8 @@ export default function GiftFinder() {
                 </div>
               )
             )}
+
+            {phase === 'results' && <GiftPlan plan={result?.plan} />}
 
             {phase === 'results' && result?.giftMessage && (
               <div className="qz-message">

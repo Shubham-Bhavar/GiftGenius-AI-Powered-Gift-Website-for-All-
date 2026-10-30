@@ -729,6 +729,57 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 [data-theme="dark"] .rpc-add { background: var(--teal-dark); }
 [data-theme="dark"] .rpc-add:hover:not(:disabled) { background: var(--gold-light); color: #0F1A1C; }
 .rpc-add:disabled { background: var(--border-soft); color: var(--text-muted); cursor: default; transform: none; box-shadow: none; }
+
+/* Match score and "why this gift?" (quiz page and Gift Finder modal) */
+.rpc-cat-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.rpc-cat-row .rpc-cat, .rpc-cat-row .gf-result-cat { margin-bottom: 0; }
+.match-badge {
+  font-family: var(--font-mono); font-size: 10px; font-weight: 500; letter-spacing: 0.03em; white-space: nowrap;
+  padding: 3px 8px; border-radius: 20px; border: 1px solid var(--border-soft); color: var(--muted-text);
+}
+.match-badge--great { color: var(--success-text); background: rgba(26,122,94,0.08); border-color: rgba(26,122,94,0.35); }
+.match-badge--good { color: var(--teal-text); background: var(--teal-pale); border-color: rgba(110,198,207,0.45); }
+[data-theme="dark"] .match-badge { color: #C9D6D8; }
+[data-theme="dark"] .match-badge--great { color: #7FD8B6; border-color: rgba(127,216,182,0.4); }
+[data-theme="dark"] .match-badge--good { color: var(--teal); }
+.fit-checks { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 3px; font-size: 11.5px; line-height: 1.4; }
+.fit-check { display: flex; gap: 6px; align-items: flex-start; color: var(--text-muted); }
+.fit-check--met { color: var(--text); }
+.fit-check-icon { flex: 0 0 14px; text-align: center; font-weight: 700; }
+.fit-check--met .fit-check-icon { color: var(--success-text); }
+.fit-check--miss .fit-check-icon { color: var(--danger); }
+[data-theme="dark"] .fit-check--met .fit-check-icon { color: #7FD8B6; }
+[data-theme="dark"] .fit-check--miss .fit-check-icon { color: #FF9C94; }
+.result-avoided { margin-top: 8px; font-size: 13px; }
+.q-field-label { display: block; font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+.q-name-input { margin-bottom: 14px; }
+
+/* Budget-first plan: one practical, one emotional and one experience gift */
+.gift-plan {
+  background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 22px 20px;
+  box-shadow: var(--shadow-sm); margin-bottom: 20px;
+}
+.gift-plan .q-number { color: var(--gold-text); }
+[data-theme="dark"] .gift-plan .q-number { color: var(--gold-light); }
+.gift-plan-title { font-family: var(--font-serif); font-size: 1.45rem; font-weight: 600; color: var(--text); margin: 6px 0 4px; }
+.gift-plan-sub { font-size: 13px; color: var(--text-muted); margin-bottom: 14px; }
+.gift-plan-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 720px) { .gift-plan-grid { grid-template-columns: 1fr; } }
+.plan-card { border: 1.5px solid var(--border-soft); border-radius: var(--radius-sm); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+.plan-kind {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; font-family: var(--font-mono); font-size: 11px;
+  font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: var(--teal-text);
+}
+[data-theme="dark"] .plan-kind { color: var(--teal); }
+.plan-kind-hint { flex-basis: 100%; font-family: var(--font-sans); font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text-muted); }
+.plan-product { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+.plan-img { width: 56px; height: 56px; flex: 0 0 auto; object-fit: cover; border-radius: var(--radius-xs); background: var(--cream-dark); }
+.plan-name { font-family: var(--font-serif); font-size: 1rem; font-weight: 600; line-height: 1.25; }
+.plan-product:hover .plan-name { color: var(--gold); }
+.plan-reason { flex: 1; font-size: 12px; line-height: 1.45; color: var(--text-muted); }
+.plan-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.plan-foot .rpc-add { margin-left: auto; }
+.gift-plan-missing { margin-top: 12px; font-size: 12.5px; color: var(--text-muted); }
 .no-results-box { background: var(--surface); border: 1px solid var(--border-soft); border-radius: var(--radius); padding: 36px; text-align: center; box-shadow: var(--shadow-sm); margin-bottom: 20px; }
 .no-results-box h3 { font-family: var(--font-serif); font-size: 1.3rem; margin-bottom: 8px; color: var(--text); }
 .no-results-box p { color: var(--text-muted); font-size: 13.5px; }
@@ -891,8 +942,10 @@ textarea.gg-input, textarea.pd-input { resize: vertical; line-height: 1.6; }
 :root:not([data-theme="dark"]) :is(
   .pill.active, .pill:hover, .pd-label, .auth-field label, .auth-link, .gg-field label, .gg-password-toggle,
   .result-header p strong, .gf-identity-name, .gf-progress-pct, .gf-results-sub strong, .gf-result-cat, .gf-result-reason,
-  .co-free-hint, .co-label
+  .co-free-hint, .co-label, .rpc-cat, .rpc-reason
 ) { color: var(--teal-text); }
+/* Dark theme: cream text on the quiz page's teal buttons measured 3.4:1; the deeper teal reaches 5.2:1. */
+[data-theme="dark"] .rpc-add:not(:disabled):not(:hover), [data-theme="dark"] .shop-btn:not(:hover) { background: var(--teal-text); }
 :root:not([data-theme="dark"]) :is(.progress-label, .t-time, .cart-empty p, .stat-label) { color: var(--muted-text); }
 /* Product cards (shop, storefronts) and info notices, measured at 3.5 to 3.7:1 in a real browser. */
 :root:not([data-theme="dark"]) .pcard-cat { color: var(--gold-text); }

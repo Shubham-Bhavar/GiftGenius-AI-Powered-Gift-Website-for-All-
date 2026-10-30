@@ -3,6 +3,7 @@ package com.giftgenius.ai.dto;
 import java.util.List;
 
 import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
+import com.giftgenius.recommendation.model.FitCheck;
 
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -22,6 +23,7 @@ public final class AiDtos {
     static final String CHOICE = "^[\\p{L}\\p{M} &'-]*$";
     static final String CHOICE_MESSAGE = "Choose one of the listed options";
 
+    /** @param avoid what they don't like or already have ("perfume", "watches"): never recommended */
     public record RecommendationRequest(
             @Size(max = 30) @Pattern(regexp = CHOICE, message = CHOICE_MESSAGE) String recipient,
             @Size(max = 30) @Pattern(regexp = CHOICE, message = CHOICE_MESSAGE) String occasion,
@@ -29,14 +31,31 @@ public final class AiDtos {
             @Size(max = 10) List<@Size(max = 30) @Pattern(regexp = CHOICE, message = CHOICE_MESSAGE) String> interests,
             @Size(max = 30) @Pattern(regexp = CHOICE, message = CHOICE_MESSAGE) String personality,
             @Size(max = 600, message = "Keep the notes under 600 characters") String notes,
-            @Min(1) @Max(8) Integer limit) {
+            @Min(1) @Max(8) Integer limit,
+            @Size(max = 10) List<@Size(max = 30) @Pattern(regexp = CHOICE, message = CHOICE_MESSAGE) String> avoid) {
     }
 
-    public record Pick(ProductDto product, String reason, double score) {
+    /**
+     * A recommended product and why it suits them. The reason may be the model's words; the match (0–100, null when
+     * nothing was asked) and the checks behind it always come from the recommendation engine, never the model.
+     */
+    public record Pick(ProductDto product, String reason, double score, Integer match, List<FitCheck> checks) {
     }
 
-    /** source is "ai" when Gemini ranked the picks, "rules" when the scoring engine did. */
-    public record RecommendationResponse(String source, String summary, List<Pick> picks, String giftMessage) {
+    /** One gift of the budget planner. kind is "practical", "emotional" or "experience". */
+    public record PlanOption(String kind, ProductDto product, String reason, Integer match, List<FitCheck> checks) {
+    }
+
+    /** The budget planner: one gift of each kind within the budget; kinds with nothing within it are missing. */
+    public record Plan(int budget, List<PlanOption> options, List<String> missing) {
+    }
+
+    /**
+     * source is "ai" when Gemini ranked the picks, "rules" when the scoring engine did. avoided lists what was left out
+     * because they don't like it; plan is the budget planner, present when a budget was given.
+     */
+    public record RecommendationResponse(String source, String summary, List<Pick> picks, String giftMessage,
+            List<String> avoided, Plan plan) {
     }
 
     public record GiftMessageRequest(
@@ -60,11 +79,11 @@ public final class AiDtos {
 
     /** What was understood from a gift request, in the catalogue's terms; by is "ai" or "rules". */
     public record Understood(String recipient, String occasion, Integer budget, List<String> interests,
-            String personality, String by) {
+            String personality, List<String> avoid, String by) {
     }
 
     /** source is who ranked and explained the picks ("ai" or "rules"), as for the quiz. */
     public record GiftRequestResponse(String source, Understood understood, String summary, List<Pick> picks,
-            String giftMessage) {
+            String giftMessage, Plan plan) {
     }
 }

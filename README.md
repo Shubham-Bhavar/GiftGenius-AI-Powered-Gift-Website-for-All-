@@ -22,7 +22,7 @@ giftgenius/
 
 **Shoppers**: browse and search with filters (category, occasion, price, sort), product pages with free personalisation (engraved name, card message) and **AI-written card messages**, a guest cart and wishlist that merge into the account at sign-in, server-priced checkout with coupons and three delivery speeds, cash on delivery or Razorpay (UPI, cards, net banking), order history, live tracking, cancellation until dispatch, public order tracking by number and email, password reset and account settings. Light and dark themes, keyboard and screen-reader friendly, and responsive down to phone width.
 
-**AI Gift Finder**: the homepage's four-step Gift Finder pop-up and the full six-question quiz at `/gift-finder` both call the AI advisor. It returns ranked picks with a reason for each, a summary and a ready-to-use card message.
+**AI Gift Finder**: the homepage's four-step Gift Finder pop-up and the full seven-question quiz at `/gift-finder` both call the AI advisor. It returns ranked picks with a reason for each, a summary and a ready-to-use card message. Each pick shows how well it matches the answers ("92% match") with a ✓/✕ check per answer; the quiz asks what the recipient doesn't like, and those gifts are never suggested; and with a budget it plans one practical, one emotional and one experience gift within it. See [docs/GIFT_DECISION_ASSISTANT.md](docs/GIFT_DECISION_ASSISTANT.md).
 
 **Contact form**: messages are saved to the database and emailed to `ADMIN_EMAIL` (when SMTP is configured). The store owner reads and closes them in Store admin → Messages.
 
@@ -123,9 +123,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (242)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (110)
-cd frontend && npm run lint && npm test   # 140 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (281)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (114)
+cd frontend && npm run lint && npm test   # 142 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -191,7 +191,7 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 | Wishlist | `GET /api/wishlist`, `PUT/DELETE /api/wishlist/{productId}`, `POST /api/wishlist/merge` |
 | Checkout | `GET /api/checkout/options`, `POST /api/checkout/quote` |
 | Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `GET /api/orders/track?orderNumber&email` |
-| AI | `POST /api/ai/recommendations`, `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; backend only, not yet used by the storefront) |
+| AI | `POST /api/ai/recommendations` (quiz answers, optional `avoid`; picks with `match` and `checks`, plus `avoided` and a budget `plan`), `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; backend only, not yet used by the storefront) |
 | Search | `GET /api/search?q&page&size` (gift-aware search; backend only, the storefront uses `/api/products?q`) |
 | Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
 | Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |

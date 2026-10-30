@@ -131,3 +131,35 @@ Whether Railway appends or replaces the header, and which address its proxy conn
 | Real-browser contrast audit, screen readers | NOT TESTED | axe-core runs in jsdom only |
 | Load or performance testing | NOT TESTED | out of scope |
 | Anything on Railway, Vercel or the production database | BLOCKED | out of scope by instruction |
+
+## Gift decision assistant (2026-10-29)
+
+Branch `feat/gift-decision-assistant` (from `ec20b7c`); feature described in [GIFT_DECISION_ASSISTANT.md](GIFT_DECISION_ASSISTANT.md). Same machine, same throw-away MySQL on `127.0.0.1:3307`.
+
+| Check | Before (`ec20b7c`) | After |
+|---|---|---|
+| Backend unit tests (`mvn clean verify -Pintegration`, surefire) | 242 | **281** passed (39 new) |
+| Backend integration tests (failsafe, real MySQL) | 110 | **114** passed (4 new, in AiIT) |
+| Frontend lint | PASS | PASS |
+| Frontend tests (`npx vitest run`) | 140 | **142** passed (2 new; 2 quiz journeys updated for the new optional step) |
+| Frontend production build | PASS | PASS |
+
+`mvn clean` matters here: without it Maven reported a successful test compile while the tests still referenced the old record shapes; with it, 9 out-of-date test calls were found and updated.
+
+Tests that failed or were missing before and now pass:
+
+- `TextPreferenceParserTest`: 17 negation cases ("she hates perfume", "doesn't really like watches", "isn't a big fan of roses", "already has a watch", "perfume pasand nahi", "तिला perfume आवडत नाही", "chocolates नको"), plus 5 cues that must not rule anything out ("not sure…", "has no perfume yet", "no more than ₹2000").
+- `AvoidListTest`, `FitReporterTest` (new), plus new cases in `RecommendationServiceTest`, `AiOrchestratorTest`, `GiftRequestServiceTest` and `AiIT`.
+- `features.test.jsx`: the quiz's avoid step, match badge and checklist, the plan, and no results heading before results.
+- `a11y.test.jsx`: axe-core on the results view.
+
+Local end-to-end (backend jar on 8091 against `giftgenius_dev`, Vite on 5174):
+
+| Journey | Result |
+|---|---|
+| Quiz: Partner · Birthday · Home & Decor · avoid perfume and sweets · Minimalist · ₹500–₹1,500 · name "Priya" | PASS: "4 gifts for Priya · Birthday · up to ₹1,500"; "Leaving out: Perfume, Sweets & chocolates"; 4 picks at 86% / 86% / 86% / 82% with ✓/✕ checks; plan of 3 kinds, all ≤ ₹1,500 |
+| Notes "He already has a watch and doesn't like chocolates" | PASS: "Leaving out: Watches, Sweets & chocolates"; no chocolates shown; plan within ₹500 |
+| `POST /api/ai/gift-request` "…she loves plants and already has a watch" | PASS: `understood.avoid = ["watches"]`, interests `["home decor"]` |
+| Request sent by the quiz | PASS: answers and `avoid` only; the first name stays in the browser |
+| Phone width (375 px) | PASS: no horizontal overflow; plan cards stack (each 286 px) |
+| Colour contrast (axe-core in Chromium, results section, transitions paused) | FAIL → fixed (GG-19): 4 selectors below 4.5:1 before; 0 violations after, in light and dark |

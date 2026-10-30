@@ -155,4 +155,24 @@ describe('accessibility (axe-core)', () => {
     const link = await screen.findByRole('link', { name: 'Luxury Hamper Box' });
     expect(link).toHaveAttribute('href', '/product/1');
   });
+
+  it('quiz results: match badges, "why this gift?" checklists and the budget plan', async () => {
+    const { user } = renderApp('/gift-finder');
+    await user.click(await screen.findByRole('button', { name: /Partner \/ Spouse/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Birthday/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Home & Decor/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Perfume/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Minimalist & Elegant/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /₹500 – ₹1,500/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: '✨ Find My Gifts' }));
+    await screen.findByRole('region', { name: /ways to spend/ });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(await violations()).toEqual([]);
+  });
 });

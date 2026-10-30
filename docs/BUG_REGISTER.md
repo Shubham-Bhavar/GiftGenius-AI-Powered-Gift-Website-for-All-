@@ -24,6 +24,9 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 | GG-14 | Info | API | Unknown `/api` paths answer 401 (not 404) to anonymous callers | By design, documented |
 | GG-15 | Low | API abuse | `POST /api/checkout/quote` is public and not rate-limited | Suspected risk |
 | GG-16 | Low | Workstation | Older project copies outside the repository include a `.env` file | Confirmed, not changed |
+| GG-17 | Medium | AI gift request | "She hates perfume" was read as an interest in perfume | Fixed (2026-10-29) |
+| GG-18 | Low | Quiz page | An empty "Your Gift Matches" heading showed under the questions | Fixed (2026-10-29) |
+| GG-19 | Low | Quiz page styles | Card category and reason (light) and teal buttons (dark) were below 4.5:1 contrast | Fixed (2026-10-29) |
 
 ## Fixed
 
@@ -123,6 +126,33 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 ### GG-16 · Low · `.env` file in an old project copy
 
 `C:\Users\Admin\Desktop\gifgenius\giftgenius\giftgenius\.env` (an untracked copy from 2026-09-26, outside the repository). It wasn't opened. If it holds real credentials, delete the copy or move the values to a password manager, and rotate anything that may have been shared.
+
+## Found while building the gift decision assistant (2026-10-29)
+
+On branch `feat/gift-decision-assistant`; see [GIFT_DECISION_ASSISTANT.md](GIFT_DECISION_ASSISTANT.md).
+
+### GG-17 · Medium · Dislikes read as interests
+
+- **Where:** `recommendation/engine/TextPreferenceParser.java`, used by `POST /api/ai/gift-request`.
+- **Reproduction:** "A birthday gift for my wife under ₹1,500, she hates perfume" was understood as interests `["fragrance"]`, so perfume was ranked up: the opposite of what was asked.
+- **Fix:** negation (English cues before the thing; nahi/नाही/नको/नहीं after it) puts the thing on an avoid list, which is a hard filter. The quiz notes are read the same way.
+- **Verification:** `TextPreferenceParserTest` (17 new cases), `GiftRequestServiceTest.somethingTheyHateIsAvoidedNotRecommended`, `AiIT.aGiftRequestSayingWhatTheyHateAvoidsIt`.
+
+### GG-18 · Low · Empty results heading during the quiz
+
+- **Where:** `frontend/src/pages/ai/GiftFinder.jsx`.
+- **Cause:** the results block was shown when `phase !== 'quiz'`, a phase that never exists, so the block rendered while the questions were on screen.
+- **Fix:** shown only when the phase isn't `'form'`.
+- **Verification:** `features.test.jsx` (no "Your Gift Matches" heading before results); checked in the browser.
+
+### GG-19 · Low · Quiz results contrast
+
+- **Where:** `frontend/src/styles/pages.css`.
+- **Found by:** axe-core's colour-contrast rule run in a real browser on the quiz results (with style transitions paused so colours are final).
+  - Light theme: `.rpc-cat` 3.77:1 and `.rpc-reason` 3.49:1.
+  - Dark theme: cream text on the teal "Add to Cart" and "Browse All Gifts" buttons, 3.42:1.
+- **Fix:** the light-theme text joins the existing deeper-teal list; the dark-theme buttons use the deeper teal (5.2:1), and their gold hover is unchanged.
+- **Verification:** 0 contrast violations in the results section in both themes.
 
 ## Checked and not defective
 

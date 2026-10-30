@@ -7,7 +7,7 @@ import { useToast } from '../../context/ToastContext.jsx';
 import { percentOff, rupees } from '../../utils/format.js';
 
 /** What every AI pick card shares: its discount, and the "Add to cart" button's state and toast. */
-function usePick(pick, addedMessage) {
+export function usePick(pick, addedMessage) {
   const cart = useCart();
   const toast = useToast();
   const [added, setAdded] = useState(false);
@@ -24,6 +24,32 @@ function usePick(pick, addedMessage) {
   return { p, discount: percentOff(p.price, p.originalPrice), added, add };
 }
 
+/**
+ * How much of what the shopper asked for a gift meets, as the engine worked it out ("92% match").
+ * Nothing shows when they told us nothing to match.
+ */
+export function MatchBadge({ match }) {
+  if (match === null || match === undefined) return null;
+  const tier = match >= 85 ? 'great' : match >= 60 ? 'good' : 'fair';
+  return <span className={`match-badge match-badge--${tier}`}>{match}% match</span>;
+}
+
+/** "Why this gift?": each of the shopper's answers, met or not, in their words. */
+export function FitChecks({ checks }) {
+  if (!checks?.length) return null;
+  return (
+    <ul className="fit-checks" aria-label="Why this gift">
+      {checks.map((c) => (
+        <li key={`${c.criterion}-${c.text}`} className={`fit-check ${c.met ? 'fit-check--met' : 'fit-check--miss'}`}>
+          <span className="fit-check-icon" aria-hidden="true">{c.met ? '✓' : '✕'}</span>
+          <span className="sr-only">{c.met ? 'Yes: ' : 'No: '}</span>
+          {c.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The quiz page's design (pages/ai/GiftFinder). */
 function PageCard({ pick, index }) {
   const { p, discount, added, add } = usePick(pick, (x) => `${x.name} added to cart 🛒`);
@@ -34,10 +60,14 @@ function PageCard({ pick, index }) {
         {discount > 0 && <span className="rpc-discount">{discount}% OFF</span>}
       </Link>
       <div className="rpc-body">
-        <div className="rpc-cat">{p.category}</div>
+        <div className="rpc-cat-row">
+          <span className="rpc-cat">{p.category}</span>
+          <MatchBadge match={pick.match} />
+        </div>
         <Link to={`/product/${p.id}`} className="rpc-name">{p.name}</Link>
         <p className="rpc-desc">{p.description}</p>
         <div className="rpc-reason">✨ {pick.reason}</div>
+        <FitChecks checks={pick.checks} />
         <div className="rpc-foot">
           <div className="rpc-prices">
             {discount > 0 && <span className="rpc-og">{rupees(p.originalPrice)}</span>}
@@ -60,7 +90,10 @@ function ModalCard({ pick }) {
         {discount > 0 && <span className="gf-result-badge">{discount}% off</span>}
       </div>
       <div className="gf-result-body">
-        <p className="gf-result-cat">{p.category}</p>
+        <div className="rpc-cat-row">
+          <p className="gf-result-cat">{p.category}</p>
+          <MatchBadge match={pick.match} />
+        </div>
         <h3 className="gf-result-name"><Link to={`/product/${p.id}`}>{p.name}</Link></h3>
         <p className="gf-result-desc">{p.description}</p>
         <div className="gf-result-reason">✨ {pick.reason}</div>
@@ -77,8 +110,9 @@ function ModalCard({ pick }) {
 }
 
 /**
- * One AI pick: a real catalogue product and the reason it suits them, with Add to Cart.
- * `variant` keeps each screen's original design: 'page' (the quiz page) or 'modal' (the homepage Gift Finder).
+ * One AI pick: a real catalogue product, the reason it suits them, and how well it matches what was asked,
+ * with Add to Cart. `variant` keeps each screen's original design: 'page' (the quiz page) or 'modal'
+ * (the homepage Gift Finder).
  */
 export function RecommendationCard({ variant = 'page', ...props }) {
   return variant === 'modal' ? <ModalCard {...props} /> : <PageCard {...props} />;
