@@ -96,6 +96,19 @@ describe('accessibility (axe-core)', () => {
     expect(await violations()).toEqual([]);
   });
 
+  it.each(['Royal Luxury Reveal', 'Birthday Surprise', 'Sentimental Unboxing', 'Minimal Aesthetic', 'Personalised Memory Reveal'])('%s: closed, playing, in the 360° view and the final reveal', async (name) => {
+    const { user } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
+    await user.click(await screen.findByRole('button', { name: `Use This Experience: ${name}` }));
+    expect(await violations()).toEqual([]);
+    const controls = within(screen.getByRole('group', { name: 'Reveal controls' }));
+    await user.click(controls.getByRole('button', { name: 'Play' }));
+    expect(await violations()).toEqual([]);
+    await user.click(screen.getByRole('button', { name: '360° Studio View' }));
+    expect(await violations()).toEqual([]);
+    await user.click(controls.getByRole('button', { name: 'Skip reveal' }));
+    expect(await violations()).toEqual([]);
+  });
+
   it('store admin pages', async () => {
     signedInAs(2);
     renderApp('/admin');

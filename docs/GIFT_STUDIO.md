@@ -89,6 +89,29 @@ quiz answers / product page ─▶ /studio?product(s)=…&style&occasion&recipie
 - **High contrast:** in Windows high-contrast mode the box keeps its colours (it's a picture of the choices).
 - **Pages checked:** axe-core finds no violations on any view; colour contrast was checked in a real browser in both themes (see Verification).
 
+## Reveal experiences and the 360° studio view
+
+Choose one under *Choose Your Reveal Experience* in *Their view*. The classic reveal stays the default. Everything is pure CSS 3D, with no new dependency.
+
+| Experience | Look | What sets it apart |
+|---|---|---|
+| Royal Luxury Reveal | Black box, emerald lining, gold satin, low-key set | Settles in, lid swings with a small overshoot and settle |
+| Birthday Surprise | Coral box with a confetti print, sunshine ribbon, bright set | Bounces in, quick ribbon, lid pops, one burst of confetti, a birthday card flips open |
+| Sentimental Unboxing | Deep red box, ivory lining, champagne ribbon, dark red set | Slow cinematic push in, slow ribbon, the message comes first over a dimmed box, then the gift |
+| Minimal Aesthetic | Ivory box, one thin beige band and a small knot, high-key set | Slow turn, a quiet lid with no overshoot, no card |
+| Personalised Memory Reveal | Linen box, dusty rose ribbon, warm set | The shopper's own photo as a framed print on the lid (revealed as the ribbon leaves) and inside it |
+
+- **The studio:** every experience shares one set: a seamless backdrop, two softboxes on stands, a turntable under the box, a glossy floor with a real mirrored reflection of the box, and a softbox highlight that slides across the lid as it turns. Reflection and softboxes are dropped on phones.
+- **360° view:** the *360° Studio View* button runs the turntable at a full turn every 15 seconds. The *Turn the box* dial goes to any angle, and dragging and the arrow keys work at any time, closed or open. Starting the turntable pauses a playing reveal, and starting the reveal stops the turntable. With reduced motion there is no motor, but the dial, drag and keys still work.
+- **Code:** `components/studio/experiences/`.
+  - `StudioGiftBox` is the one geometry: a flush lid hinged on the back seam, double walls with rims, a ribbon laid over the surfaces, and bow loops built as strips bent along a curve.
+  - `experiences.js` holds each experience's look, timing, camera and effects; `styles/studio/reveal-experiences.css` holds the set, the materials and each colour scheme.
+  - `useGiftAnimation` is the state machine (entrance, rotation, ribbon, lid, reveal; idle, playing, paused, finished). `useTurntable` handles turning and face shading without re-rendering React.
+- **Honesty:** only the studio's real gift, name, message and photo appear, and nothing is shown when one is missing. "Happy birthday" on the Birthday card is the only wording an experience adds. No prices or budget. A printed name appears only on a personalisable gift. Packaging stays a preview. Photos stay on the device.
+- **Unchanged:** share links (the choice isn't in them, and a surprise link still plays the classic reveal), the cart payload, the APIs and the database.
+- **Two rules to keep:** never animate opacity on a 3D group (the browser flattens it and the faces lose their depth order), and never name an experience variable after a site token (it overrides that token inside the player). Tests guard both.
+- **Royal has no gold particles,** by choice: the brief for it conflicted with its rule against "random floating particles". Birthday's confetti is one controlled burst, as its brief asks.
+
 ## API (new, public, validated; no database change)
 
 | Endpoint | Request | Response |

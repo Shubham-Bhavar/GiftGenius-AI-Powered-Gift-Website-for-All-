@@ -6,6 +6,9 @@ import { Spinner } from '../../components/common/ui.jsx';
 import { BoxComposer } from '../../components/studio/BoxComposer.jsx';
 import { BuyerSummary } from '../../components/studio/BuyerSummary.jsx';
 import { CompareLab } from '../../components/studio/CompareLab.jsx';
+import { ExperienceSelector } from '../../components/studio/experiences/ExperienceSelector.jsx';
+import { GiftAnimationPlayer } from '../../components/studio/experiences/GiftAnimationPlayer.jsx';
+import { EXPERIENCES } from '../../components/studio/experiences/experiences.js';
 import { GiftBox3D } from '../../components/studio/GiftBox3D.jsx';
 import { MessageCard } from '../../components/studio/MessageCard.jsx';
 import { MessageToGift } from '../../components/studio/MessageToGift.jsx';
@@ -118,6 +121,9 @@ function Studio() {
   const [editing, setEditing] = useState(!state.shared);
   const [tab, setTab] = useState('their');
   const [photos, setPhotos] = useState([]);
+  // How the reveal plays here. Local to the studio: it isn't part of a share link, which keeps its contract.
+  const [experience, setExperience] = useState('classic');
+  const [preview, setPreview] = useState(null); // { key, run }: shown once, without changing the choice
   const photosRef = useRef(photos);
   const { config } = state;
 
@@ -135,6 +141,7 @@ function Studio() {
   const unavailable = productQueries.some((q) => q.isError);
   const suggestions = suggestThemes(context);
   const look = { box: config.box, ribbon: config.ribbon, pattern: config.pattern, tissue: THEMES[config.theme].tissue };
+  const shownExperience = preview?.key ?? experience;
 
   const onTabKey = (e) => {
     const keys = TABS.map(([k]) => k);
@@ -164,8 +171,24 @@ function Studio() {
 
   const panels = {
     their: products.length > 0 && (
-      <RevealPlayer key={`${config.template}-${config.order}-${config.products.join('-')}`} config={config} look={look}
-        items={products} photos={photos} occasion={context.occasion} />
+      <>
+        <ExperienceSelector selected={experience} shown={shownExperience}
+          onPreview={(key) => setPreview((p) => ({ key, run: (p?.run ?? 0) + 1 }))}
+          onUse={(key) => {
+            setExperience(key);
+            setPreview(null);
+          }} />
+        {EXPERIENCES[shownExperience] ? (
+          <>
+            <p className="studio-hint">This experience has its own presentation, so your box colours and wrap apply to the classic reveal. Your gift, name, message and photos are used here.</p>
+            <GiftAnimationPlayer key={`${shownExperience}-${preview?.run ?? 0}-${config.products.join('-')}`} experience={EXPERIENCES[shownExperience]}
+              config={config} items={products} photos={photos} autoPlay={Boolean(preview)} />
+          </>
+        ) : (
+          <RevealPlayer key={`${config.template}-${config.order}-${config.products.join('-')}`} config={config} look={look}
+            items={products} photos={photos} occasion={context.occasion} />
+        )}
+      </>
     ),
     yours: products.length > 0 && (
       <div className="studio-yours">

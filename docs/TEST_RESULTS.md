@@ -217,3 +217,29 @@ Local end-to-end (backend jar on 8091 against `giftgenius_dev`, Vite on 5174; th
 | Product page | PASS: "🎁 Preview it as a gift" → `/studio?product=1` |
 
 Not checked: real devices and screen readers (the checks above are axe-core and keyboard), Safari and Firefox rendering of the 3D box (only Chromium was used), and how the box performs on low-end phones.
+
+## Reveal experiences and 360° studio view (2026-11-01)
+
+Uncommitted on `feat/gift-decision-assistant`, on top of `83434be`; no backend code touched.
+
+| Check | Before | After |
+|---|---|---|
+| Frontend lint | PASS | PASS |
+| Frontend tests (`npx vitest run`) | 159 | **216** passed (`reveal-experience.test.jsx`, `reveal-studio.test.jsx`, and all five experiences in `a11y.test.jsx`) |
+| Frontend production build | PASS | PASS (studio chunk 65.4 kB, 20.2 kB gzipped) |
+
+Deliberate breaks, each caught by a test and then restored: a printed name on any gift; a price in the reveal; resuming swinging back to the start; pause losing its place; the timer not cleaned up; the budget in surprise links; confetti ignoring skip and reduced motion; Memory asking for a photo it has; the turntable never spinning; a variable shadowing a site token; photo prints leaking into other experiences (missed at first, so a test was added).
+
+Found by inspecting the running app, and fixed:
+
+| Defect | Cause |
+|---|---|
+| Box walls lost their depth in Sentimental and Minimal | An opacity animation on the 3D body flattened it |
+| Replay button invisible in light theme | An experience variable named `--ink` overrode the site's token |
+| Ribbon missing from the lid | A rule made all bands `position: relative`, out of their 3D placement |
+| Grid squares across the Birthday box | A background-size list tiled the shading gradient |
+| Bow undersides muddy on light ribbons | A fixed shadow colour; it now follows each ribbon |
+
+In Chromium against the local backend: all five experiences inspected closed and at their final frames, plus the moments of the ribbon, lid, confetti and message; the 360° view at several angles, closed and open; 0 contrast violations on all five final frames and the selector, in light and dark; no horizontal overflow at 375 px, with captions inside the stage.
+
+Not checked: Safari, Firefox, real phones, screen readers and frame rate on low-end devices. The browser pane was hidden and throttled, so mid-stage frames were captured by holding animations at fixed times, and the motion and the continuous turntable haven't been watched at full frame rate. The turntable's motion is covered by tests.

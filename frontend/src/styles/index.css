@@ -34,6 +34,7 @@
 
 /* The Gift Studio (/studio): 3D box, card, reveal, compare and box composer. */
 @import './studio/gift-studio.css';
+@import './studio/reveal-experiences.css';
 
 /* All @keyframes. Order doesn't matter for these. */
 @import './animations.css';

@@ -127,7 +127,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```bash
 cd backend && mvn verify                  # unit tests (290)
 cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (117)
-cd frontend && npm run lint && npm test   # 159 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd frontend && npm run lint && npm test   # 216 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
