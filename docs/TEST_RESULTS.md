@@ -379,3 +379,5 @@ The owner asked for the entry to follow the system theme: light teal in light mo
 - On battery at 25% and discharging for these runs, which is the likely cause of the one cold run's dropped frames.
 
 **Approved** by the owner on 2026-11-05. The old entry was then removed (its rules in `entry-scene.css` and `pages.css`, `penguin.css`, eight animations only it used, `public/mascot.jpg`); every removed class was checked to be unused elsewhere. Lint, 428 tests and the build pass; the CSS bundle went from 212 kB to 204 kB; the homepage renders as before with no console errors.
+
+**Their view's time limit (2026-11-05):** the 30-second start-up limit in *Their view* now also holds when the scene arrives inside one long task, before the timer gets its turn (the same gap Compare had, fixed the same way). A new test fails without the fix and passes with it; lint, 429 tests and the build pass.

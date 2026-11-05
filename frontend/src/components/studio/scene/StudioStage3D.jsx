@@ -121,7 +121,9 @@ function Stage({ experience, config, items, photos, autoPlay, run: previewRun, s
           if (matrix) el.style.transform = `matrix3d(${matrix.map((v) => v.toFixed(6)).join(',')})`;
         },
       }).then((made) => {
-        if (cancelled || made.tooSlow) {
+        // A scene that finishes inside one long task can arrive before the timer above gets its turn: the limit still holds.
+        const late = performance.now() - started > INIT_LIMIT_MS;
+        if (cancelled || made.tooSlow || late) {
           made.dispose();
           if (!cancelled) fail();
           return;

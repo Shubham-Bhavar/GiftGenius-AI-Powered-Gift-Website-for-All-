@@ -352,6 +352,20 @@ describe('the CSS player stays as the fallback', () => {
     expect(scene.dispose).toHaveBeenCalled();
   });
 
+  it('a scene that arrives after the time limit is thrown away, even if the timer never got its turn: the CSS player', async () => {
+    const scene = fakeScene();
+    withWebGL(scene);
+    // The scene is built inside one long task: when it's handed back, the clock has moved on past the limit.
+    const real = performance.now.bind(performance);
+    createStudioScene.mockImplementation(() => {
+      vi.spyOn(performance, 'now').mockImplementation(() => real() + INIT_LIMIT_MS + 1);
+      return Promise.resolve(scene);
+    });
+    const { container } = render(stage());
+    await waitFor(() => expect(isCssPlayer(container)).toBe(true));
+    expect(scene.dispose).toHaveBeenCalled();
+  });
+
   it('if the browser takes the GPU away, or it becomes too slow while running: the CSS player', async () => {
     withWebGL();
     const first = render(stage());
