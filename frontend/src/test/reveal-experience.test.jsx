@@ -153,22 +153,30 @@ describe('choosing the reveal in the Gift Studio', () => {
   const open = async (path = '/studio?product=4&budget=1500') => {
     const app = renderApp(path);
     await screen.findByRole('heading', { name: 'Choose Your Reveal Experience' });
-    await screen.findByRole('button', { name: 'Use This Experience: Royal Luxury Reveal' });
+    await screen.findByRole('button', { name: 'In use: Royal Luxury Reveal' });
     return app;
   };
-  const useRoyal = (user) => user.click(screen.getByRole('button', { name: 'Use This Experience: Royal Luxury Reveal' }));
+  // Royal is what the studio opens on, so it's already chosen.
+  const useRoyal = async () => {
+    expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
+  };
   const player = () => screen.getByRole('group', { name: /^Royal Luxury Reveal:/ });
   const controls = () => within(screen.getByRole('group', { name: 'Reveal controls' }));
 
-  it('lists each experience with its description and theme, and the classic reveal stays the default', async () => {
-    await open();
+  it('lists each experience with its picture, theme and description, opens on Royal, and keeps the classic reveal available', async () => {
+    const { user } = await open();
     const section = screen.getByRole('heading', { name: 'Choose Your Reveal Experience' }).closest('section');
     const cards = within(section).getAllByRole('listitem');
-    expect(cards.map((c) => within(c).getByRole('heading').textContent)).toEqual(['Classic reveal', 'Royal Luxury Reveal', 'Birthday Surprise', 'Sentimental Unboxing', 'Minimal Aesthetic', 'Personalised Memory Reveal']);
-    const royal = within(cards[1]);
+    expect(cards.map((c) => within(c).getByRole('heading').textContent)).toEqual(['Royal Luxury Reveal', 'Birthday Surprise', 'Sentimental Unboxing', 'Minimal Aesthetic', 'Personalised Memory Reveal']);
+    const royal = within(cards[0]);
     expect(royal.getByText('Black, emerald and gold')).toBeInTheDocument();
-    expect(royal.getByText(/A hinged black box/)).toBeInTheDocument();
+    expect(cards[0].querySelector('img')).toHaveAttribute('src', '/studio/reveal-royal-thumb.webp');
+    expect(within(section).getByText(/A hinged black box/)).toBeInTheDocument(); // the one being shown is described
     expect(royal.getByRole('button', { name: 'Preview Experience: Royal Luxury Reveal' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
+    expect(player()).toBeInTheDocument();
+    expect(screen.queryByText('Step 1 of 7')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
     expect(screen.getByRole('button', { name: 'In use: Classic reveal' })).toHaveAttribute('aria-pressed', 'true');
     expect(await screen.findByText('Step 1 of 7')).toBeInTheDocument(); // the existing player, unchanged
     expect(screen.queryByRole('group', { name: /^Royal Luxury Reveal:/ })).not.toBeInTheDocument();
@@ -197,11 +205,13 @@ describe('choosing the reveal in the Gift Studio', () => {
 
   it('preview plays straight away without changing the choice', async () => {
     const { user } = await open();
-    await user.click(screen.getByRole('button', { name: 'Preview Experience: Royal Luxury Reveal' }));
+    await user.click(screen.getByRole('button', { name: 'Preview Experience: Birthday Surprise' }));
     expect(controls().getByRole('button', { name: 'Pause' })).toBeInTheDocument(); // already playing
-    expect(screen.getByRole('button', { name: 'In use: Classic reveal' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: /^Birthday Surprise:/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
     await user.click(screen.getByRole('button', { name: 'Preview Experience: Classic reveal' }));
     expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('the controls: play, pause, resume, skip, replay and reset', async () => {
@@ -282,7 +292,7 @@ describe('choosing the reveal in the Gift Studio', () => {
   });
 
   it('a printed name appears only on a gift the catalogue says can be personalised', async () => {
-    const config = sanitizeConfig({ ...themeLook('midnight'), products: [4], engraving: 'A.R.' });
+    const config = sanitizeConfig({ ...themeLook('midnight'), products: [4], engraving: 'A.R.', experience: 'royal' });
     const first = await open(`/studio#${shareFragment(config, 'friends')}`);
     await useRoyal(first.user);
     await first.user.click(controls().getByRole('button', { name: 'Skip reveal' }));
@@ -296,19 +306,21 @@ describe('choosing the reveal in the Gift Studio', () => {
     expect(document.querySelector('.xp-caption-printed')).toHaveTextContent('Printed “A.R.” on the Signature Perfume');
   });
 
-  it('share links keep their contract: the choice isn\'t in them, and a surprise link has no budget', async () => {
+  it('a surprise link carries the chosen experience, plays it for them, and still has no budget', async () => {
     const { user, unmount } = await open();
     await useRoyal(user);
     await user.click(screen.getByRole('button', { name: '🎁 Send as a surprise preview' }));
     const link = screen.getByLabelText('Share link').value;
     const raw = rawShare(link);
-    expect(Object.keys(raw).sort()).toEqual(['box', 'card', 'message', 'name', 'order', 'pattern', 'products', 'ribbon', 'template', 'theme', 'v', 'view']);
+    expect(Object.keys(raw).sort()).toEqual(['box', 'card', 'experience', 'message', 'name', 'order', 'pattern', 'products', 'ribbon', 'template', 'theme', 'v', 'view']);
+    expect(raw.experience).toBe('royal');
     unmount();
 
-    // Opened by them: the existing reveal, and nothing to choose.
+    // Opened by them: that experience, and nothing to choose.
     renderApp(`/studio${new URL(link).hash}`);
     expect(await screen.findByRole('heading', { level: 1, name: 'A gift preview, just for you' })).toBeInTheDocument();
-    expect(await screen.findByText('Step 1 of 7')).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ })).toBeInTheDocument();
+    expect(screen.queryByText('Step 1 of 7')).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Choose Your Reveal Experience' })).not.toBeInTheDocument();
     expect(screen.getByRole('main').textContent).not.toMatch(/₹/);
   });

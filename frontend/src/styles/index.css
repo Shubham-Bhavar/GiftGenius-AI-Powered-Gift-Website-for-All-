@@ -25,7 +25,8 @@
 @import './intro/entry-scene.css';
 @import './themes/dark-teal.css';
 @import './themes/accents.css';
-@import './intro/penguin.css';
+/* The website entry: the Gift Studio's Royal box, in the site's light or dark background. */
+@import './intro/entry.css';
 @import './ai/gift-finder-modal.css';
 @import './ai/gift-finder-results.css';
 

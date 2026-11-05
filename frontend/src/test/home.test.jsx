@@ -124,7 +124,7 @@ describe('entry animation', () => {
     await act(async () => {
       fireEvent.keyDown(document, { key: 'Enter' });
     });
-    expect(document.querySelectorAll('.confetti-piece').length).toBe(80);
+    expect(screen.getByRole('dialog', { name: 'GiftGenius intro' })).toHaveClass('is-opening');
     expect(sessionStorage.getItem('gg-entry-shown')).toBe('1');
   });
 

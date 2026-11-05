@@ -17,10 +17,17 @@ function reducedMotion() {
 
 const open = async (path = '/studio?product=4&budget=1500') => {
   const app = renderApp(path);
-  await screen.findByRole('button', { name: 'Use This Experience: Royal Luxury Reveal' });
+  await screen.findByRole('button', { name: 'In use: Royal Luxury Reveal' });
   return app;
 };
-const choose = (user, name) => user.click(screen.getByRole('button', { name: `Use This Experience: ${name}` }));
+// Royal is what the studio opens on, so it's already chosen.
+const choose = async (user, name) => {
+  if (name === 'Royal Luxury Reveal') {
+    expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
+    return;
+  }
+  await user.click(screen.getByRole('button', { name: `Use This Experience: ${name}` }));
+};
 const controls = () => within(screen.getByRole('group', { name: 'Reveal controls' }));
 const skip = (user) => user.click(controls().getByRole('button', { name: 'Skip reveal' }));
 const root = () => document.querySelector('.xp');

@@ -74,6 +74,8 @@ export function suggestThemes({ personality, occasion, interests = [], text = ''
 // stored by GiftGenius, and photos are never included. What a link carries is checked field by field when opened.
 
 const HEX = /^#[0-9a-f]{6}$/i;
+/** The reveals a link can ask for. A new link always names one; a link made before it could has none at all. */
+export const SHARED_EXPERIENCES = ['royal', 'birthday', 'sentimental', 'minimal', 'memory', 'classic'];
 const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const oneOf = (v, allowed, fallback) => (allowed.includes(v) ? v : fallback);
 
@@ -95,6 +97,8 @@ export function sanitizeConfig(raw = {}) {
     engraving: clip(raw.engraving, 80),
     order: oneOf(raw.order, Object.keys(REVEAL_ORDERS), 'card-first'),
     template: oneOf(raw.template, Object.keys(TEMPLATES), 'classic'),
+    // Older links have no experience, and keep playing exactly as they always did. One we don't recognise opens on Royal.
+    experience: raw.experience === undefined ? null : oneOf(raw.experience, SHARED_EXPERIENCES, 'royal'),
     budget,
   };
 }
@@ -115,8 +119,8 @@ const fromBase64Url = (text) => {
  * can decode a link, so a reveal link carries only what the reveal shows: never the budget or the printed name.
  */
 export function shareFragment(config, view) {
-  const { products, theme, box, ribbon, pattern, card, name, message, engraving, order, template, budget } = config;
-  const shared = { v: 1, view, products, theme, box, ribbon, pattern, card, name, message, order, template };
+  const { products, theme, box, ribbon, pattern, card, name, message, engraving, order, template, experience, budget } = config;
+  const shared = { v: 1, view, products, theme, box, ribbon, pattern, card, name, message, order, template, experience: experience ?? undefined };
   return `gift=${toBase64Url(JSON.stringify(view === 'reveal' ? shared : { ...shared, engraving, budget }))}`;
 }
 

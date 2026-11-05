@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import SafeImg from '../common/SafeImg.jsx';
 import { ErrorNote } from '../common/ui.jsx';
 import { giftBoxApi } from '../../services/giftbox.js';
 import { rupees } from '../../utils/format.js';
+import { CompareStage } from './scene/CompareStage3D.jsx';
 
 export const MAX_BOX = 6;
 
@@ -26,12 +27,36 @@ export function BoxChecks({ checks }) {
   );
 }
 
+/** How much of the budget the box uses, as a bar beside the words (the words are what screen readers hear). */
+function BudgetMeter({ total, budget }) {
+  const over = budget > 0 && total > budget;
+  const share = budget > 0 ? Math.min(1, total / budget) : 0;
+  return (
+    <div className="box-meter" aria-live="polite">
+      <div className="box-meter-row">
+        <span className="box-meter-total">Total {rupees(total)}</span>
+        {budget > 0 && (
+          <span className={over ? 'is-over' : 'is-ok'}>
+            {over ? `${rupees(total - budget)} over ${rupees(budget)}` : `${rupees(budget - total)} left of ${rupees(budget)}`}
+          </span>
+        )}
+      </div>
+      {budget > 0 && (
+        <div className={`box-meter-bar${over ? ' is-over' : ''}`} aria-hidden="true">
+          <span style={{ width: `${share * 100}%` }} />
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
- * Several gifts in one box: suggestions that together fit the budget (chosen by the recommendation engine, never
- * over budget, one gift of each kind), and a box to build by hand: drag gifts in from the shelf, reorder them, swap
- * or remove them, with the total and the compatibility checks updating as you go. Every action also has a button.
+ * Several gifts in one box: the box itself, in the studio, wearing the look chosen in the studio and holding the gifts
+ * as they're added; suggestions that together fit the budget (chosen by the recommendation engine, never over budget,
+ * one gift of each kind); and the shelf, to build a box by hand: drag gifts in, reorder them, swap or remove them,
+ * with the total and the compatibility checks updating as you go. Every action also has a button.
  */
-export function BoxComposer({ context, catalog, onUse }) {
+export function BoxComposer({ context, catalog, config, photos = [], onUse }) {
   const [budget, setBudget] = useState(context.budget ?? 1500);
   const [size, setSize] = useState(3);
   const [suggested, setSuggested] = useState({ busy: false, result: null, error: null });
@@ -39,9 +64,13 @@ export function BoxComposer({ context, catalog, onUse }) {
   const [report, setReport] = useState(null);
   const [query, setQuery] = useState('');
   const [seen, setSeen] = useState([]); // products from suggestions, which may be beyond the catalogue page
-  const byId = new Map([...seen, ...catalog].map((p) => [p.id, p]));
-  const items = box.map((id) => byId.get(id)).filter(Boolean);
+  // Kept stable while the box doesn't change, so the studio only redresses the box when its gifts do.
+  const items = useMemo(() => {
+    const byId = new Map([...seen, ...catalog].map((p) => [p.id, p]));
+    return box.map((id) => byId.get(id)).filter(Boolean);
+  }, [box, seen, catalog]);
   const total = items.reduce((sum, p) => sum + Number(p.price), 0);
+  const options = useMemo(() => [{ key: 'box', caption: '', config, items }], [config, items]);
 
   useEffect(() => {
     if (box.length === 0) return undefined;
@@ -87,21 +116,67 @@ export function BoxComposer({ context, catalog, onUse }) {
     .slice(0, 12);
 
   return (
-    <div className="box-composer">
-      <section aria-labelledby="box-suggest-h">
+    <div className="studio-room box-room">
+      <section className="box-section" aria-labelledby="box-yours-h">
+        <h2 id="box-yours-h" className="studio-h">Your box</h2>
+        {/* All of it takes a gift dragged in from the shelf: the box in the studio as much as the list. */}
+        <div className="box-hero" onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, box.length)}>
+          <div className="box-hero-stage">
+            <CompareStage options={options} photos={photos} initiallyOpen />
+            <p className="studio-note">It wears the look from the studio: change the colour, ribbon or wrap there and it changes here.</p>
+          </div>
+          <div className="box-hero-side">
+            <div className="box-budget">
+              <label className="studio-label" htmlFor="box-budget">Budget (₹)</label>
+              <input id="box-budget" className="pd-input" type="number" min={1} max={1000000} value={budget}
+                onChange={(e) => setBudget(Math.max(0, Math.min(1000000, Number(e.target.value) || 0)))} />
+            </div>
+            <BudgetMeter total={total} budget={budget} />
+            <div className="box-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
+              e.stopPropagation();
+              onDrop(e, box.length);
+            }} aria-label={`Your box: ${items.length} of ${MAX_BOX} gifts`} role="group">
+              {items.length === 0 && <p className="box-empty">Empty for now. Choose a suggested box below, or add gifts from the shelf.</p>}
+              <ol className="box-slots">
+                {items.map((p, i) => (
+                  <li key={p.id} className="box-slot" draggable
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', `move:${i}`)}
+                    onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
+                      e.stopPropagation();
+                      onDrop(e, i);
+                    }}>
+                    <SafeImg src={p.image} alt="" />
+                    <span className="box-slot-name">{p.name}</span>
+                    <span className="box-slot-price">{rupees(p.price)}</span>
+                    <span className="box-slot-actions">
+                      <button type="button" disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={`Move ${p.name} earlier`}>←</button>
+                      <button type="button" onClick={() => remove(p.id)} aria-label={`Remove ${p.name}`}>✕</button>
+                      <button type="button" disabled={i === items.length - 1} onClick={() => move(i, i + 1)} aria-label={`Move ${p.name} later`}>→</button>
+                    </span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+            {items.length > 0 && report && <BoxChecks checks={report.checks} />}
+            {items.length > 0 && (
+              <button type="button" className="box-primary" onClick={() => onUse(box)}>Preview this box →</button>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="box-section" aria-labelledby="box-suggest-h">
         <h2 id="box-suggest-h" className="studio-h">Suggest boxes within a budget</h2>
         <div className="box-form">
-          <label className="studio-label" htmlFor="box-budget">Budget (₹)</label>
-          <input id="box-budget" className="pd-input" type="number" min={1} max={1000000} value={budget}
-            onChange={(e) => setBudget(Math.max(0, Math.min(1000000, Number(e.target.value) || 0)))} />
           <label className="studio-label" htmlFor="box-size">Gifts in the box</label>
           <select id="box-size" className="pd-input" value={size} onChange={(e) => setSize(Number(e.target.value))}>
             {[2, 3, 4].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
-          <button type="button" className="btn-primary" disabled={suggested.busy || budget < 1} onClick={suggest}>
+          <button type="button" className="box-primary" disabled={suggested.busy || budget < 1} onClick={suggest}>
             {suggested.busy ? 'Finding boxes…' : '✨ Suggest boxes'}
           </button>
         </div>
+        <p className="studio-hint">Within your {rupees(budget)} budget, one gift of each kind, chosen from the catalogue.</p>
         <ErrorNote error={suggested.error} onRetry={suggest} />
         {suggested.result?.note && <p className="studio-hint">{suggested.result.note}</p>}
         {suggested.result?.boxes?.length > 0 && (
@@ -119,8 +194,8 @@ export function BoxComposer({ context, catalog, onUse }) {
                 </ul>
                 <BoxChecks checks={b.checks} />
                 <div className="box-suggestion-actions">
-                  <button type="button" className="studio-link-btn" onClick={() => setBox(b.items.map((x) => x.product.id))}>Edit this box</button>
-                  <button type="button" className="btn-primary" onClick={() => onUse(b.items.map((x) => x.product.id))}>Preview this box →</button>
+                  <button type="button" className="box-secondary" onClick={() => setBox(b.items.map((x) => x.product.id))}>Edit this box</button>
+                  <button type="button" className="box-primary" onClick={() => onUse(b.items.map((x) => x.product.id))}>Preview this box →</button>
                 </div>
               </li>
             ))}
@@ -128,59 +203,23 @@ export function BoxComposer({ context, catalog, onUse }) {
         )}
       </section>
 
-      <section aria-labelledby="box-build-h">
+      <section className="box-section" aria-labelledby="box-build-h">
         <h2 id="box-build-h" className="studio-h">Or build your own box</h2>
-        <div className="box-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => onDrop(e, box.length)}
-          aria-label={`Your box: ${items.length} of ${MAX_BOX} gifts`} role="group">
-          {items.length === 0 && <p className="box-empty">Drag gifts here, or use “Add” on the shelf.</p>}
-          <ol className="box-slots">
-            {items.map((p, i) => (
-              <li key={p.id} className="box-slot" draggable
-                onDragStart={(e) => e.dataTransfer.setData('text/plain', `move:${i}`)}
-                onDragOver={(e) => e.preventDefault()} onDrop={(e) => {
-                  e.stopPropagation();
-                  onDrop(e, i);
-                }}>
-                <SafeImg src={p.image} alt="" />
-                <span className="box-slot-name">{p.name}</span>
-                <span className="box-slot-price">{rupees(p.price)}</span>
-                <span className="box-slot-actions">
-                  <button type="button" disabled={i === 0} onClick={() => move(i, i - 1)} aria-label={`Move ${p.name} earlier`}>←</button>
-                  <button type="button" onClick={() => remove(p.id)} aria-label={`Remove ${p.name}`}>✕</button>
-                  <button type="button" disabled={i === items.length - 1} onClick={() => move(i, i + 1)} aria-label={`Move ${p.name} later`}>→</button>
-                </span>
-              </li>
-            ))}
-          </ol>
-        </div>
-        <div className="box-meter" aria-live="polite">
-          <span>Total {rupees(total)}</span>
-          {budget > 0 && (
-            <span className={total <= budget ? 'is-ok' : 'is-over'}>
-              {total <= budget ? `${rupees(budget - total)} left of ${rupees(budget)}` : `${rupees(total - budget)} over ${rupees(budget)}`}
-            </span>
-          )}
-        </div>
-        {items.length > 0 && report && <BoxChecks checks={report.checks} />}
-        {items.length > 0 && (
-          <button type="button" className="btn-primary" onClick={() => onUse(box)}>Preview this box →</button>
-        )}
-
-        <h3 className="studio-label">Shelf</h3>
         <label htmlFor="box-shelf-search" className="sr-only">Search the shelf</label>
         <input id="box-shelf-search" className="pd-input" type="search" placeholder="Search gifts…" value={query}
           onChange={(e) => setQuery(e.target.value)} />
-        <ul className="box-shelf">
+        <ul className="box-shelf" aria-label="Shelf">
           {shelf.map((p) => (
             <li key={p.id} draggable onDragStart={(e) => e.dataTransfer.setData('text/plain', `add:${p.id}`)}>
               <SafeImg src={p.image} alt="" />
               <span className="box-slot-name">{p.name}</span>
               <span className="box-slot-price">{rupees(p.price)}</span>
-              <button type="button" className="studio-link-btn" disabled={box.length >= MAX_BOX} onClick={() => add(p.id)}
+              <button type="button" className="box-secondary" disabled={box.length >= MAX_BOX} onClick={() => add(p.id)}
                 aria-label={`Add ${p.name} to the box`}>Add</button>
             </li>
           ))}
         </ul>
+        {box.length >= MAX_BOX && <p className="studio-hint">A box holds {MAX_BOX} gifts at most: remove one to add another.</p>}
       </section>
     </div>
   );

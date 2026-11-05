@@ -243,3 +243,139 @@ Found by inspecting the running app, and fixed:
 In Chromium against the local backend: all five experiences inspected closed and at their final frames, plus the moments of the ribbon, lid, confetti and message; the 360° view at several angles, closed and open; 0 contrast violations on all five final frames and the selector, in light and dark; no horizontal overflow at 375 px, with captions inside the stage.
 
 Not checked: Safari, Firefox, real phones, screen readers and frame rate on low-end devices. The browser pane was hidden and throttled, so mid-stage frames were captured by holding animations at fixed times, and the motion and the continuous turntable haven't been watched at full frame rate. The turntable's motion is covered by tests.
+
+## Three.js Gift Studio (2026-11-02)
+
+Uncommitted on `feat/gift-decision-assistant`, on top of `69292b4`; no backend code touched. Measured in Chrome on an Intel UHD 620 laptop, on a production build with an empty cache.
+
+| Device | Player | Quality | Turntable | Royal reveal | Birthday reveal | Ready |
+|---|---|---|---|---|---|---|
+| Normal GPU, 1x | 3D | high or medium | 57 fps | 55 fps | 57 fps | 2.5 to 5.3 s |
+| Normal GPU, 2x | 3D | medium, 1.25x | 58 fps | 52 fps | 52 fps | 4.0 s |
+| Phone width, normal GPU | 3D | high, 2x | 60 fps | 59 fps | 59 fps | 4.3 s |
+| Simulated 2x slower | 3D | low, 1.5x | 60 fps | 54 fps | 58 fps | 13.3 s |
+| Simulated 4x and 6x slower | CSS | none | none | none | none | no 3D downloaded |
+| Software rendering | CSS | none | none | none | none | no 3D downloaded |
+
+In real time: all five reveals played start to finish; play, pause, resume, skip, reset, replay, the turntable and switching look; nothing drawn at rest or while paused; Your view, Compare and Gift box still present. No contrast violations in the room. 26 deliberate breaks, all caught by tests and restored.
+
+Not checked: real phones, Safari, Firefox and screen readers. The CPU limit and quality budgets come from simulations on one laptop.
+
+## Gift Studio refinements (2026-11-02)
+
+Uncommitted, on top of the section above.
+
+- **Several gifts:** 4, 5 and 6 real gifts captured; all shown in the box, named and counted below it.
+- **Catalogue photos:** all 20 now appear in the box. Before, 16 did. Two needed only an https link; two more are laid over the print as ordinary images, because their hosts send no permission for WebGL.
+- **Slow start**, on a page slowed 2x in Chrome: controls disabled with a message, a still shown at once, and *Play when ready* played the reveal once ready.
+- **Share links**, in Chrome: old Classic, Surprise and Sentimental links play as before with no 3D code; new links play the experience named; an unknown one opens on Royal; no prices, chooser or photo prompt for recipients.
+- **Tests:** 37 deliberate breaks, all caught; one was missed at first, so a test was added.
+- **Found in the last check:** changing the device's motion setting mid-visit, then editing the gift, tore the scene down and took the page with it. The setting is now read once per visit, and a test covers it.
+
+Not checked: real phones, Safari, Firefox and screen readers. A hosted production site was not tested, so the https links and laid-over images haven't been seen under its content security policy; the policy in `nginx.conf` allows images from any https host.
+
+## Compare in the 3D studio (2026-11-03)
+
+Uncommitted, on top of the sections above. Measured on a production build made for review, in Chrome on this laptop (Intel UHD 620), against the local test database.
+
+| Check | Desktop (1400 wide) | Phone (390 wide) |
+|---|---|---|
+| Quality chosen | medium | medium |
+| Ready after opening the tab | 1.5 to 2.5 s | 1.8 s |
+| Turning | 53 to 59 fps | 60 fps |
+| Opening / closing | 51 to 53 / 54 to 59 fps | 58 / 59 fps |
+| Frames over 50 ms | none | none |
+| axe-core, contrast included | 0 violations | 0 violations |
+
+- **Slower CPU:** 2x slower gets 3D at low quality, ready in 7 to 12 s, controls disabled with a message until then. 4x slower got the CSS boxes with no 3D downloaded on one run and passed the CPU check on another; the 30 second limit now holds even when the scene arrives inside one long task (found here, fixed, tested).
+- **Without WebGL:** the CSS boxes, no 3D code downloaded, *Closed* / *Open* working, no turning controls shown.
+- **Interactions:** showing a theme as B, choosing B's gift, *Use option B* reaching *Your view*, *Use* on a tile, the table, switching tabs three times and back, no errors.
+- **The five reveal looks:** rendered before and after, closed, turned and open: identical (at most 4 of 256 levels on 1 pixel, the same as two runs of the unchanged code).
+- **Found in measurement and fixed:** the first measurement ran while gift photos uploaded, and fell to the lowest quality; the first opening stalled 375 ms on drawing the gifts for the first time.
+- **Tests:** 33 new; 33 deliberate breaks, all caught.
+
+Not checked: real phones, Safari, Firefox and screen readers. The CPU limit and quality budgets come from simulations on one laptop.
+
+## Your view in the 3D studio (2026-11-03)
+
+Uncommitted, on top of the sections above. Measured on a production build made for review, in Chrome on this laptop, against the local test database.
+
+| Check | Desktop (1400 wide) | Phone (390 wide) |
+|---|---|---|
+| Quality chosen | medium | high |
+| Ready after opening the tab | 1.5 to 6.4 s (the longest on a first, cold start) | 1.5 s |
+| Turning, closing, opening | 60 fps | 60 fps |
+| Frames over 50 ms | none | none |
+| axe-core, contrast included | 0 violations | 0 violations |
+
+- **Add to cart, in the real app:** the cart count went up, and the stored line carried the product, the quantity and the card message, as before.
+- **Card styles:** all five checked on screen; changing the style in the controls changes both the card and the card in the lid.
+- **Without WebGL:** the CSS box, open, closing and opening, with no 3D code downloaded.
+- **Tests:** 12 new; 16 deliberate breaks, all caught (including the message or printed name no longer reaching the cart). One full run had two unrelated tests time out under load (a seller sign-up test and a reveal test); both passed alone and in the next full run.
+
+Not checked: real phones, Safari, Firefox and screen readers.
+
+## Gift box in the 3D studio (2026-11-03)
+
+Uncommitted, on top of the sections above. In Chrome on this laptop, on a production build made for review, against the local test database.
+
+- **The journey, at 1400 and 390 wide:** suggestions within the budget (3 boxes), *Edit this box*, adding from the shelf, the box in the studio filling, the meter going over budget, the checks, *Preview this box* reaching *Their view*. No errors; axe-core, contrast included, 0 violations at both widths. Ready 1.7 to 3 s after opening the tab.
+- **Smoothness:** in the first runs (on the development server), turning ran at 60 fps (worst frame 17 ms) with four gifts in the box. The later runs, on the review build, were capped at 30 fps for every page, Your view included: the laptop was on battery at 15%, where Chrome holds pages to 30 fps. The GPU cost per frame then was 14.7 ms empty and 18.9 ms with three gifts. While capped, the running check also stepped down a quality once.
+- **Without WebGL:** the CSS box, open, with no 3D code downloaded.
+- **Tests:** 9 new (8 for the tab, 1 journey); 13 deliberate breaks, all caught in the end; 2 were missed at first (the page not passing its look to the box, and a seventh gift dragged in), so a test was added for each.
+
+Not checked: real phones, Safari, Firefox and screen readers.
+
+## Website entry (2026-11-05)
+
+Uncommitted, on top of the sections above. In Chrome on this laptop, on a production build, against the local test database.
+
+| Check | Desktop (1440x900, 1920x1080) | Phone (390x844) | Reduced motion |
+|---|---|---|---|
+| Downloads | 26 kB still, 184 kB arrival, 530 kB opening | 14 kB, 97 kB, 335 kB | two stills, 38 kB |
+| Opening film | 123 frames, 0 dropped | 123 frames, 0 dropped | no film |
+| From Enter to gone | 5.4 s | 5.4 s | under 1 s |
+| 3D code downloaded | none | none | none |
+| axe-core, contrast included | 0 violations | 0 violations | 0 violations |
+
+- **First visit:** the welcome screen followed 4.6 s after Enter, focused on its heading, with its own scroll lock; the entry's lock was gone. A second load in the same session showed no entry.
+- **Found and fixed:** the scroll lock was undone by the site's shared overlay lock as the page mounted (also true of the old entry); and, during the rebuild, the key handler re-locked scrolling after leaving.
+- **Tests:** 21 for the entry (a new file) and three updated; 17 deliberate breaks, all caught in the end (one was missed at first, so a test was added).
+
+Not checked: real phones, Safari, Firefox and screen readers. Battery: on battery at 78% for these runs; the film's smoothness doesn't depend on the page's frame rate.
+
+### Entry on the site's teal (2026-11-05, after review)
+
+The owner asked for the site's main background colour instead of black. The film was rendered again with the studio's walls and floor in the light teal of `--bg` (#E6F7FA), the box, ribbon and lighting unchanged, and the page restyled in the site's ink, readable gold and dark button.
+
+| Check | Desktop (1440x900) | Phone (390x844) | Reduced motion |
+|---|---|---|---|
+| Downloads | 35 kB still, 181 kB arrival, 503 kB opening | 19 kB, 89 kB, 321 kB | two stills, 57 kB |
+| Opening film | 123 frames, 0 dropped | 123 frames, 0 dropped | no film |
+| From Enter to gone | 5.4 s | 5.4 s | as before |
+| 3D code downloaded | none | none | none |
+| axe-core, contrast included | 0 violations | 0 violations | 0 violations |
+
+- **Colour match:** the rendered room's edges are exactly #E6F7FA; after H.264 encoding and decoding they are within 2 levels of it (228, 246, 249), and stay there while the card comes up.
+- **Encoding:** CRF 25 instead of 23, because a light background costs more to encode; side by side with CRF 23 no difference or banding was visible. Each framing stays under the 900 kB test limit (wide 757 kB).
+- **Tests:** 422, lint and build pass; one new test ties the entry's background to the site's `--bg-light` token and checks the ink and gold.
+- On battery at 30% for these runs.
+
+### Entry in light and dark (2026-11-05, after review)
+
+The owner asked for the entry to follow the system theme: light teal in light mode, the dark theme's background in dark mode. The site already followed the system theme (`theme-init.js`, unless the visitor chose one with the header toggle); the entry now follows the site, with its own dark films (room #0F1A1C, rendered and encoded as the light ones).
+
+| Check (Chrome, production build) | Light, desktop | Dark, desktop | Dark, phone | Dark, reduced motion |
+|---|---|---|---|---|
+| Entry background | rgb(230, 247, 250) | rgb(15, 26, 28) | rgb(15, 26, 28) | rgb(15, 26, 28) |
+| Files | the light set only | the dark set only, 640 kB | 376 kB | two stills, 46 kB |
+| Opening film, no screenshots | 123 frames, 0 dropped | 0 dropped in 2 of 3 runs; the first, cold, dropped 8 | 0 dropped | no film |
+| axe-core, contrast included | 0 violations | 0 violations | 0 violations | 0 violations |
+| 3D code downloaded | none | none | none | none |
+
+- **Colour match:** the dark films' edges decode within 2 levels of #0F1A1C (14, 24, 27).
+- **Found and fixed:** with storage blocked, `theme-init.js` gave up and the site stayed light whatever the system said; it now falls back to the system's setting.
+- **Tests:** 428, lint and build pass; new tests for the dark films and colours, and for `theme-init.js` (system dark, system light, the visitor's choice winning, blocked storage).
+- On battery at 25% and discharging for these runs, which is the likely cause of the one cold run's dropped frames.
+
+**Approved** by the owner on 2026-11-05. The old entry was then removed (its rules in `entry-scene.css` and `pages.css`, `penguin.css`, eight animations only it used, `public/mascot.jpg`); every removed class was checked to be unused elsewhere. Lint, 428 tests and the build pass; the CSS bundle went from 212 kB to 204 kB; the homepage renders as before with no console errors.

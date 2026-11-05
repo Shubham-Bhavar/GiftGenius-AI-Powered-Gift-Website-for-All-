@@ -2,7 +2,7 @@
 
 A production-ready gift e-commerce site: a **React 19** storefront, a **Spring Boot 4** API on **Java 21**, **MySQL 8** and an **AI gift advisor** (Google Gemini, with a rule-based fallback so it always answers).
 
-The storefront keeps the original GiftGenius homepage ([Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-](https://github.com/Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-)) exactly as designed: the same sections, colours, fonts, gift-box entry animation, confetti, sliding nav pill and cards. Its styles are kept as designed, split by area under `frontend/src/styles/` and loaded in cascade order by `frontend/src/styles/index.css`, and every other page is built from the same design tokens and components (`frontend/src/styles/pages.css`), so the whole site looks and feels like the homepage. All pages are connected to the live API.
+The storefront keeps the original GiftGenius homepage ([Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-](https://github.com/Shubham-Bhavar/GiftGenius-AI-Powered-Gift-Website-for-All-)) exactly as designed: the same sections, colours, fonts, sliding nav pill and cards. Its first-visit entry is now the Gift Studio's Royal box (see `docs/GIFT_STUDIO.md`). Its styles are kept as designed, split by area under `frontend/src/styles/` and loaded in cascade order by `frontend/src/styles/index.css`, and every other page is built from the same design tokens and components (`frontend/src/styles/pages.css`), so the whole site looks and feels like the homepage. All pages are connected to the live API.
 
 ```
 giftgenius/
@@ -28,7 +28,7 @@ giftgenius/
 
 **Contact form**: messages are saved to the database and emailed to `ADMIN_EMAIL` (when SMTP is configured). The store owner reads and closes them in Store admin → Messages.
 
-**First visit**: the gift-box entry animation, then a welcome screen: **Log In**, **Sign Up** or **Continue without an account**. Guests shop with a cart and wishlist kept on their device (merged into the account whenever they sign in); the choice is remembered, and signed-in shoppers go straight to the shop. Visitors who prefer reduced motion get a short, confetti-free version. Checkout asks guests to sign in, keeping the cart, and then continues to checkout.
+**First visit**: the entry (the Gift Studio's box opens on a welcome card), then a welcome screen: **Log In**, **Sign Up** or **Continue without an account**. Guests shop with a cart and wishlist kept on their device (merged into the account whenever they sign in); the choice is remembered, and signed-in shoppers go straight to the shop. Visitors who prefer reduced motion, or who save data, see two stills of the same box instead of the film. Checkout asks guests to sign in, keeping the cart, and then continues to checkout.
 
 **Delivery address**: at checkout, **📍 Use my current location** fills street, area, city, state and pincode. It asks for permission only when clicked, reads the position once (no tracking), sends only rounded coordinates (about 11 m) to our API, which looks them up through OpenStreetMap Nominatim and never stores or logs them. If permission is refused, the browser can't locate, or the lookup fails, shoppers simply type the address.
 
@@ -127,7 +127,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ```bash
 cd backend && mvn verify                  # unit tests (290)
 cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (117)
-cd frontend && npm run lint && npm test   # 216 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd frontend && npm run lint && npm test   # 428 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:

@@ -71,8 +71,11 @@ describe('accessibility (axe-core)', () => {
   it('Gift Studio: each view, the start screen and a surprise link', async () => {
     const { user, unmount } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
     await screen.findByRole('heading', { level: 1, name: /See the gift/ });
-    await screen.findByText('Step 1 of 7');
+    await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ });
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(await violations()).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
+    await screen.findByText('Step 1 of 7');
     expect(await violations()).toEqual([]);
     for (const tab of ['Your view', 'Compare', 'Gift box']) {
       await user.click(screen.getByRole('tab', { name: tab }));
@@ -98,7 +101,8 @@ describe('accessibility (axe-core)', () => {
 
   it.each(['Royal Luxury Reveal', 'Birthday Surprise', 'Sentimental Unboxing', 'Minimal Aesthetic', 'Personalised Memory Reveal'])('%s: closed, playing, in the 360° view and the final reveal', async (name) => {
     const { user } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
-    await user.click(await screen.findByRole('button', { name: `Use This Experience: ${name}` }));
+    if (name !== 'Royal Luxury Reveal') await user.click(await screen.findByRole('button', { name: `Use This Experience: ${name}` }));
+    await screen.findByRole('group', { name: new RegExp(`^${name}:`) });
     expect(await violations()).toEqual([]);
     const controls = within(screen.getByRole('group', { name: 'Reveal controls' }));
     await user.click(controls.getByRole('button', { name: 'Play' }));

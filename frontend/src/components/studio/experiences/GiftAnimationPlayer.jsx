@@ -37,7 +37,7 @@ function StudioBackdrop() {
  * up when one is missing. This is the recipient's view, so no prices or budget ever reach it. Photos stay local object
  * URLs. Packaging here is a visual preview, as everywhere in the studio.
  */
-export function GiftAnimationPlayer({ experience, config, items, photos, autoPlay = false }) {
+export function GiftAnimationPlayer({ experience, config, items, photos, autoPlay = false, recipient = false }) {
   const { key, durations, poses, says, name: title, boxLabel, look, effect, card, needsPhoto } = experience;
   const animation = useGiftAnimation(durations, { autoPlay });
   const { stage, stageName, status, instant, run, play, pause, replay, skip, reset } = animation;
@@ -137,7 +137,7 @@ export function GiftAnimationPlayer({ experience, config, items, photos, autoPla
       <RevealControls animation={controls} spinning={spinning} canSpin={!reduced} onToggleSpin={toggleSpin}
         dialRef={dialRef} readoutRef={readoutRef} onDial={turnTo} />
       <p className="sr-only" aria-live="polite">{said}</p>
-      {needsPhoto && !photo && <p className="studio-hint">This experience is made for your photo: add one under Personal touches to see it here. Nothing is shown in its place.</p>}
+      {needsPhoto && !photo && !recipient && <p className="studio-hint">This experience is made for your photo: add one under Personal touches to see it here. Nothing is shown in its place.</p>}
       <p className="studio-note">A digital preview of the moment. Real wrapping and packaging may differ, and packaging isn’t added to your order.</p>
     </div>
   );

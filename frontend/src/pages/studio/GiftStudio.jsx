@@ -4,16 +4,14 @@ import { useQueries, useQuery } from '@tanstack/react-query';
 import SafeImg from '../../components/common/SafeImg.jsx';
 import { Spinner } from '../../components/common/ui.jsx';
 import { BoxComposer } from '../../components/studio/BoxComposer.jsx';
-import { BuyerSummary } from '../../components/studio/BuyerSummary.jsx';
 import { CompareLab } from '../../components/studio/CompareLab.jsx';
 import { ExperienceSelector } from '../../components/studio/experiences/ExperienceSelector.jsx';
-import { GiftAnimationPlayer } from '../../components/studio/experiences/GiftAnimationPlayer.jsx';
 import { EXPERIENCES } from '../../components/studio/experiences/experiences.js';
-import { GiftBox3D } from '../../components/studio/GiftBox3D.jsx';
-import { MessageCard } from '../../components/studio/MessageCard.jsx';
 import { MessageToGift } from '../../components/studio/MessageToGift.jsx';
 import { RevealPlayer } from '../../components/studio/RevealPlayer.jsx';
+import { StudioStage3D } from '../../components/studio/scene/StudioStage3D.jsx';
 import { StudioControls } from '../../components/studio/StudioControls.jsx';
+import { YourView } from '../../components/studio/YourView.jsx';
 import { THEMES, readShare, sanitizeConfig, shareFragment, suggestThemes, themeLook } from '../../components/studio/look.js';
 import { useToast } from '../../context/ToastContext.jsx';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
@@ -50,11 +48,11 @@ function initial(search, hash, context) {
   return { shared: null, config: sanitizeConfig({ ...themeLook(theme), products: ids, budget: context.budget }) };
 }
 
-function ShareBar({ config }) {
+function ShareBar({ config, experience, hasPhotos }) {
   const toast = useToast();
   const [link, setLink] = useState('');
   const share = async (view) => {
-    const url = `${window.location.origin}/studio#${shareFragment(config, view)}`;
+    const url = `${window.location.origin}/studio#${shareFragment({ ...config, experience }, view)}`;
     setLink(url);
     try {
       await navigator.clipboard.writeText(url);
@@ -77,6 +75,9 @@ function ShareBar({ config }) {
         </>
       )}
       <p className="studio-hint">A link carries the gifts, the look, the names and the message, never your photos; a surprise link also leaves out your budget. Nothing is stored on our servers, so anyone with the link sees what’s in it.</p>
+      {EXPERIENCES[experience]?.needsPhoto && hasPhotos && (
+        <p className="studio-hint">Your photo stays on this device, so they’ll see {EXPERIENCES[experience].name} without it.</p>
+      )}
     </section>
   );
 }
@@ -121,8 +122,8 @@ function Studio() {
   const [editing, setEditing] = useState(!state.shared);
   const [tab, setTab] = useState('their');
   const [photos, setPhotos] = useState([]);
-  // How the reveal plays here. Local to the studio: it isn't part of a share link, which keeps its contract.
-  const [experience, setExperience] = useState('classic');
+  // How the reveal plays. A link names the one chosen; an older link has none, and plays the classic reveal as it always did.
+  const [experience, setExperience] = useState(() => (state.shared ? state.config.experience ?? 'classic' : 'royal'));
   const [preview, setPreview] = useState(null); // { key, run }: shown once, without changing the choice
   const photosRef = useRef(photos);
   const { config } = state;
@@ -160,9 +161,14 @@ function Studio() {
       <div className="studio-page">
         <section className="page-hero"><h1>A gift preview, just for you</h1><p>Someone dressed up a gift with you in mind.</p></section>
         <div className="studio-solo">
-          {loading ? <Spinner label="Wrapping it up…" /> : (
+          {loading && <Spinner label="Wrapping it up…" />}
+          {!loading && (EXPERIENCES[experience] ? (
+            <div className="studio-room">
+              <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[experience]} config={config} items={products} photos={[]} recipient />
+            </div>
+          ) : (
             <RevealPlayer config={config} look={look} items={products} photos={[]} occasion={undefined} />
-          )}
+          ))}
           <Link to="/studio" className="studio-link-btn">Make a gift preview of your own →</Link>
         </div>
       </div>
@@ -171,7 +177,7 @@ function Studio() {
 
   const panels = {
     their: products.length > 0 && (
-      <>
+      <div className="studio-room">
         <ExperienceSelector selected={experience} shown={shownExperience}
           onPreview={(key) => setPreview((p) => ({ key, run: (p?.run ?? 0) + 1 }))}
           onUse={(key) => {
@@ -181,30 +187,22 @@ function Studio() {
         {EXPERIENCES[shownExperience] ? (
           <>
             <p className="studio-hint">This experience has its own presentation, so your box colours and wrap apply to the classic reveal. Your gift, name, message and photos are used here.</p>
-            <GiftAnimationPlayer key={`${shownExperience}-${preview?.run ?? 0}-${config.products.join('-')}`} experience={EXPERIENCES[shownExperience]}
+            <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[shownExperience]} run={preview?.run ?? 0}
               config={config} items={products} photos={photos} autoPlay={Boolean(preview)} />
           </>
         ) : (
           <RevealPlayer key={`${config.template}-${config.order}-${config.products.join('-')}`} config={config} look={look}
             items={products} photos={photos} occasion={context.occasion} />
         )}
-      </>
-    ),
-    yours: products.length > 0 && (
-      <div className="studio-yours">
-        <div className="studio-yours-preview">
-          <GiftBox3D look={look} items={products} photos={photos} state="open" interactive />
-          <MessageCard style={config.card} name={config.name} message={config.message} photos={photos} compact />
-        </div>
-        <BuyerSummary config={config} products={products} look={look} photos={photos} />
       </div>
     ),
+    yours: products.length > 0 && <YourView config={config} products={products} look={look} photos={photos} />,
     compare: products.length > 0 && (
       <CompareLab config={config} products={products} catalog={catalog} photos={photos} suggestions={suggestions}
         onApply={(changes, ids) => update({ ...changes, ...(ids ? { products: ids } : {}) })} />
     ),
     box: (
-      <BoxComposer context={context} catalog={catalog} onUse={(ids) => {
+      <BoxComposer context={context} catalog={catalog} config={config} photos={photos} onUse={(ids) => {
         update({ products: ids });
         setTab('their');
       }} />
@@ -251,7 +249,7 @@ function Studio() {
             )}
             {!needsGift && panels[tab]}
           </div>
-          {products.length > 0 && <ShareBar config={config} />}
+          {products.length > 0 && <ShareBar config={config} experience={experience} hasPhotos={photos.length > 0} />}
         </div>
         {editing && !needsGift && (
           <section className="studio-side" aria-label="Customise the gift">

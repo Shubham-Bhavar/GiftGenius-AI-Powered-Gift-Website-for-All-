@@ -15,11 +15,11 @@ describe('first visit: entry animation → welcome screen', () => {
     sessionStorage.removeItem('gg-entry-shown');
     const { user } = renderApp('/');
     const intro = screen.getByRole('dialog', { name: 'GiftGenius intro' });
-    expect(within(intro).getByRole('button', { name: 'Open the gift to enter GiftGenius' })).toHaveFocus();
+    expect(within(intro).getByRole('button', { name: 'Open your gift' })).toHaveFocus();
     expect(welcome()).toBeNull();
 
     await act(async () => { fireEvent.keyDown(document, { key: 'Enter' }); });
-    expect(document.querySelectorAll('.confetti-piece').length).toBe(80);
+    expect(intro).toHaveClass('is-opening');
 
     const dialog = await screen.findByRole('dialog', { name: 'Welcome to GiftGenius' }, { timeout: 5000 });
     expect(dialog).toHaveAccessibleDescription(/Find thoughtful gifts, discover curated collections/);
@@ -46,13 +46,12 @@ describe('first visit: entry animation → welcome screen', () => {
       delete window.matchMedia;
     });
 
-    it('opens the gift without confetti or fireworks and moves on quickly', async () => {
+    it('opens the gift as two stills, with no film, and moves on quickly', async () => {
       sessionStorage.removeItem('gg-entry-shown');
       renderApp('/');
+      expect(document.querySelector('.gg-entry video')).toBeNull();
       await act(async () => { fireEvent.keyDown(document, { key: 'Enter' }); });
-      expect(document.querySelectorAll('.confetti-piece').length).toBe(0);
       expect(await screen.findByRole('dialog', { name: 'Welcome to GiftGenius' }, { timeout: 1500 })).toBeInTheDocument();
-      expect(document.querySelectorAll('.firework-burst').length).toBe(0);
     });
   });
 

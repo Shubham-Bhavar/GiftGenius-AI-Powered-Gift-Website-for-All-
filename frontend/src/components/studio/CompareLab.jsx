@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { rupees } from '../../utils/format.js';
 import { GiftBox3D } from './GiftBox3D.jsx';
 import { CARD_STYLES, THEMES, THEME_KEYS, describeLook, themeLook } from './look.js';
 import { totalOf } from './BuyerSummary.jsx';
+import { CompareStage, cssLookOf } from './scene/CompareStage3D.jsx';
 
-const lookOf = (c) => ({ box: c.box, ribbon: c.ribbon, pattern: c.pattern, tissue: THEMES[c.theme].tissue });
 const withTheme = (c, key) => ({ ...c, ...themeLook(key) });
 
 /**
@@ -34,75 +34,126 @@ export function compareAdvice(a, b, { budget, suggestions = [], photos = [] }) {
   return lines;
 }
 
+/** The rows of the side-by-side table: what each option is, in words, and whether the two differ. */
+export function compareRows(a, b, budget) {
+  const gifts = (o) => o.products.map((p) => p.name).join(', ') || 'None';
+  const fit = (o) => (o.total <= budget ? '✓ Within budget' : `✕ ${rupees(o.total - budget)} over`);
+  const packaging = (o) => `${THEMES[o.config.theme].label}: ${describeLook(cssLookOf(o.config))}`;
+  const rows = [
+    ['Gifts', gifts(a), gifts(b)],
+    ['Total', rupees(a.total), rupees(b.total)],
+    ...(budget ? [['Budget', fit(a), fit(b)]] : []),
+    ['Packaging', packaging(a), packaging(b)],
+    ['Card', CARD_STYLES[a.config.card], CARD_STYLES[b.config.card]],
+  ];
+  return rows.map(([label, av, bv]) => ({ label, a: av, b: bv, differs: av !== bv }));
+}
+
+/** A theme's tile picture: the 3D studio's own still, the CSS box where there's no 3D, or a quiet space while it's drawn. */
+function ThemePicture({ still, config, photos, label }) {
+  if (still === null) return <GiftBox3D look={cssLookOf(config)} size="sm" photos={photos} label={label} />;
+  if (!still) return <div className="exp-thumb cmp-thumb-wait" role="img" aria-label={label} />;
+  return <img className="exp-thumb" src={still} alt={label} width={320} height={240} />;
+}
+
 /**
- * Compare presentations: the same gift in every theme side by side, and two complete options (A: what's in the
- * studio now, B: another theme and, if you like, another gift) with their prices, budget fit and look.
+ * Compare presentations in the studio: option A (what's in the studio now) and option B (another theme and, if you like,
+ * another gift) in the same 3D room, the same gift in every theme, and the two side by side in words, with their prices,
+ * budget fit and look. Nothing here is added to the order: choosing an option only changes the studio's settings.
  */
 export function CompareLab({ config, products, catalog, photos, suggestions, onApply }) {
   const firstOther = suggestions.find((s) => s.theme !== config.theme)?.theme ?? THEME_KEYS.find((k) => k !== config.theme);
   const [bTheme, setBTheme] = useState(firstOther);
   const [bProductId, setBProductId] = useState('');
-  const bConfig = withTheme(config, bTheme);
-  const bProducts = bProductId ? catalog.filter((p) => String(p.id) === bProductId) : products;
+  // undefined while the studio draws them, null where there's no 3D (the CSS boxes stand in), else one still per theme.
+  const [stills, setStills] = useState(undefined);
+  const onStills = useCallback((next) => setStills(next), []);
+  const bConfig = useMemo(() => withTheme(config, bTheme), [config, bTheme]);
+  const bProducts = useMemo(() => (bProductId ? catalog.filter((p) => String(p.id) === bProductId) : products), [bProductId, catalog, products]);
   const a = { config, products, total: totalOf(products) };
   const b = { config: bConfig, products: bProducts, total: totalOf(bProducts) };
   const advice = compareAdvice(a, b, { budget: config.budget, suggestions, photos });
+  const rows = compareRows(a, b, config.budget);
+  const same = rows.every((row) => !row.differs);
+
+  const options = useMemo(() => [
+    { key: 'A', caption: `Your box now · ${THEMES[config.theme].label}`, config, items: products },
+    { key: 'B', caption: THEMES[bTheme].label, config: bConfig, items: bProducts },
+  ], [config, products, bTheme, bConfig, bProducts]);
+  // Every theme, worn by the gift as it is now: the stills behind the theme tiles.
+  const stillsFor = useMemo(() => THEME_KEYS.map((key) => ({ key, config: withTheme(config, key) })), [config]);
 
   return (
-    <div className="compare-lab">
-      <section aria-labelledby="compare-themes-h">
+    <div className="studio-room compare-room">
+      <section aria-labelledby="compare-ab-h" className="cmp-section">
+        <h2 id="compare-ab-h" className="studio-h">Option A or option B?</h2>
+        <p className="studio-hint">The same studio, camera and light for both: only your choices differ. Open them to see the gifts and the card.</p>
+        <CompareStage options={options} photos={photos} stillsFor={stillsFor} onStills={onStills} />
+      </section>
+
+      <section aria-labelledby="compare-themes-h" className="cmp-section">
         <h2 id="compare-themes-h" className="studio-h">One gift, every theme</h2>
-        <ul className="theme-gallery">
+        <ul className="exp-cards cmp-themes">
           {THEME_KEYS.map((key) => {
             const c = withTheme(config, key);
+            const inUse = config.theme === key;
             return (
-              <li key={key} className={config.theme === key ? 'is-current' : ''}>
-                <GiftBox3D look={lookOf(c)} size="sm" photos={photos} label={`${THEMES[key].label}: ${describeLook(lookOf(c))}`} />
-                <span className="theme-gallery-name">{THEMES[key].label}</span>
-                <button type="button" className="studio-link-btn" aria-pressed={config.theme === key}
-                  onClick={() => onApply(themeLook(key))}>
-                  {config.theme === key ? '✓ In use' : `Use ${THEMES[key].label}`}
-                </button>
+              <li key={key} className={`exp-card${bTheme === key ? ' is-shown' : ''}${inUse ? ' is-current' : ''}`}>
+                <ThemePicture still={stills === null ? null : stills?.[key]} config={c} photos={photos} label={`${THEMES[key].label}: ${describeLook(cssLookOf(c))}`} />
+                <div className="exp-card-text">
+                  <h3>{THEMES[key].label}</h3>
+                  <p className="exp-card-theme">{THEMES[key].blurb}</p>
+                </div>
+                <div className="exp-card-actions">
+                  <button type="button" aria-pressed={bTheme === key} aria-label={`Show ${THEMES[key].label} as option B`} onClick={() => setBTheme(key)}>
+                    {bTheme === key ? 'Shown as option B' : 'Show as option B'}
+                  </button>
+                  <button type="button" aria-pressed={inUse} onClick={() => onApply(themeLook(key))}>
+                    {inUse ? '✓ In use' : `Use ${THEMES[key].label}`}
+                  </button>
+                </div>
               </li>
             );
           })}
         </ul>
-      </section>
-
-      <section aria-labelledby="compare-ab-h">
-        <h2 id="compare-ab-h" className="studio-h">Option A or option B?</h2>
-        <div className="ab-controls">
-          <label className="studio-label" htmlFor="ab-theme">Option B theme</label>
-          <select id="ab-theme" className="pd-input" value={bTheme} onChange={(e) => setBTheme(e.target.value)}>
-            {THEME_KEYS.map((k) => <option key={k} value={k}>{THEMES[k].label}</option>)}
-          </select>
+        <div className="cmp-gift">
           <label className="studio-label" htmlFor="ab-gift">Option B gift</label>
           <select id="ab-gift" className="pd-input" value={bProductId} onChange={(e) => setBProductId(e.target.value)}>
             <option value="">The same as option A</option>
             {catalog.map((p) => <option key={p.id} value={p.id}>{p.name} ({rupees(p.price)})</option>)}
           </select>
         </div>
-        <div className="ab-grid">
-          {[['A', a], ['B', b]].map(([key, o]) => (
-            <div key={key} className="ab-option">
-              <h3>Option {key}</h3>
-              <GiftBox3D look={lookOf(o.config)} size="sm" photos={photos} items={o.products} />
-              <table className="ab-table">
-                <tbody>
-                  <tr><th scope="row">Gifts</th><td>{o.products.map((p) => p.name).join(', ') || 'None'}</td></tr>
-                  <tr><th scope="row">Total</th><td>{rupees(o.total)}</td></tr>
-                  {config.budget && <tr><th scope="row">Budget</th><td>{o.total <= config.budget ? '✓ Within budget' : `✕ ${rupees(o.total - config.budget)} over`}</td></tr>}
-                  <tr><th scope="row">Packaging</th><td>{THEMES[o.config.theme].label}: {describeLook(lookOf(o.config))}</td></tr>
-                  <tr><th scope="row">Card</th><td>{CARD_STYLES[o.config.card]}</td></tr>
-                </tbody>
-              </table>
-              {key === 'B' && (
-                <button type="button" className="studio-link-btn" onClick={() => onApply(themeLook(bTheme), bProductId ? [Number(bProductId)] : null)}>
-                  Use option B
-                </button>
-              )}
-            </div>
-          ))}
+      </section>
+
+      <section aria-labelledby="compare-table-h" className="cmp-section">
+        <h2 id="compare-table-h" className="studio-h">Side by side</h2>
+        <table className="cmp-table">
+          <caption className="sr-only">Option A and option B, side by side. Rows marked as different are where they differ.</caption>
+          <thead>
+            <tr>
+              <td />
+              <th scope="col">Option A <span className="cmp-col-note">Your box now</span></th>
+              <th scope="col">Option B <span className="cmp-col-note">{THEMES[bTheme].label}</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={row.label} className={row.differs ? 'is-different' : undefined}>
+                <th scope="row">
+                  {row.label}
+                  {row.differs && <span className="cmp-differs"> · Different</span>}
+                </th>
+                <td>{row.a}</td>
+                <td>{row.b}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {same && <p className="studio-hint">Option B is the same as option A: show another theme or choose another gift to compare.</p>}
+        <div className="cmp-actions">
+          <button type="button" className="cmp-primary" disabled={same} onClick={() => onApply(themeLook(bTheme), bProductId ? [Number(bProductId)] : null)}>
+            Use option B
+          </button>
         </div>
         <div className="ab-advice" role="status">
           <h3>What fits better</h3>

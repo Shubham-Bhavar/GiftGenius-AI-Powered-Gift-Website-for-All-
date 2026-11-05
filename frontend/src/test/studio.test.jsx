@@ -18,7 +18,7 @@ describe('Gift Studio: looks, links and advice', () => {
       order: 'random', template: 'surprise', budget: 0,
     })).toEqual({
       products: [1, 6, 7, 8, 9, 10], theme: 'midnight', box: '#17181d', ribbon: '#D4AF37', pattern: 'satin', card: 'party',
-      name: 'x'.repeat(40), message: 'm'.repeat(300), engraving: '', order: 'card-first', template: 'surprise', budget: null,
+      name: 'x'.repeat(40), message: 'm'.repeat(300), engraving: '', order: 'card-first', template: 'surprise', experience: null, budget: null,
     });
     expect(describeLook(themeLook('midnight'))).toBe('Black box, gold ribbon, satin sheen wrap');
     expect(describeLook({ box: '#123456', ribbon: '#654321', pattern: 'dots' })).toBe('Custom-colour box, custom-colour ribbon, polka dots wrap');
@@ -93,6 +93,7 @@ describe('Gift Studio page', () => {
     await user.type(screen.getByLabelText('Card message'), 'Wishing you the best year yet.');
 
     const panel = screen.getByRole('tabpanel', { name: 'Their view' });
+    await user.click(await within(panel).findByRole('button', { name: 'Use This Experience: Classic reveal' }));
     expect(await within(panel).findByText('Step 1 of 7')).toBeInTheDocument();
     expect(within(panel).getByText('Aditi')).toBeInTheDocument();
     const next = async (label, step) => {
@@ -132,6 +133,7 @@ describe('Gift Studio page', () => {
 
     await user.click(screen.getByRole('radio', { name: 'Gift first, message last' }));
     await user.click(screen.getByRole('tab', { name: 'Their view' }));
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
     for (const label of ['Open your gift', 'Pull the ribbon', 'Lift the lid']) await user.click(screen.getByRole('button', { name: label }));
     expect(screen.getByRole('button', { name: 'See the gift' })).toBeInTheDocument();
     // A sentimental reveal always opens with the message, so the order no longer applies.
@@ -166,10 +168,12 @@ describe('Gift Studio page', () => {
     expect(advice()).toHaveTextContent('It can’t predict how they’ll feel.');
 
     await user.selectOptions(screen.getByLabelText('Option B gift'), '1');
-    const [a, b] = screen.getAllByRole('table');
-    expect(within(a).getByRole('row', { name: /Gifts/ })).toHaveTextContent('Signature Perfume');
-    expect(within(b).getByRole('row', { name: /Gifts/ })).toHaveTextContent('Luxury Hamper Box');
-    expect(within(b).getByRole('row', { name: /Total/ })).toHaveTextContent('₹499');
+    // One table, option A and option B in their own columns.
+    const table = screen.getByRole('table');
+    const [giftA, giftB] = within(within(table).getByRole('row', { name: /Gifts/ })).getAllByRole('cell');
+    expect(giftA).toHaveTextContent('Signature Perfume');
+    expect(giftB).toHaveTextContent('Luxury Hamper Box');
+    expect(within(table).getByRole('row', { name: /Total/ })).toHaveTextContent(/₹1,199.*₹499/);
     await user.click(screen.getByRole('button', { name: 'Use option B' }));
 
     await user.click(screen.getByRole('tab', { name: 'Your view' }));
@@ -209,19 +213,32 @@ describe('Gift Studio page', () => {
     expect(within(screen.getByRole('group', { name: 'Your box: 4 of 6 gifts' })).getByText('<img src=x onerror=alert(1)> Mug')).toBeInTheDocument();
     await waitFor(() => expect(db.lastBoxCheck.productIds).toEqual([6, 1, 4, 9]));
 
-    await user.click(screen.getAllByRole('button', { name: 'Preview this box →' }).at(-1));
+    // The box being built, at the top of the tab (each suggestion has its own Preview button too).
+    await user.click(within(screen.getByRole('region', { name: 'Your box' })).getByRole('button', { name: 'Preview this box →' }));
     expect(screen.getByRole('tab', { name: 'Their view', selected: true })).toBeInTheDocument();
+    await user.click(await screen.findByRole('button', { name: 'Use This Experience: Classic reveal' }));
     for (const label of ['Open your gift', 'Pull the ribbon', 'Lift the lid', 'Read the card', 'See the gift']) {
       await user.click(await screen.findByRole('button', { name: label }));
     }
     expect(screen.getByText('Artisan Chocolate Box · Luxury Hamper Box · Signature Perfume · <img src=x onerror=alert(1)> Mug')).toBeInTheDocument();
   });
 
+  it('gift box: the box being built wears the look chosen in the studio, and follows it', async () => {
+    const { user } = renderApp('/studio?product=4');
+    await user.click(await screen.findByRole('button', { name: /^Nature Inspired/ }));
+    await user.click(screen.getByRole('tab', { name: 'Gift box' }));
+    const yours = screen.getByRole('region', { name: 'Your box' });
+    expect(within(yours).getByRole('group', { name: 'Kraft box, leaf ribbon, botanical wrap' })).toBeInTheDocument();
+    await user.click(within(screen.getByRole('group', { name: 'Box colour' })).getByRole('radio', { name: 'Teal' }));
+    expect(within(yours).getByRole('group', { name: 'Teal box, leaf ribbon, botanical wrap' })).toBeInTheDocument();
+  });
+
   it('share: friends get the gift with its prices; a surprise link plays only the reveal, and "make your own" starts afresh', async () => {
     const { user, unmount } = renderApp('/studio?product=4&budget=1500');
     await user.type(await screen.findByLabelText('Their name'), 'Aditi');
+    await user.click(await screen.findByRole('button', { name: 'Use This Experience: Classic reveal' }));
     await user.click(screen.getByRole('button', { name: '🔗 Share with friends' }));
-    expect(rawShare(screen.getByLabelText('Share link').value)).toMatchObject({ view: 'friends', name: 'Aditi', budget: 1500 });
+    expect(rawShare(screen.getByLabelText('Share link').value)).toMatchObject({ view: 'friends', name: 'Aditi', budget: 1500, experience: 'classic' });
     await user.click(screen.getByRole('button', { name: '🎁 Send as a surprise preview' }));
     const link = screen.getByLabelText('Share link').value;
     expect(link).toMatch(/^http:\/\/localhost(:\d+)?\/studio#gift=[\w-]+$/);
