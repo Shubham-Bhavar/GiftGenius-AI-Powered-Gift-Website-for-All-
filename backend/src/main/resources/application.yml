@@ -46,18 +46,25 @@ server:
     include-message: never
     include-stacktrace: never
 
-# Health, info and Prometheus metrics on a separate port that is never exposed through nginx.
+# Health probes and Prometheus metrics on a separate port that is never exposed through nginx. Security
+# (ManagementSecurityConfig): liveness and readiness are open, status only; metrics and the overall health need
+# METRICS_SCRAPE_TOKEN as a bearer token (app.management below) and are refused when it isn't set.
 management:
   server:
     port: ${MANAGEMENT_PORT:9091}
   endpoints:
     web:
       exposure:
-        include: health,info,prometheus
+        include: health,prometheus
   endpoint:
     health:
+      show-details: never
+      show-components: never
       probes:
         enabled: true
+    # Empty (no build or git info), so switched off.
+    info:
+      access: none
   health:
     mail:
       enabled: false
@@ -132,6 +139,9 @@ app:
     # Nominatim requires a User-Agent that identifies the app; defaults to "GiftGenius (+APP_PUBLIC_URL)".
     user-agent: ${GEOCODER_USER_AGENT:}
     timeout: ${GEOCODER_TIMEOUT:8s}
+  # The bearer token a Prometheus scraper sends for /actuator/prometheus. Empty: metrics refused to everyone.
+  management:
+    metrics-scrape-token: ${METRICS_SCRAPE_TOKEN:}
 
 ---
 spring:

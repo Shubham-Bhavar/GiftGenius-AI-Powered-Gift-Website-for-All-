@@ -82,7 +82,8 @@ accepts, recording `SENT` fails, the lease runs out: one delivery, `FAILED`, no 
 ## Monitoring and reconciliation
 
 Read-only, on the management port's Prometheus endpoint (`/actuator/prometheus`, port `MANAGEMENT_PORT`, 9091 by
-default, not the public API). `EmailOutboxMonitor` refreshes the values every 5 minutes, so a scrape never queries the
+default, not the public API), which needs `Authorization: Bearer <METRICS_SCRAPE_TOKEN>` and refuses everyone when
+no token is set. `EmailOutboxMonitor` refreshes the values every 5 minutes, so a scrape never queries the
 database; a refresh that fails keeps the last values and logs a warning. No meter carries a recipient, order number or
 content.
 
@@ -117,15 +118,16 @@ it needs approval first. Re-queuing an email recorded as "interrupted" may deliv
 
 ## Before deploying (open blockers)
 
-Found in the deployment-readiness check of 2026-11-09; none is fixed by this stage.
+Found in the deployment-readiness check of 2026-11-09.
 
-- **Management port exposure.** `MANAGEMENT_PORT` (9091) has no bind address configured, so it listens on every
-  interface, and `SecurityConfig` lets anyone reach `/actuator/**`. The repository's Docker Compose setup keeps it
-  private (no published backend ports; nginx forwards only `/api/` and the API docs; only Caddy is public in
-  production). On any other host (Railway, a PaaS, a VM) confirm that 9091 is not public and that `MANAGEMENT_PORT` is
-  not set equal to `PORT`; otherwise these metrics, including the email counts above, are public without a login.
-  Options for the owner: `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` (the container health check still works, but other
-  containers can no longer scrape), or a login on actuator except health. Not changed here.
+- **Management port exposure: secured (committed locally, not pushed).** Actuator now has its own security chain
+  (`ManagementSecurityConfig`): only the liveness and readiness probes are open (status only); metrics and the overall
+  health need `METRICS_SCRAPE_TOKEN` as a bearer token and are refused when it isn't set; everything else is closed.
+  This holds wherever Actuator is served, including if `MANAGEMENT_PORT` is set equal to `PORT`. The port still
+  listens on every interface by default. Still for the owner on the chosen host: set `METRICS_SCRAPE_TOKEN` if metrics
+  are scraped; keep 9091 unpublished (it isn't in the Docker Compose setup); optionally set
+  `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` where nothing scrapes from another container. **Not yet verified:** the Docker
+  image's own health check in a running container; the readiness request it makes is tested over HTTP only.
 - **MySQL version.** The claim query needs MySQL 8.0.1 or later with InnoDB (`FOR UPDATE SKIP LOCKED`), and the `CHECK`
   constraints of V1 and V5 are enforced only from 8.0.16, so the minimum is 8.0.16. Tested on 8.0.43; CI is set up for
   8.4 but hasn't run this branch. Still needed: `SELECT VERSION(), @@version_comment;` on the production (or restored)

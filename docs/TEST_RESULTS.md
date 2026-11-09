@@ -450,3 +450,42 @@ provider, no real email.
   test and catches it in under a minute.
 - **Migration:** unchanged since the 2026-11-08 checks (empty database, and a populated pre-V7 database with identical
   checksums before and after).
+
+## Management endpoint security (2026-11-09)
+
+Committed locally on `feat/gift-decision-assistant` (not pushed). Actuator now has its own security chain (`ManagementSecurityConfig`, ordered before the API's): liveness
+and readiness probes open and status-only; Prometheus metrics and the overall health only with
+`Authorization: Bearer <METRICS_SCRAPE_TOKEN>`, refused to everyone when no token is set; everything else refused.
+The API chain no longer permits `/actuator/**`; the empty `info` endpoint is off. Docker, nginx, Caddy and the database
+are unchanged. Same throw-away MySQL; test tokens are generated per run, never stored.
+
+| Check | Result |
+|---|---|
+| Backend unit tests (clean build) | 323 passed (319 before; 4 new in `MetricsScrapeTokenTest`) |
+| Backend integration tests | 153 passed (138 before; 15 new, over real HTTP on random ports, plus MockMvc for the same-port case) |
+| Deliberate breaks | 11 of 12 caught; the twelfth (removing `@Order(1)`) changes nothing observable, see below |
+| Frontend | not run: no frontend file changed |
+| Docker container health check | not run: needs Docker started (not done without the owner's go-ahead); the same request is tested over HTTP |
+
+What the new tests prove:
+
+- **Probes:** `/actuator/health/liveness` and `/readiness` answer 200 with only `{"status":"UP"}`, with no credentials,
+  a wrong token or the right one; the Docker health check's request (readiness on 127.0.0.1, body contains `UP`) passes.
+- **Metrics:** refused (401, `WWW-Authenticate: Bearer`, no metrics in the body) with no header, `Bearer`, `Bearer `,
+  a wrong token, the token plus a character, the token minus one, the token without the scheme, `Basic`, and POST;
+  served (200, `text/plain`, outbox and JVM metrics) with the right token, the scheme in any case.
+- **No token configured** (blank): metrics and the overall health refused whatever is sent; probes still work; the
+  startup warning names METRICS_SCRAPE_TOKEN.
+- **Everything else:** the overall health and the endpoint list need the token (with it: status and probe-group names
+  only, no components or details; only `health` and `prometheus` listed); `info`, `env`, `beans`, `heapdump`,
+  `shutdown` and others never answer 200, with or without the token; endpoints exposed later are still refused with
+  the token.
+- **API port:** no Actuator there: 401 anonymous or with the metrics token, 404 for a signed-in admin.
+  With `MANAGEMENT_PORT` set equal to `PORT`, the same rules hold on the API port.
+- **API unchanged:** the public catalogue answers 200, signed-in and admin routes 401 without a sign-in and 200 with
+  one; the metrics token is not a sign-in. The 138 existing integration tests pass unchanged.
+- **Token never logged:** not in the output after startup and requests with the right and a wrong token.
+- **Deliberate breaks caught:** metrics opened, any bearer accepted, no token letting everyone in, probes needing the
+  token, other endpoints opened with the token, the API chain permitting `/actuator/**` again, health details shown,
+  `info` back on, the token logged, the Bearer challenge dropped, the missing-token warning dropped. Not observable:
+  removing `@Order(1)`, because Spring then happens to keep the same order; the annotation is what guarantees it.

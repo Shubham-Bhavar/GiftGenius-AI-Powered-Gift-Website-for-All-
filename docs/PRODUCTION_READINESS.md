@@ -63,6 +63,8 @@ This does not claim the system is "100 % production-ready"; it states what was v
 | Every frontend API call maps to a backend route with the same method | PASS | route comparison (REPOSITORY_AUDIT.md §4) |
 | Problem-detail errors with safe messages; no stack traces in responses | PASS | live checks |
 | Health (liveness/readiness) and Prometheus on a separate port | PASS locally | live check on the management port |
+| Actuator access: probes open and status-only; metrics need `METRICS_SCRAPE_TOKEN`; the rest closed, on either port | PASS locally (2026-11-09; committed locally, not pushed) | `ManagementSecurityIT`, `ManagementSecurityNoTokenIT`, `ManagementSecuritySamePortIT` (real HTTP) |
+| Docker container health check with the new Actuator security | NOT VERIFIED | the readiness request it makes passes over HTTP in `ManagementSecurityIT`; the built image's `HEALTHCHECK` hasn't been run (needs Docker started, with the owner's go-ahead) |
 | Health check reachable by Railway | BLOCKED | the management port isn't the public port; Railway's health check path must be configured accordingly |
 | Fail-fast startup on missing secret or database | PASS | jar runs |
 | Graceful shutdown | NOT TESTED | configured (`server.shutdown: graceful`) |
@@ -93,6 +95,7 @@ This does not claim the system is "100 % production-ready"; it states what was v
 | 5 | Razorpay | Test keys first, webhook URL and secret, one test-mode payment end to end, then live keys (only with the owner's approval) |
 | 6 | Gemini | Optional; set `GEMINI_API_KEY` on the backend and run one permitted live call; otherwise the rule engine answers |
 | 7 | SMTP | Configure and receive one password-reset email |
-| 8 | Live smoke test | After deployment approval: home, search, product, sign-in, COD order, admin sign-in, webhook delivery |
+| 8 | Management port | On the chosen host keep port 9091 unpublished; set `METRICS_SCRAPE_TOKEN` (a long random value) only if Prometheus will scrape; optionally `MANAGEMENT_SERVER_ADDRESS=127.0.0.1` where nothing scrapes from another container |
+| 9 | Live smoke test | After deployment approval: home, search, product, sign-in, COD order, admin sign-in, webhook delivery |
 
 Deployment, merging and pushing remain out of scope until the owner approves them separately.
