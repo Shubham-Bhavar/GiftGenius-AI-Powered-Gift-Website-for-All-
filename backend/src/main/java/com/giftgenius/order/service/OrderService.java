@@ -230,7 +230,7 @@ public class OrderService {
         log.info("Order {} placed by user {} ({}, ₹{})", order.getOrderNumber(), userId,
                 order.getPaymentMethod(), order.getTotal());
         if (!needsPayment) {
-            notifier.customer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
+            notifier.customer(order, OrderNotifier.CONFIRMED, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
                     "Thank you! Your order is confirmed and we're getting it ready.");
             notifier.sellers(order);
             events.publishEvent(InteractionEvent.purchase(
@@ -255,7 +255,7 @@ public class OrderService {
                     + "Contact us and we'll help.");
         }
         doCancel(o, "Cancelled by you");
-        notifier.customer(o, "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
+        notifier.customer(o, OrderNotifier.status(OrderStatus.CANCELLED), "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
                 o.getPaymentStatus() == PaymentStatus.REFUND_PENDING
                         ? "Your order is cancelled. Your refund is being processed and usually arrives in 5–7 working days."
                         : "Your order is cancelled as you asked.");
@@ -374,7 +374,7 @@ public class OrderService {
             default -> null;
         };
         if (headline != null && next != OrderStatus.PACKED) {
-            notifier.customer(o, "Update on your GiftGenius order " + o.getOrderNumber(), headline);
+            notifier.customer(o, OrderNotifier.status(next), "Update on your GiftGenius order " + o.getOrderNumber(), headline);
         }
     }
 

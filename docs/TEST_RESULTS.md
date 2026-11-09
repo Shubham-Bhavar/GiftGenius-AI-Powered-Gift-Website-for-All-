@@ -381,3 +381,72 @@ The owner asked for the entry to follow the system theme: light teal in light mo
 **Approved** by the owner on 2026-11-05. The old entry was then removed (its rules in `entry-scene.css` and `pages.css`, `penguin.css`, eight animations only it used, `public/mascot.jpg`); every removed class was checked to be unused elsewhere. Lint, 428 tests and the build pass; the CSS bundle went from 212 kB to 204 kB; the homepage renders as before with no console errors.
 
 **Their view's time limit (2026-11-05):** the 30-second start-up limit in *Their view* now also holds when the scene arrives inside one long task, before the timer gets its turn (the same gap Compare had, fixed the same way). A new test fails without the fix and passes with it; lint, 429 tests and the build pass.
+
+## Order emails, Stage 2.1: reliable delivery (2026-11-08)
+
+Committed locally on `feat/gift-decision-assistant` (not pushed). Backend only; design in [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md). No SMTP provider was configured
+and no real email was sent: delivery was exercised with in-test SMTP stand-ins against a throw-away local MySQL 8.0.43
+(127.0.0.1:3307, database `giftgenius_test`).
+
+| Check | Result |
+|---|---|
+| Backend unit tests (clean build) | 305 passed (290 before, 15 new: `EmailOutboxSenderTest`, `OrderNotifierTest`) |
+| Backend integration tests | 130 passed (117 before, 13 new in `EmailOutboxIT`; `PaymentIT` and `SellerMarketplaceIT` now check the queue) |
+| Migrations from empty | V1 to V7 applied in order |
+| V7 on a populated pre-V7 database | table created; checksums of `orders`, `order_items`, `users`, `products`, `seller_profiles` and the other existing tables identical before and after (37 orders, 46 lines, 87 users) |
+| Frontend lint, tests, build | clean, 429 passed, passes (frontend unchanged) |
+
+What the new tests prove:
+
+- **No duplicates:** the same email queued twice, or from 8 transactions at once, is stored once and no queueing call
+  fails; the browser and the Razorpay webhook confirming one payment at the same moment queue one confirmation (3
+  rounds); 4 senders draining 60 emails at once send each exactly once.
+- **Sent means accepted:** marked `SENT` only after the SMTP stand-in accepts the message; without a provider every
+  email is `NOT_SENT` with no `sent_at`.
+- **Bounded retries:** a provider that stays down gets exactly 1 + retries attempts, then `FAILED`, and later passes
+  leave it alone; one that recovers gets the email on the retry; a failed attempt waits its delay; a refused address
+  fails at once; an email interrupted mid-delivery is recorded as failed and never resent; one still within its lease
+  is left alone.
+- **Isolation:** a queueing error (a missing order, no recipient) doesn't undo the transaction it ran in; an order whose
+  emails failed or weren't sent stays `CONFIRMED`.
+- **Privacy and safe records:** seller emails carry only that seller's lines and none of the customer's name, email,
+  phone, street, city or PIN code; logs and stored errors mask addresses.
+- **Deliberate breaks:** 14 faults introduced one at a time, all caught. One (ignoring the batch size) made a unit test
+  loop forever instead of failing, so the sender's unit tests now have a 10-second limit, run in a separate thread so
+  a busy loop can't outlast it.
+
+Found and fixed while testing: the sender had two constructors and Spring couldn't choose one, so the application
+didn't start (every integration test failed at once); the production constructor is now marked `@Autowired`.
+
+### Stage 2.1 review fixes (2026-11-09)
+
+Committed locally with Stage 2.1 (not pushed). The owner approved five fixes after the reliability and security review; the delivery guarantee is now
+written down in [EMAIL_NOTIFICATIONS.md](EMAIL_NOTIFICATIONS.md#delivery-guarantee). Same throw-away MySQL; no SMTP
+provider, no real email.
+
+| Check | Result |
+|---|---|
+| Backend unit tests (clean build) | 319 passed (305 before; 14 new) |
+| Backend integration tests | 138 passed (130 before; 8 new) |
+| Frontend lint, tests, build | clean, 429 passed, passes (frontend unchanged) |
+| Deliberate breaks of the fixes | 14 of 14 caught |
+
+- **Stable Message-ID:** every attempt at an email carries `<gg-outbox.<id>.<hash of its key>@<MAIL_FROM domain>>`;
+  tested across retries, through Spring's real `JavaMailSenderImpl` (with a recording connection, no network), and in
+  `EmailOutboxIT`. Exactly-once is not claimed: a reply timeout after the server accepted a message is retried and can
+  deliver twice.
+- **Crash after acceptance:** the server accepts, recording SENT fails: the email stays SENDING, no other sender touches
+  it within its lease, then it is recorded as FAILED ("interrupted") with no `sent_at`, and the server received it
+  exactly once. A send that outlives its lease and then succeeds is recorded as SENT.
+- **Monitoring and reconciliation:** gauges by status, the oldest waiting email's age and how overdue it is, and the
+  number of confirmed orders with no confirmation queued, refreshed every 5 minutes; a counter of queue failures by
+  reason. Reconciliation finds such an order, ignores orders confirmed before V7, and changes nothing.
+- **Production retry configuration:** the running application and `application.yml` both give 1 min, 5 min, 15 min,
+  1 h and 5 attempts; tests read the schedule from the file instead of a copy.
+- **Content isolation:** an email that can't be built is skipped and counted; with every email failing, a real order
+  is still placed, confirmed and cancelled through the API.
+- **Found while testing the fixes:** one deliberate break (resending after a failure to record SENT) made an
+  integration test loop until the run's time limit instead of failing; `EmailOutboxIT` now has a 60-second limit per
+  test and catches it in under a minute.
+- **Migration:** unchanged since the 2026-11-08 checks (empty database, and a populated pre-V7 database with identical
+  checksums before and after).

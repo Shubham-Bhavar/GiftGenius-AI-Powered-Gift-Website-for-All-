@@ -64,7 +64,24 @@ public record AppProperties(
     public record Orders(Duration pendingPaymentTtl, int maxPendingPerUser) {
     }
 
-    public record Mail(String from) {
+    /**
+     * @param outbox order emails: queued in the email_outbox table with the order, then delivered in the background
+     */
+    public record Mail(String from, Outbox outbox) {
+    }
+
+    /**
+     * @param senderEnabled whether this instance delivers queued emails (they are queued either way); instances can
+     *                      all run it, since each email is claimed by one sender only
+     * @param pollInterval  how often to look for emails that are due (a new email also wakes the sender at once)
+     * @param lease         how long a claimed email stays reserved for its sender; one still unfinished after this is
+     *                      treated as interrupted and given up rather than sent again
+     * @param batchSize     at most this many emails per pass
+     * @param retryDelays   the wait before each retry after a failed attempt; there are as many retries as delays, so
+     *                      at most {@code retryDelays.size() + 1} attempts
+     */
+    public record Outbox(boolean senderEnabled, Duration pollInterval, Duration lease, int batchSize,
+            List<Duration> retryDelays) {
     }
 
     /**

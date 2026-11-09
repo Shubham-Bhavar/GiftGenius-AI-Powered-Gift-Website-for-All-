@@ -241,6 +241,12 @@ class PaymentIT extends AbstractIT {
                 JsonNode paid = order(s, number);
                 assertThat(paid.path("paymentStatus").asString()).isEqualTo("PAID");
                 assertThat(paid.path("timeline")).as("confirmed exactly once").hasSize(2);
+                assertThat(queuedEmails(number)).as("one confirmation email, though both confirmed the payment")
+                        .singleElement().satisfies(e -> {
+                            assertThat(e.kind()).isEqualTo("ORDER_CONFIRMED");
+                            assertThat(e.recipient()).isEqualTo(s.email());
+                            assertThat(e.subject()).startsWith("Payment received");
+                        });
             }
         } finally {
             pool.shutdownNow();

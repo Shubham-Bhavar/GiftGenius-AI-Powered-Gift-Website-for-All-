@@ -412,7 +412,22 @@ class SellerMarketplaceIT extends AbstractIT {
         JsonNode order = placeCod(customer);
         String number = order.path("orderNumber").asString();
         assertThat(order.path("items")).hasSize(3);
-        verify(mailer, atLeastOnce()).send(eq(a.email()), contains(number), anyString());
+        // Each seller is emailed about their own lines only, and never told who the customer is or where they live.
+        List<QueuedEmail> emails = queuedEmails(number);
+        assertThat(emails).filteredOn(e -> e.kind().equals("ORDER_NEW_FOR_SELLER")).extracting(QueuedEmail::recipient)
+                .containsExactlyInAnyOrder(a.email(), b.email());
+        assertThat(emails).filteredOn(e -> e.kind().equals("ORDER_CONFIRMED")).extracting(QueuedEmail::recipient)
+                .containsExactly(customer.email());
+        for (QueuedEmail e : emails) {
+            if (e.kind().equals("ORDER_NEW_FOR_SELLER")) {
+                boolean isA = e.recipient().equals(a.email());
+                assertThat(e.subject()).contains(number);
+                assertThat(e.body()).doesNotContain(customer.email()).doesNotContain("98765").doesNotContain("MG Road")
+                        .doesNotContain("Asha").doesNotContain("411001").doesNotContain("Pune");
+                assertThat(e.body()).contains(isA ? "Split Candle A" : "Split Mug B")
+                        .doesNotContain(isA ? "Split Mug B" : "Split Candle A").doesNotContain("Chocolate");
+            }
+        }
 
         // The customer sees one order with every line and who sells it.
         mvc.perform(customer.auth(get("/api/orders/" + number))).andExpect(status().isOk())
@@ -465,7 +480,12 @@ class SellerMarketplaceIT extends AbstractIT {
         mvc.perform(customer.auth(get("/api/orders/" + number)))
                 .andExpect(jsonPath("$.items[?(@.productId == " + productA + ")].fulfillmentStatus").value("SHIPPED"))
                 .andExpect(jsonPath("$.items[?(@.productId == " + productB + ")].fulfillmentStatus").value("NEW"));
-        verify(mailer, atLeastOnce()).send(eq(customer.email()), contains(number), contains("on its way"));
+        assertThat(queuedEmails(number)).filteredOn(e -> e.kind().equals("ORDER_PART_SHIPPED")).singleElement()
+                .satisfies(e -> {
+                    assertThat(e.recipient()).isEqualTo(customer.email());
+                    assertThat(e.subject()).contains(number);
+                    assertThat(e.body()).contains("on its way").contains("Split Candle A");
+                });
         // Part of the order is on its way, so the customer can no longer cancel it.
         mvc.perform(customer.auth(post("/api/orders/" + number + "/cancel"))).andExpect(status().isConflict());
 

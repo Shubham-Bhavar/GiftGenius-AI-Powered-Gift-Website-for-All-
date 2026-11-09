@@ -78,7 +78,7 @@ Admin rights are enforced by the API (`/api/admin/**` requires the ADMIN role); 
   - Store names are unique in the database as well as in the API.
 - **Existing catalogue.** The original 20 products have no seller (sold by GiftGenius) and stay `APPROVED`.
 - **Store text** (names, descriptions, notes) must not contain `<` or `>`, and images must be `https://` links. There's no file upload yet: products use an image link, so real object storage can be added behind the same field later.
-- **Notifications.** Emails go out for seller applications (to `ADMIN_EMAIL`), store and product decisions (to the seller), new orders (to each seller) and shipments (to the customer). They use the same SMTP settings as everything else; without SMTP they are logged, and nothing fails.
+- **Notifications.** Emails go out for seller applications (to `ADMIN_EMAIL`), store and product decisions (to the seller), new orders (to each seller) and shipments (to the customer). They use the same SMTP settings as everything else; without SMTP nothing is sent, and nothing fails. Order emails are queued with the order in the `email_outbox` table and delivered in the background: queued once per order event and recipient, retried a bounded number of times, and recorded as sent only when the SMTP server accepts them. Delivery is not exactly-once: a reply timeout after the server accepted an email can deliver it twice (see [docs/EMAIL_NOTIFICATIONS.md](docs/EMAIL_NOTIFICATIONS.md#delivery-guarantee)).
 
 ## Vercel + Railway
 
@@ -98,7 +98,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
   ```bash
   gunzip -c backups/giftgenius-2026-09-25-0300.sql.gz | docker compose exec -T -e MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql mysql -u root giftgenius
   ```
-- **Email.** Set `SMTP_*` and `MAIL_FROM` (for example Amazon SES, Postmark or SendGrid SMTP). Customers get order confirmations, dispatch and delivery updates, cancellations and password-reset links. Without SMTP, messages are written to the backend log.
+- **Email.** Set `SMTP_*` and `MAIL_FROM` (for example Amazon SES, Postmark or SendGrid SMTP). Customers get order confirmations, dispatch and delivery updates, cancellations and password-reset links. Without SMTP nothing is sent: account emails are written to the backend log and order emails are recorded as not sent in the `email_outbox` table.
 - **Payments.** Set `RAZORPAY_ENABLED=true` and the keys. Start with `rzp_test_` keys. In the Razorpay dashboard, point a webhook at `https://<your-domain>/api/payments/razorpay/webhook`, subscribe it to `payment.captured`, `order.paid` and `payment.failed`, and set the same secret as `RAZORPAY_WEBHOOK_SECRET`. Keep **automatic capture** on (Razorpay's default) so a verified payment is also a captured one. Refunds for cancelled paid orders show as *Refund in progress*; issue them in the Razorpay dashboard.
 - **Monitoring.** The API serves `/actuator/health` (with liveness and readiness probes) and `/actuator/prometheus` on port **9091**, which is never published. Scrape it from inside the Docker network, or attach a Prometheus and Grafana container to the same network. Docker health checks restart unhealthy containers.
 - **Scaling out.** Rate limits are kept in memory per API instance. If you run more than one backend replica, move them to Redis (for example Bucket4j) or your API gateway.
