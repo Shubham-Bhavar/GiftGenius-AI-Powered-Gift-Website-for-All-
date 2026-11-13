@@ -68,9 +68,15 @@ public class SellerOrderService {
         return orders.findForSeller(sellerId, null, PageRequest.of(0, limit)).map(o -> summary(o, sellerId)).getContent();
     }
 
+    /**
+     * One of the seller's orders. The customer's delivery details are only for an approved store, which is the one
+     * that can ship: a store that is pending, suspended or rejected sees its lines without them.
+     */
     @Transactional(readOnly = true)
     public SellerOrderDto get(Long sellerId, String orderNumber) {
-        return toDto(own(sellerId, orderNumber), sellerId);
+        Order o = own(sellerId, orderNumber);
+        boolean active = sellers.findById(sellerId).map(SellerProfile::canSell).orElse(false);
+        return toDto(o, sellerId, active);
     }
 
     /**
@@ -113,7 +119,7 @@ public class SellerOrderService {
             // about this parcel. When it has, the order update email already said so.
             notifier.partialShipment(o, seller, mine, next, note);
         }
-        return toDto(o, sellerId);
+        return toDto(o, sellerId, true);
     }
 
     private Order own(Long sellerId, String orderNumber) {
@@ -148,7 +154,7 @@ public class SellerOrderService {
                 first.getImageUrl(), o.getShipping().getCity(), o.getCreatedAt());
     }
 
-    private static SellerOrderDto toDto(Order o, Long sellerId) {
+    private static SellerOrderDto toDto(Order o, Long sellerId, boolean active) {
         List<OrderItem> mine = lines(o, sellerId);
         FulfillmentStatus progress = slowest(mine);
         ShippingAddress s = o.getShipping();
@@ -157,11 +163,10 @@ public class SellerOrderService {
                 i.getCustomMessage(), i.getFulfillmentStatus(), i.getFulfillmentNote(), i.getFulfillmentUpdatedAt()))
                 .toList();
         List<FulfillmentStatus> next = o.getStatus() == OrderStatus.CANCELLED ? List.of() : progress.nextSteps();
+        SellerShipping shipping = active ? new SellerShipping(s.getFullName(), s.getPhone(), s.getAddressLine(),
+                s.getCity(), s.getState(), s.getPincode()) : null;
         return new SellerOrderDto(o.getOrderNumber(), o.getStatus(), o.getPaymentMethod(), o.getDeliveryType(),
-                progress, next, total(mine),
-                new SellerShipping(s.getFullName(), s.getPhone(), s.getAddressLine(), s.getCity(), s.getState(),
-                        s.getPincode()),
-                items, o.getCreatedAt());
+                progress, next, total(mine), shipping, items, o.getCreatedAt());
     }
 
     // ── Sales figures (computed in the database from the seller's own lines) ──

@@ -2,6 +2,7 @@ import { Outlet, ScrollRestoration, useLocation } from 'react-router';
 import { useEffect } from 'react';
 import AuthModal from '../auth/AuthModal.jsx';
 import CartSidebar from '../cart/CartSidebar.jsx';
+import GiftAssistant from '../ai/GiftAssistant.jsx';
 import GiftFinderModal from '../ai/GiftFinderModal.jsx';
 import QuickView from '../product/QuickView.jsx';
 import WelcomeGate from '../intro/WelcomeGate.jsx';
@@ -23,7 +24,9 @@ export default function Layout() {
     closeCart();
     closeQuickView();
     closeGiftFinder();
-    if (hash) setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' }), 50);
+    if (!hash) return undefined;
+    const t = setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth' }), 50);
+    return () => clearTimeout(t);
   }, [pathname, hash, closeCart, closeQuickView, closeGiftFinder]);
 
   return (
@@ -38,6 +41,7 @@ export default function Layout() {
       <CartSidebar />
       <QuickView />
       <GiftFinderModal />
+      <GiftAssistant />
       <AuthModal />
       <WelcomeGate />
       <ScrollRestoration />

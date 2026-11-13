@@ -42,15 +42,15 @@ public class SecurityConfig {
             .formLogin(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                // Actuator lives on the management port, which is never published through nginx.
-                .requestMatchers("/actuator/**").permitAll()
+                // Actuator has its own chain, ahead of this one: ManagementSecurityConfig.
                 .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/stores/**", "/api/search").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/auth/register", "/api/auth/login",
                         "/api/auth/refresh", "/api/auth/logout",
                         "/api/auth/password/forgot", "/api/auth/password/reset").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/ai/**", "/api/checkout/quote",
-                        "/api/newsletter/subscribe", "/api/contact", "/api/payments/razorpay/webhook").permitAll()
+                        "/api/newsletter/subscribe", "/api/contact", "/api/payments/razorpay/webhook",
+                        "/api/gift-box/suggestions", "/api/gift-box/check").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/track", "/api/checkout/options").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // The role comes from the signed access token; the services also check the store's own status.

@@ -3,6 +3,7 @@ import { screen, within } from '@testing-library/react';
 import axe from 'axe-core';
 import { renderApp, seedGuestCart } from './renderApp.jsx';
 import { db } from './setup.js';
+import { sanitizeConfig, shareFragment } from '../components/studio/look.js';
 
 /*
  * Automated accessibility checks (axe-core, WCAG 2.x A/AA + best practices) on every page and overlay.
@@ -64,6 +65,51 @@ describe('accessibility (axe-core)', () => {
 
     renderApp('/account');
     await screen.findByRole('heading', { level: 1, name: /Account Settings/ });
+    expect(await violations()).toEqual([]);
+  });
+
+  it('Gift Studio: each view, the start screen and a surprise link', async () => {
+    const { user, unmount } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
+    await screen.findByRole('heading', { level: 1, name: /See the gift/ });
+    await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(await violations()).toEqual([]);
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Sentimental Unboxing' }));
+    await screen.findByRole('group', { name: /^Sentimental Unboxing:/ });
+    expect(await violations()).toEqual([]);
+    for (const tab of ['Your view', 'Compare', 'Gift box']) {
+      await user.click(screen.getByRole('tab', { name: tab }));
+      if (tab === 'Gift box') {
+        await user.click(screen.getByRole('button', { name: '✨ Suggest boxes' }));
+        await user.click(await screen.findByRole('button', { name: 'Edit this box' }));
+        await screen.findByText('₹1397 in all');
+      }
+      expect(await violations()).toEqual([]);
+    }
+    unmount();
+
+    const start = renderApp('/studio');
+    await screen.findByRole('button', { name: 'Dress up Luxury Hamper Box' });
+    expect(await violations()).toEqual([]);
+    start.unmount();
+
+    renderApp(`/studio#${shareFragment(sanitizeConfig({ products: [4], name: 'Aditi' }), 'reveal')}`);
+    await screen.findByRole('heading', { level: 1, name: 'A gift preview, just for you' });
+    await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ });
+    expect(await violations()).toEqual([]);
+  });
+
+  it.each(['Royal Luxury Reveal', 'Birthday Surprise', 'Sentimental Unboxing', 'Minimal Aesthetic', 'Personalised Memory Reveal'])('%s: closed, playing, in the 360° view and the final reveal', async (name) => {
+    const { user } = renderApp('/studio?product=4&occasion=birthday&budget=1500');
+    if (name !== 'Royal Luxury Reveal') await user.click(await screen.findByRole('button', { name: `Use This Experience: ${name}` }));
+    await screen.findByRole('group', { name: new RegExp(`^${name}:`) });
+    expect(await violations()).toEqual([]);
+    const controls = within(screen.getByRole('group', { name: 'Reveal controls' }));
+    await user.click(controls.getByRole('button', { name: 'Play' }));
+    expect(await violations()).toEqual([]);
+    await user.click(screen.getByRole('button', { name: '360° Studio View' }));
+    expect(await violations()).toEqual([]);
+    await user.click(controls.getByRole('button', { name: 'Skip reveal' }));
     expect(await violations()).toEqual([]);
   });
 
@@ -154,5 +200,25 @@ describe('accessibility (axe-core)', () => {
     renderApp('/');
     const link = await screen.findByRole('link', { name: 'Luxury Hamper Box' });
     expect(link).toHaveAttribute('href', '/product/1');
+  });
+
+  it('quiz results: match badges, "why this gift?" checklists and the budget plan', async () => {
+    const { user } = renderApp('/gift-finder');
+    await user.click(await screen.findByRole('button', { name: /Partner \/ Spouse/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Birthday/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Home & Decor/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Perfume/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Minimalist & Elegant/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /₹500 – ₹1,500/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: '✨ Find My Gifts' }));
+    await screen.findByRole('region', { name: /ways to spend/ });
+    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    expect(await violations()).toEqual([]);
   });
 });

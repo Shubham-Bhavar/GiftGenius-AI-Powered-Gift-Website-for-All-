@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { API } from './mockApi.js';
 import { renderApp } from './renderApp.jsx';
+import { server } from './setup.js';
 
 const grid = () => screen.getByRole('list', { name: 'Products' });
 const names = () => within(grid()).getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
@@ -96,6 +99,21 @@ describe('homepage (original design, live data)', () => {
     await user.click(screen.getByRole('button', { name: 'Subscribe →' }));
     expect(await screen.findByText('Subscribed! 🎉 Check your inbox.')).toBeInTheDocument();
   });
+
+  it('says so when the catalogue request gets no response, and Try again recovers', async () => {
+    // A request the browser blocks, e.g. CORS for a site the API doesn't allow (a Vercel preview), has no response.
+    let blocked = true;
+    server.use(http.get(`${API}/products`, () => (blocked ? HttpResponse.error() : undefined)));
+    const { user } = renderApp('/');
+    const trending = screen.getByRole('region', { name: 'Trending Gifts' });
+    const alert = await within(trending).findByRole('alert');
+    expect(alert).toHaveTextContent("We couldn't reach GiftGenius. Check your connection and try again.");
+
+    blocked = false;
+    await user.click(within(alert).getByRole('button', { name: '↻ Try again' }));
+    expect(await within(trending).findByRole('heading', { name: 'Luxury Hamper Box' })).toBeInTheDocument();
+    expect(within(trending).queryByRole('alert')).toBeNull();
+  });
 });
 
 describe('entry animation', () => {
@@ -106,7 +124,7 @@ describe('entry animation', () => {
     await act(async () => {
       fireEvent.keyDown(document, { key: 'Enter' });
     });
-    expect(document.querySelectorAll('.confetti-piece').length).toBe(80);
+    expect(screen.getByRole('dialog', { name: 'GiftGenius intro' })).toHaveClass('is-opening');
     expect(sessionStorage.getItem('gg-entry-shown')).toBe('1');
   });
 

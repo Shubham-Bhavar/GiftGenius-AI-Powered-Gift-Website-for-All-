@@ -21,6 +21,10 @@ beforeAll(() => {
   document.documentElement.lang = 'en-IN';
   // jsdom has no scrollTo; the router's scroll restoration calls it.
   window.scrollTo = () => {};
+  // jsdom can't play media. Tests that need the entry's film playing say so; everywhere else it's refused, as a browser
+  // that won't autoplay would, and the entry uses its stills.
+  window.HTMLMediaElement.prototype.play = function play() { return Promise.reject(new Error('No media playback in tests')); };
+  window.HTMLMediaElement.prototype.pause = function pause() {};
 });
 
 beforeEach(() => {

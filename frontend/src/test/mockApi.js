@@ -75,6 +75,8 @@ export function createDb() {
     orders: [],
     tokens: {},
     calls: [],
+    assistantCalls: [],
+    assistantDown: false,
     refreshCount: 0,
     nextLine: 100,
     aiSource: 'ai',
@@ -113,7 +115,10 @@ function addLine(db, userId, { productId, quantity, customName = null, customMes
 }
 
 function quote(db, items, couponCode, deliveryType = 'STANDARD') {
-  const lines = items.map(({ productId, quantity }) => {
+  // Like the API: lines of one product (personalised lines) are priced together.
+  const byProduct = new Map();
+  items.forEach(({ productId, quantity }) => byProduct.set(productId, (byProduct.get(productId) ?? 0) + quantity));
+  const lines = [...byProduct].map(([productId, quantity]) => {
     const p = db.products.find((x) => x.id === productId);
     return { productId, name: p.name, image: p.image, unitPrice: p.price, quantity, lineTotal: p.price * quantity, available: p.stock };
   });
@@ -206,6 +211,8 @@ export function handlers(db) {
       HttpResponse.json([...new Set(db.products.map((p) => p.category))].map((category) => ({ category, count: 1 })))),
     http.get(`${API}/products/:id/related`, ({ params }) => HttpResponse.json(db.products.filter((p) => p.id !== Number(params.id)).slice(0, 2))),
     http.get(`${API}/products/:id`, ({ params }) => {
+      // Like the API: an id that isn't a number fails the path's type conversion.
+      if (!/^\d+$/.test(params.id)) return problem(400, `Failed to convert 'id' with value: '${params.id}'`);
       const p = db.products.find((x) => x.id === Number(params.id) && x.active);
       return p ? HttpResponse.json(productDto(p)) : problem(404, "We couldn't find that gift.");
     }),
@@ -263,6 +270,9 @@ export function handlers(db) {
     })),
     http.post(`${API}/checkout/quote`, async ({ request }) => {
       const { items, couponCode, deliveryType } = await request.json();
+      db.lastQuoteItems = items;
+      // The API validates each line like a cart line: 1 to 10 units.
+      if (items.some((i) => i.quantity < 1 || i.quantity > 10)) return problem(400, 'Some fields need attention.');
       return HttpResponse.json(quote(db, items, couponCode, deliveryType));
     }),
     http.post(`${API}/orders`, authed(async ({ request, user }) => {
@@ -352,17 +362,111 @@ export function handlers(db) {
       const body = await request.json();
       db.lastRecommendation = body;
       if (db.aiDown) return problem(429, 'Too many requests. Wait a minute and try again.');
+      // Like the API: the match and its checks come from the engine; the plan only with a budget; what was avoided is echoed.
       return HttpResponse.json({
         source: db.aiSource,
         summary: 'Romantic, rose-forward picks for your partner.',
         picks: [
-          { product: db.products[2], reason: 'A signature scent she will wear every day.', score: 90 },
-          { product: db.products[1], reason: 'Classic roses for a rose lover.', score: 80 },
+          {
+            product: db.products[2], reason: 'A signature scent she will wear every day.', score: 90, match: 92,
+            checks: [
+              { criterion: 'interest', met: true, text: 'Matches their love of fragrance' },
+              { criterion: 'budget', met: true, text: '₹1,199: well within your ₹1,500 budget' },
+              { criterion: 'style', met: false, text: 'Not especially minimalist' },
+            ],
+          },
+          { product: db.products[1], reason: 'Classic roses for a rose lover.', score: 80, match: 64, checks: [] },
         ],
         giftMessage: 'Happy anniversary, my love.',
+        avoided: body.avoid ?? [],
+        plan: body.budget ? {
+          budget: body.budget,
+          options: [
+            { kind: 'emotional', product: db.products[1], reason: 'Made for anniversaries.', match: 80, checks: [] },
+            { kind: 'experience', product: db.products[3], reason: 'Well within your budget.', match: 55, checks: [] },
+          ],
+          missing: ['practical'],
+        } : undefined,
       });
     }),
     http.post(`${API}/ai/gift-message`, () => HttpResponse.json({ source: 'ai', messages: ['Happy birthday, Maa!', 'Love you always.', 'For the warmest hugs.'] })),
+    http.post(`${API}/ai/gift-request`, async ({ request }) => {
+      db.lastGiftRequest = await request.json();
+      // Like the API: "understood" holds only what the words said; the picks are catalogue products.
+      return HttpResponse.json({
+        source: 'rules',
+        understood: { recipient: 'sibling', occasion: null, budget: null, interests: [], personality: null, avoid: [], by: 'rules' },
+        summary: 'Gifts to thank your sister.',
+        picks: [
+          { product: productDto(db.products[0]), reason: 'A favourite for siblings, and a hamper to share.', score: 80, match: 100, checks: [] },
+          { product: productDto(db.products[3]), reason: 'Something sweet for someone who has your back.', score: 70, match: 100, checks: [] },
+        ],
+        giftMessage: 'Thank you for always being there.',
+        plan: null,
+      });
+    }),
+
+    // The gift assistant. Like the API: nothing to go on, a question and no picks; otherwise real products within the
+    // budget (read from the newest message that names one) and the next thing worth asking.
+    http.post(`${API}/ai/assistant`, async ({ request }) => {
+      const { messages } = await request.json();
+      db.assistantCalls.push(messages);
+      if (db.assistantDown) return problem(503, 'Unavailable');
+      const said = [...messages].reverse().join('. ').toLowerCase();
+      if (/^(hi|hello)( |$)/.test(said) && messages.length === 1) {
+        return HttpResponse.json({ source: 'rules', reply: 'Happy to help! Who is the gift for, and what’s the occasion? A budget helps too.',
+          question: 'Happy to help! Who is the gift for, and what’s the occasion? A budget helps too.', understood: {}, picks: [] });
+      }
+      const budget = Number((said.match(/under ₹?([\d,]+)/) ?? [])[1]?.replace(/,/g, '')) || null;
+      const picks = db.products.filter((p) => p.inStock && (!budget || p.price <= budget)).slice(0, 3)
+        .map((p, i) => ({ product: productDto(p), reason: `Reason ${i + 1} for ${p.name}.`, score: 80 - i, match: 90 - i * 10, checks: [] }));
+      return HttpResponse.json({
+        source: 'rules', reply: 'Here are a few ideas from the shop.',
+        question: said.includes('birthday') ? null : 'What’s the occasion? A birthday, an anniversary, a festival, or just because?',
+        understood: { recipient: 'parent', occasion: said.includes('birthday') ? 'birthday' : null, budget, interests: [], personality: null, avoid: [], by: 'rules' },
+        picks,
+      });
+    }),
+
+    // Gift Studio: boxes of several gifts. Like the API, a suggestion never goes over the budget.
+    http.post(`${API}/gift-box/suggestions`, async ({ request }) => {
+      const body = await request.json();
+      db.lastBoxSuggestion = body;
+      const items = [db.products[0], db.products[1], db.products[3]]; // hamper ₹499, roses ₹599, chocolates ₹299
+      const total = items.reduce((n, p) => n + p.price, 0);
+      if (total > body.budget) {
+        return HttpResponse.json({ budget: body.budget, boxes: [], note: `There aren't ${body.size} different kinds of gift within ₹${body.budget} yet. Try a bigger budget or fewer gifts.` });
+      }
+      return HttpResponse.json({
+        budget: body.budget,
+        boxes: [{
+          items: items.map((p) => ({ product: productDto(p), reason: `${p.name}: rated ${p.rating}★.` })),
+          total,
+          checks: [
+            { dimension: 'occasion', status: 'warn', text: '2 of 3 are made for birthdays; the Classic Rose Bouquet isn’t' },
+            { dimension: 'price', status: 'good', text: `₹${total.toLocaleString('en-IN')} of your ₹${body.budget.toLocaleString('en-IN')} budget (₹${body.budget - total} to spare)` },
+            { dimension: 'packaging', status: 'unknown', text: 'Packaging fit isn’t checked yet: the catalogue doesn’t record product sizes' },
+          ],
+        }],
+        note: null,
+      });
+    }),
+    http.post(`${API}/gift-box/check`, async ({ request }) => {
+      const body = await request.json();
+      db.lastBoxCheck = body;
+      const items = body.productIds.map((id) => db.products.find((p) => p.id === id)).filter(Boolean);
+      const total = items.reduce((n, p) => n + p.price, 0);
+      const over = body.budget && total > body.budget;
+      return HttpResponse.json({
+        total,
+        budget: body.budget ?? null,
+        checks: [
+          { dimension: 'price', status: over ? 'bad' : 'good', text: over ? `₹${total}: ₹${total - body.budget} over your ₹${body.budget} budget` : `₹${total} in all` },
+          { dimension: 'packaging', status: 'unknown', text: 'Packaging fit isn’t checked yet: the catalogue doesn’t record product sizes' },
+        ],
+        missing: body.productIds.filter((id) => !items.some((p) => p.id === id)),
+      });
+    }),
     http.post(`${API}/newsletter/subscribe`, () => HttpResponse.json({ status: 'subscribed' })),
     http.post(`${API}/contact`, async ({ request }) => {
       const body = await request.json();
@@ -510,7 +614,10 @@ function sellerHandlers(db, authed) {
     })),
     http.get(`${API}/seller/orders/:number`, S(({ params, user }) => {
       const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);
-      return o ? HttpResponse.json(orderDto(o)) : problem(404, 'Order not found.');
+      if (!o) return problem(404, 'Order not found.');
+      // As the API: only an approved store sees the customer's delivery details.
+      const { shipping, ...rest } = orderDto(o);
+      return HttpResponse.json(db.stores[user.id]?.status === 'APPROVED' ? { ...rest, shipping } : rest);
     })),
     http.patch(`${API}/seller/orders/:number/status`, S(async ({ request, params, user }) => {
       const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);

@@ -115,6 +115,9 @@ public class OrderService {
         } catch (RuntimeException e) {
             tx.executeWithoutResult(s -> orders.findById(p.orderId()).ifPresent(o -> {
                 o.setPaymentStatus(PaymentStatus.FAILED);
+                // This attempt never became payable, so it gives its Idempotency-Key back: the shopper's retry
+                // (the same checkout, or Cash on Delivery as the error suggests) places a new order.
+                o.setIdempotencyKey(null);
                 doCancel(o, "Online payment couldn't be started");
             }));
             throw e instanceof ApiException ? e
@@ -165,7 +168,9 @@ public class OrderService {
         Map<Long, QuoteLine> priced = quote.lines().stream()
                 .collect(Collectors.toMap(QuoteLine::productId, Function.identity()));
 
-        for (QuoteLineRequest line : lines) {
+        // In product id order, as everywhere stock is locked, so two checkouts can't deadlock on each other's rows.
+        for (QuoteLineRequest line : lines.stream().sorted(java.util.Comparator.comparing(QuoteLineRequest::productId))
+                .toList()) {
             if (products.reserveStock(line.productId(), line.quantity()) == 0) {
                 throw ApiException.conflict("Sorry, " + priced.get(line.productId()).name()
                         + " just sold out. Update your cart and try again.");
@@ -227,9 +232,10 @@ public class OrderService {
         log.info("Order {} placed by user {} ({}, ₹{})", order.getOrderNumber(), userId,
                 order.getPaymentMethod(), order.getTotal());
         if (!needsPayment) {
-            notifier.customer(order, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
+            notifier.customer(order, OrderNotifier.CONFIRMED, "Your GiftGenius order " + order.getOrderNumber() + " is confirmed",
                     "Thank you! Your order is confirmed and we're getting it ready.");
             notifier.sellers(order);
+            notifier.owner(order);
             events.publishEvent(InteractionEvent.purchase(
                     order.getItems().stream().map(OrderItem::getProductId).distinct().toList()));
         }
@@ -252,7 +258,7 @@ public class OrderService {
                     + "Contact us and we'll help.");
         }
         doCancel(o, "Cancelled by you");
-        notifier.customer(o, "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
+        notifier.customer(o, OrderNotifier.status(OrderStatus.CANCELLED), "Your GiftGenius order " + o.getOrderNumber() + " was cancelled",
                 o.getPaymentStatus() == PaymentStatus.REFUND_PENDING
                         ? "Your order is cancelled. Your refund is being processed and usually arrives in 5–7 working days."
                         : "Your order is cancelled as you asked.");
@@ -307,6 +313,12 @@ public class OrderService {
         }
         if (!o.getStatus().canMoveTo(next)) {
             throw ApiException.conflict("Can't move an order from " + o.getStatus() + " to " + next + ".");
+        }
+        // As for the customer: goods a seller has already sent can't be cancelled (or restocked, or refunded) here.
+        if (next == OrderStatus.CANCELLED && o.getItems().stream()
+                .anyMatch(i -> i.getFulfillmentStatus() != null && i.getFulfillmentStatus().hasShipped())) {
+            throw ApiException.conflict("Part of this order has already shipped, so it can't be cancelled. "
+                    + "Arrange a return with the seller instead.");
         }
         String note = StringUtils.hasText(req.note()) ? req.note().trim() : defaultNote(next);
         applyStatus(o, next, note);
@@ -371,7 +383,7 @@ public class OrderService {
             default -> null;
         };
         if (headline != null && next != OrderStatus.PACKED) {
-            notifier.customer(o, "Update on your GiftGenius order " + o.getOrderNumber(), headline);
+            notifier.customer(o, OrderNotifier.status(next), "Update on your GiftGenius order " + o.getOrderNumber(), headline);
         }
     }
 
@@ -389,13 +401,13 @@ public class OrderService {
     // ── Internals ──────────────────────────────────────────
 
     private void doCancel(Order o, String note) {
-        for (OrderItem item : o.getItems()) {
-            products.releaseStock(item.getProductId(), item.getQuantity());
-        }
+        o.getItems().stream().sorted(java.util.Comparator.comparing(OrderItem::getProductId))
+                .forEach(item -> products.releaseStock(item.getProductId(), item.getQuantity()));
         if (o.getCouponCode() != null) {
             coupons.release(o.getCouponCode());
         }
-        if (o.getPaymentStatus() == PaymentStatus.PAID) {
+        // An order paid in full by a coupon has nothing to refund.
+        if (o.getPaymentStatus() == PaymentStatus.PAID && o.getTotal().signum() > 0) {
             o.setPaymentStatus(PaymentStatus.REFUND_PENDING);
         }
         o.getItems().stream().filter(i -> i.getSellerId() != null)

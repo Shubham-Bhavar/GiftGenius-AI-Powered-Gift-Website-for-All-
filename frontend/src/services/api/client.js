@@ -11,7 +11,15 @@
  */
 import { storage } from '../../utils/storage.js';
 
-const BASE = (import.meta.env.VITE_API_BASE ?? '').replace(/\/$/, '') + '/api';
+/**
+ * The API root from VITE_API_BASE, the backend's origin (blank: this site's own /api). A value that already ends
+ * in /api is taken as the same origin, so "https://api.example.com/api" never becomes /api/api/… (every call a 404).
+ */
+export function apiBase(origin) {
+  return (origin ?? '').trim().replace(/\/+$/, '').replace(/\/api$/i, '') + '/api';
+}
+
+const BASE = apiBase(import.meta.env.VITE_API_BASE);
 const SESSION_HINT = 'gg-session';
 /** Required by the API on cookie-authenticated calls (refresh, logout). */
 export const CSRF_HEADER = { 'X-Requested-With': 'GiftGenius' };

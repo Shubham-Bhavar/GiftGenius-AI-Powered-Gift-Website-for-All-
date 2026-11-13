@@ -59,54 +59,10 @@
   to   { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes hintPulse {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
-@keyframes bowBounce {
-  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
-  50% { transform: translateX(-50%) translateY(-10px) scale(1.06); }
-}
-
-@keyframes goldShimmer {
-  from { opacity: 0; }
-  50%  { opacity: 1; }
-  to   { opacity: 0; }
-}
-
 @keyframes confettiFall {
   0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
   90%  { opacity: 1; }
   100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-}
-
-@keyframes fireworkPop {
-  0%   { transform: scale(0); opacity: 1; }
-  100% { transform: scale(1); opacity: 0; }
-}
-
-@keyframes cartoonGlowPulse {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50%       { opacity: 1; transform: scale(1.1); }
-}
-
-@keyframes penguinBounce {
-  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
-  30%       { transform: translateX(-50%) translateY(-14px) scale(1.04); }
-  60%       { transform: translateX(-50%) translateY(-6px) scale(1.02); }
-}
-
-@keyframes penguinWave {
-  0%, 100% { transform: translateX(-50%) rotate(0deg); }
-  20%       { transform: translateX(-50%) rotate(-3deg); }
-  50%       { transform: translateX(-50%) rotate(2.5deg); }
-  80%       { transform: translateX(-50%) rotate(-2deg); }
-}
-
-@keyframes brandGradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50%       { background-position: 100% 50%; }
 }
 
 @keyframes gf-sparkle {
@@ -138,3 +94,99 @@
 @keyframes qdot { 0%, 80%, 100% { transform: scale(0.75); opacity: 0.4; } 40% { transform: scale(1.2); opacity: 1; } }
 
 @keyframes selPulse { 50% { opacity: 0.55; } }
+
+/* ─── Gift Studio ─── */
+
+/* A gift rising out of the tissue (to its own resting transform). */
+@keyframes gbRise { from { opacity: 0; transform: translateY(100%); } }
+
+/* The gift card arriving centre stage in the reveal. */
+@keyframes ggCardIn { from { opacity: 0; transform: translate(-50%, -32%) rotate(-8deg) scale(0.92); } }
+
+/* ─── Reveal experiences ─── */
+
+@keyframes xpFadeIn { from { opacity: 0; } }
+
+/* The box settles onto the turntable. */
+@keyframes xpArrive { from { transform: translateY(-34px); } 70% { transform: translateY(2px); } }
+
+/* The smallest settling, for the quieter experiences. */
+@keyframes xpDrift { from { transform: translateY(-8px); } }
+
+/* Dropped in, with a gentle bounce. */
+@keyframes xpBounce {
+  from { transform: translateY(-120px); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
+  52% { transform: translateY(0); animation-timing-function: cubic-bezier(.1,.5,.5,1); }
+  72% { transform: translateY(-24px); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
+  88% { transform: translateY(0); animation-timing-function: cubic-bezier(.1,.5,.5,1); }
+  94% { transform: translateY(-6px); animation-timing-function: cubic-bezier(.5,0,.9,.5); }
+  to { transform: translateY(0); }
+}
+
+/* A slow push in, from a close view of the box. */
+@keyframes xpCinematic { from { scale: calc(var(--fit) * 1.5); translate: 0 46px; } }
+
+/* The bow pulls through its knot, then the knot goes. */
+@keyframes xpBowOut { to { transform: scale3d(0.02, 0.02, 0.02); } }
+@keyframes xpTailOut { to { transform: scaleX(0); } }
+
+/* The ribbon runs back from the top of the box to the floor. */
+@keyframes xpPeelUp { to { clip-path: inset(-8px -8px 100% -8px); } }
+@keyframes xpPeelDown { to { clip-path: inset(100% -8px -8px -8px); } }
+@keyframes xpPeelLeft { to { clip-path: inset(-8px 100% -8px -8px); } }
+@keyframes xpPeelRight { to { clip-path: inset(-8px -8px -8px 100%); } }
+
+/* On its hinge: swings a little past its rest, then settles back. */
+@keyframes xpLidOpen {
+  from { transform: rotateX(0deg); }
+  72% { transform: rotateX(112deg); }
+  88% { transform: rotateX(105.5deg); }
+  to { transform: rotateX(107deg); }
+}
+/* Pops open, with more spring. */
+@keyframes xpLidPop {
+  from { transform: rotateX(0deg); }
+  55% { transform: rotateX(120deg); }
+  76% { transform: rotateX(103deg); }
+  90% { transform: rotateX(109deg); }
+  to { transform: rotateX(107deg); }
+}
+/* Lifts quietly, with no overshoot at all. */
+@keyframes xpLidSoft { from { transform: rotateX(0deg); } to { transform: rotateX(105deg); } }
+
+/* The gift lifts out of the box. */
+@keyframes xpGiftRise { from { transform: translateY(var(--gift-from)); opacity: 0; } 25% { opacity: 1; } to { transform: translateY(var(--gift-to)); } }
+
+@keyframes xpRiserUp { to { transform: translateY(0); } }
+
+@keyframes xpPullBack { to { translate: 0 var(--pull-y); scale: var(--pull-scale); } }
+
+/* The camera eases back to frame the final composition. */
+@keyframes xpCompose { to { translate: var(--final-x) var(--final-y); scale: var(--final-scale); } }
+@keyframes xpShadowIn { from { opacity: 0; } }
+@keyframes xpCaptionIn { from { opacity: 0; transform: translateY(8px); } }
+
+/* One burst: up and out from the box, then falling away. */
+@keyframes xpConfetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  42% { opacity: 1; transform: translate(var(--dx), var(--dy)) rotate(var(--spin)); }
+  100% { opacity: 0; transform: translate(calc(var(--dx) * 1.25), calc(var(--dy) + 340px)) rotate(calc(var(--spin) * 2)); }
+}
+
+/* A birthday card opening toward you. */
+@keyframes xpCardFlip { from { opacity: 0; transform: perspective(700px) rotateY(-86deg); } }
+
+/* The message centre stage, then moving aside: for the wide layout, and for the narrow one. */
+@keyframes xpCardCentre {
+  from { opacity: 0; transform: translate(-25cqw, 10px) scale(1.12); }
+  14% { opacity: 1; transform: translate(-25cqw, 0) scale(1.12); }
+  62% { opacity: 1; transform: translate(-25cqw, 0) scale(1.12); }
+  to { opacity: 1; transform: translate(0, 0) scale(1); }
+}
+@keyframes xpCardCentreNarrow {
+  from { opacity: 0; transform: translateY(-120px) scale(1.06); }
+  14% { opacity: 1; transform: translateY(-130px) scale(1.06); }
+  62% { opacity: 1; transform: translateY(-130px) scale(1.06); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes xpDimFor { 0% { opacity: 0; } 18% { opacity: 0.62; } 62% { opacity: 0.62; } 100% { opacity: 0; } }

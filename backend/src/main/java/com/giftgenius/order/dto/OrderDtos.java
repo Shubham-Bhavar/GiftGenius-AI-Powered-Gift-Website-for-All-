@@ -25,7 +25,7 @@ public final class OrderDtos {
 
     public record ShippingRequest(
             @NotBlank(message = "Enter the recipient's name") @Size(max = 120) String fullName,
-            @NotBlank(message = "Enter an email") @Email(message = "Enter a valid email") String email,
+            @NotBlank(message = "Enter an email") @Email(message = "Enter a valid email") @Size(max = 255) String email,
             @NotBlank(message = "Enter a phone number")
             @Pattern(regexp = "^[+0-9 ()-]{10,20}$", message = "Enter a valid phone number") String phone,
             @NotBlank(message = "Enter the delivery address") @Size(max = 300) String addressLine,

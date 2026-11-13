@@ -19,9 +19,11 @@ import com.giftgenius.config.AppProperties;
 import jakarta.annotation.PostConstruct;
 
 /**
- * Sends plain-text email in the background, after the surrounding transaction commits (so a
- * rolled-back order never emails the customer). Without SMTP settings, mail is logged instead: the recipient
- * masked, and one-time link tokens (password resets) removed from the body.
+ * Sends plain-text email in the background, after the surrounding transaction commits. Without SMTP settings, mail is
+ * logged instead: the recipient masked, and one-time link tokens (password resets) removed from the body.
+ *
+ * <p>For account, seller and contact emails. Order emails go through the {@link EmailOutbox} instead, which stores,
+ * deduplicates and retries them; password-reset links stay here so they are never stored in the database.
  */
 @Component
 public class Mailer {
@@ -46,7 +48,8 @@ public class Mailer {
     @PostConstruct
     void warnIfUnconfigured() {
         if (!configured) {
-            log.warn("SMTP_HOST is not set: emails (order updates, password resets) will be logged, not sent.");
+            log.warn("SMTP_HOST is not set: emails will not be sent (account emails are logged; order emails are "
+                    + "recorded as not sent in the email outbox).");
         }
     }
 

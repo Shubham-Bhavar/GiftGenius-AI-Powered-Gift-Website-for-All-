@@ -3,32 +3,81 @@ import { screen, within } from '@testing-library/react';
 import { renderApp } from './renderApp.jsx';
 import { db } from './setup.js';
 
-describe('AI gift quiz (original 6-question design)', () => {
-  it('walks the quiz and shows AI picks with reasons and a card message', async () => {
+describe('AI gift quiz (original design, plus what they don\'t like)', () => {
+  it('walks the quiz and shows AI picks with reasons, a match, the checks behind it and a card message', async () => {
     const { user } = renderApp('/gift-finder');
-    expect(await screen.findByText('01 / 06')).toBeInTheDocument();
+    expect(await screen.findByText('01 / 07')).toBeInTheDocument();
+    // No results heading until there are results.
+    expect(screen.queryByRole('heading', { name: 'Your Gift Matches' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Partner \/ Spouse/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /Anniversary/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /Flowers & Fragrance/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
+    // Optional: "Skip →" until something is picked.
+    expect(screen.getByRole('heading', { name: /Anything they don't like/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Skip →' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: /Sweets & chocolates/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /Luxury & Premium/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /₹500 – ₹1,500/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
-    expect(screen.getByText('06 / 06')).toBeInTheDocument();
+    expect(screen.getByText('07 / 07')).toBeInTheDocument();
+    await user.type(screen.getByLabelText(/Their first name/), 'Priya');
     await user.type(screen.getByLabelText('Extra details about them'), 'She loves rose scents');
     await user.click(screen.getByRole('button', { name: '✨ Find My Gifts' }));
 
     expect(await screen.findByText('✨ Picked by GiftGenius AI')).toBeInTheDocument();
+    expect(screen.getByText('Priya')).toBeInTheDocument(); // "2 gifts for Priya · Anniversary · up to ₹1,500"
+    expect(screen.getByText('up to ₹1,500')).toBeInTheDocument();
+    expect(screen.getByText('🚫 Leaving out: Sweets & chocolates')).toBeInTheDocument();
     expect(screen.getByText('✨ A signature scent she will wear every day.')).toBeInTheDocument();
+    expect(screen.getByText('92% match')).toBeInTheDocument();
+    const why = screen.getAllByRole('list', { name: 'Why this gift' })[0];
+    expect(within(why).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '✓Yes: Matches their love of fragrance', '✓Yes: ₹1,199: well within your ₹1,500 budget', '✕No: Not especially minimalist',
+    ]);
     expect(screen.getByText('Happy anniversary, my love.')).toBeInTheDocument();
+    // Each pick opens in the Gift Studio with the answers it uses for themes and boxes: never the name or the notes.
+    const studio = screen.getAllByRole('link', { name: '🎁 Preview as a gift' })[0].getAttribute('href');
+    expect(studio).toBe('/studio?product=4&style=expressive&occasion=anniversary&recipient=partner&budget=1500&interests=flowers%2Cfragrance');
+    expect(studio).not.toMatch(/Priya|rose/i);
+    // The name stays on the page: only the answers go to the server.
     expect(db.lastRecommendation).toEqual({
       recipient: 'partner', occasion: 'anniversary', budget: 1500, interests: ['flowers', 'fragrance'],
-      personality: 'expressive', notes: 'She loves rose scents', limit: 4,
+      personality: 'expressive', notes: 'She loves rose scents', limit: 4, avoid: ['sweets'],
     });
     await user.click(screen.getAllByRole('button', { name: '+ Add to Cart' })[0]);
+    expect(screen.getByTestId('cart-count')).toHaveTextContent('1');
+  });
+
+  it('plans one gift of each kind within the budget', async () => {
+    const { user } = renderApp('/gift-finder');
+    await user.click(await screen.findByRole('button', { name: /Partner \/ Spouse/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Anniversary/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /Flowers & Fragrance/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: 'Skip →' }));
+    await user.click(screen.getByRole('button', { name: /Practical & Useful/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: /₹500 – ₹1,500/ }));
+    await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: '✨ Find My Gifts' }));
+
+    const plan = await screen.findByRole('region', { name: '2 ways to spend ₹1,500' });
+    expect(within(plan).getByText('Emotional')).toBeInTheDocument();
+    expect(within(plan).getByText('Classic Rose Bouquet')).toBeInTheDocument();
+    expect(within(plan).getByText('Artisan Chocolate Box')).toBeInTheDocument();
+    expect(within(plan).getByText('No practical gift within ₹1,500 yet.')).toBeInTheDocument();
+    expect(within(plan).getByRole('link', { name: '🎁 Preview them together in one gift box' })).toHaveAttribute(
+      'href', '/studio?products=3,6&style=practical&occasion=anniversary&recipient=partner&budget=1500&interests=flowers%2Cfragrance',
+    );
+    expect(db.lastRecommendation.avoid).toBeUndefined();
+    await user.click(within(plan).getByRole('button', { name: 'Add Artisan Chocolate Box to cart' }));
     expect(screen.getByTestId('cart-count')).toHaveTextContent('1');
   });
 
@@ -41,6 +90,7 @@ describe('AI gift quiz (original 6-question design)', () => {
     await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /A Bit of Everything/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
+    await user.click(screen.getByRole('button', { name: 'Skip →' }));
     await user.click(screen.getByRole('button', { name: /Practical & Useful/ }));
     await user.click(screen.getByRole('button', { name: 'Next →' }));
     await user.click(screen.getByRole('button', { name: /₹5,000\+/ }));
