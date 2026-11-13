@@ -571,3 +571,8 @@ Still uncommitted on `feat/gift-decision-assistant` (HEAD `8486cc7`), same throw
   offices, and is there on shop pages", which signs in and waits for each page's content; it passed on CI, and the two
   deliberate breaks that show the assistant on those pages are caught by it (re-run after the removal).
 - **Frontend after the fix:** 19 files, 454 passed, 0 failed, 0 skipped (457 minus the 3 removed cases); lint 0.
+- **CI for `d54a34d`** (PR #3, GitHub Actions run 43419302488, 2026-11-13): all jobs passed. Frontend (lint,
+  tests, build), backend (unit and MySQL integration tests on `mysql:8.4`), and Docker images (`docker compose build`
+  of the backend and frontend images, then the production compose file validated). CI only builds the images: no
+  container was started, so the image's health check is still unverified. Locally the images still can't be built
+  ("exec format error" on the Alpine base images).

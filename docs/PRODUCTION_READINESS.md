@@ -12,7 +12,8 @@ backend unit and 180 integration tests on MySQL 8.0.43 (and on CI's MySQL 8.4), 
 `npm audit` (0). 37 of 38 deliberately reintroduced defects were caught at once, and a test now catches the 38th.
 The release blockers below are infrastructure, provider credentials and owner decisions; the open code defects
 (GG-36, GG-45, GG-53, see "Open code defects") are not release blockers but should be scheduled. The Docker images
-could not be built on this machine.
+can't be built on this machine, but CI built them for `d54a34d` (PR #3 run 43419302488, all jobs green); no
+container has been started from them yet.
 
 Earlier assessment (2026-10-28): the **code** is in a production-ready development state for the journeys that can be exercised locally: every supported check passes (242 unit, 110 integration and 140 frontend tests, lint and build), the confirmed defects found in this audit are fixed with regression tests, and the main shopper, admin and authorization journeys were verified against a real backend and database.
 
@@ -77,7 +78,7 @@ This does not claim the system is "100 % production-ready"; it states what was v
 | Problem-detail errors with safe messages; no stack traces in responses | PASS | live checks |
 | Health (liveness/readiness) and Prometheus on a separate port | PASS locally | live check on the management port |
 | Actuator access: probes open and status-only; metrics need `METRICS_SCRAPE_TOKEN`; the rest closed, on either port | PASS locally (2026-11-09; committed locally, not pushed) | `ManagementSecurityIT`, `ManagementSecurityNoTokenIT`, `ManagementSecuritySamePortIT` (real HTTP) |
-| Docker container health check with the new Actuator security | NOT VERIFIED | the readiness request it makes passes over HTTP in `ManagementSecurityIT`; the built image's `HEALTHCHECK` hasn't been run (needs Docker started, with the owner's go-ahead) |
+| Docker container health check with the new Actuator security | NOT VERIFIED | the readiness request it makes passes over HTTP in `ManagementSecurityIT`; the image builds on CI, but no container has been started from it, so its `HEALTHCHECK` hasn't run (CI only builds; locally Docker can't build) |
 | Health check reachable by Railway | BLOCKED | the management port isn't the public port; Railway's health check path must be configured accordingly |
 | Fail-fast startup on missing secret or database | PASS | jar runs |
 | Graceful shutdown | NOT TESTED | configured (`server.shutdown: graceful`) |
@@ -90,8 +91,8 @@ This does not claim the system is "100 % production-ready"; it states what was v
 | CI database version | PASS (backend) | CI's backend job (358 unit and 180 integration tests on `mysql:8.4`) passed for `ae8829e`, PR #3 run 43404039472; local runs use 8.0.43 |
 | Tests need no paid service or live credential | PASS | fakes and mocks for Razorpay, Nominatim, Gemini, mail |
 | Docker Compose configuration (base and production overlay) | PASS | `docker compose config` |
-| Docker image builds | BLOCKED | On 2026-11-12 the daemon ran, but every Alpine base image (`node:22-alpine`, Temurin Alpine) failed with "exec format error" on this machine, also after a cache prune and re-pull; CI builds them |
-| CI workflow covers backend (with MySQL), frontend and Docker | PASS (review) | `.github/workflows/ci.yml`; not run here |
+| Docker image builds | PASS on CI; BLOCKED locally | CI's "Docker images" job (`docker compose build`, then the production compose file validated) passed for `d54a34d`, PR #3 run 43419302488. On this machine every Alpine base image (`node:22-alpine`, Temurin Alpine) failed with "exec format error" on 2026-11-12, also after a cache prune and re-pull |
+| CI workflow covers backend (with MySQL), frontend and Docker | PASS | `.github/workflows/ci.yml`; PR #3 run 43419302488 for `d54a34d`: backend (MySQL 8.4), frontend (lint, tests, build) and Docker images all passed. The previous run, for `ae8829e`, failed in the frontend job (GG-54, a racy test, fixed) |
 | Environment variables documented | PASS | `.env.example`, REPOSITORY_AUDIT.md §8 |
 | Node version alignment | PASS | GG-13 fixed: `engines` `^22.22.2 \|\| >=24.15.0`; Docker (`node:22-alpine`) and CI (`node-version: "22"`) both take the newest Node 22 release |
 | Performance and load | NOT TESTED | |
