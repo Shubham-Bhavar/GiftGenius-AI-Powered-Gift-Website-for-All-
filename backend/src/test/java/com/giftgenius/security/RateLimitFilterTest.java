@@ -37,6 +37,37 @@ class RateLimitFilterTest {
         assertThat(RateLimitFilter.bucketFor("POST", "/api/contact")).isEqualTo(Bucket.PUBLIC);
         assertThat(RateLimitFilter.bucketFor("GET", "/api/products")).isNull();
         assertThat(RateLimitFilter.bucketFor("GET", "/api/auth/me")).isNull();
+        assertThat(RateLimitFilter.bucketFor("POST", "/api/orders")).as("placing orders").isEqualTo(Bucket.PUBLIC);
+        assertThat(RateLimitFilter.bucketFor("GET", "/api/orders")).isNull();
+        assertThat(RateLimitFilter.bucketFor("POST", "/api/orders/GG-1/cancel")).isNull();
+    }
+
+    @Test
+    void anEncodedPathCountsAsTheEndpointItReaches() throws Exception {
+        for (int i = 0; i < 20; i++) {
+            String path = i % 2 == 0 ? "/api/auth/login" : "/api/auth/%6cogin";
+            assertThat(call("POST", path, "3.3.3.3").getStatus()).isEqualTo(200);
+        }
+        assertThat(call("POST", "/api/auth/%6Cogin", "3.3.3.3").getStatus()).isEqualTo(429);
+        assertThat(call("POST", "/api/%61i/recommendations", "3.3.3.3").getStatus()).as("AI has its own bucket")
+                .isEqualTo(200);
+        MockHttpServletRequest encoded = new MockHttpServletRequest("POST", "/api/%61i/recommendations");
+        assertThat(RateLimitFilter.pathOf(encoded)).isEqualTo("/api/ai/recommendations");
+    }
+
+    @Test
+    void aFloodOfNewClientsSharesOneOverflowWindowInsteadOfGrowingMemory() {
+        filter.setClock(Clock.fixed(Instant.parse("2026-01-01T10:00:05Z"), ZoneOffset.UTC));
+        for (int i = 0; i < RateLimitFilter.MAX_TRACKED; i++) {
+            filter.tryAcquire("AUTH", "client-" + i, 20);
+        }
+        assertThat(filter.trackedWindows()).isEqualTo(RateLimitFilter.MAX_TRACKED);
+        for (int i = 0; i < 20; i++) {
+            assertThat(filter.tryAcquire("AUTH", "newcomer-" + i, 20)).isTrue();
+        }
+        assertThat(filter.tryAcquire("AUTH", "newcomer-x", 20)).as("the overflow window is limited too").isFalse();
+        assertThat(filter.trackedWindows()).isEqualTo(RateLimitFilter.MAX_TRACKED + 1);
+        assertThat(filter.tryAcquire("AUTH", "client-7", 20)).as("known clients keep their own window").isTrue();
     }
 
     @Test
@@ -60,13 +91,13 @@ class RateLimitFilterTest {
         Instant t0 = Instant.parse("2026-01-01T10:00:05Z");
         filter.setClock(Clock.fixed(t0, ZoneOffset.UTC));
         for (int i = 0; i < 20; i++) {
-            assertThat(filter.tryAcquire("AUTH:9.9.9.9", 20)).isTrue();
+            assertThat(filter.tryAcquire("AUTH", "9.9.9.9", 20)).isTrue();
         }
-        assertThat(filter.tryAcquire("AUTH:9.9.9.9", 20)).isFalse();
+        assertThat(filter.tryAcquire("AUTH", "9.9.9.9", 20)).isFalse();
 
         filter.setClock(Clock.fixed(t0.plusSeconds(60), ZoneOffset.UTC));
-        assertThat(filter.tryAcquire("AUTH:9.9.9.9", 20)).isTrue();
-        filter.tryAcquire("AUTH:8.8.8.8", 20);
+        assertThat(filter.tryAcquire("AUTH", "9.9.9.9", 20)).isTrue();
+        filter.tryAcquire("AUTH", "8.8.8.8", 20);
         filter.setClock(Clock.fixed(t0.plusSeconds(180), ZoneOffset.UTC));
         filter.evictOldWindows();
         assertThat(filter.trackedWindows()).isZero();

@@ -16,9 +16,12 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Component
 public class EmailOutboxStore {
 
-    /** One email claimed by this sender: {@code attempt} is the number of this attempt, starting at 1. */
+    /**
+     * One email claimed by this sender: {@code attempt} is the number of this attempt, starting at 1, and
+     * {@code html} is the HTML alternative of {@code body}, or null for a plain-text email.
+     */
     public record Claimed(long id, String dedupeKey, String kind, String recipient, String subject, String body,
-            int attempt) {
+            String html, int attempt) {
     }
 
     static final String INTERRUPTED = "Interrupted during delivery; not retried, so it can't be sent twice";
@@ -39,14 +42,15 @@ public class EmailOutboxStore {
     public Optional<Claimed> claimNext(Duration lease) {
         return tx.execute(status -> {
             List<Claimed> due = jdbc.query("""
-                    SELECT id, dedupe_key, kind, recipient, subject, body_text, attempts FROM email_outbox
+                    SELECT id, dedupe_key, kind, recipient, subject, body_text, body_html, attempts
+                    FROM email_outbox
                     WHERE status = 'PENDING' AND next_attempt_at <= UTC_TIMESTAMP(6)
                     ORDER BY next_attempt_at, id
                     LIMIT 1
                     FOR UPDATE SKIP LOCKED""",
                     (rs, i) -> new Claimed(rs.getLong("id"), rs.getString("dedupe_key"), rs.getString("kind"),
                             rs.getString("recipient"), rs.getString("subject"), rs.getString("body_text"),
-                            rs.getInt("attempts") + 1));
+                            rs.getString("body_html"), rs.getInt("attempts") + 1));
             if (due.isEmpty()) {
                 return Optional.empty();
             }

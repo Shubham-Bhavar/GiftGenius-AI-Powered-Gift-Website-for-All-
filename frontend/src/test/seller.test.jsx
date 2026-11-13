@@ -434,6 +434,19 @@ describe('store status and failures', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign in, then choose "Sell on GiftGenius" in your account');
   });
 
+  it("a suspended store sees its order lines but not the customer's delivery details", async () => {
+    Object.assign(db.stores[SANA], { status: 'SUSPENDED', statusReason: 'Late deliveries' });
+    signedInAs(SANA);
+    renderApp('/seller/orders/GG-SELL0001');
+    await screen.findByRole('heading', { name: 'GG-SELL0001' });
+    const ship = screen.getByRole('heading', { name: '🚚 Ship To' }).closest('section');
+    expect(within(ship).getByText(/Delivery details are shown while your store is active/)).toBeInTheDocument();
+    expect(within(ship).queryByText('Asha Rao')).toBeNull();
+    expect(screen.queryByText(/98765/)).toBeNull();
+    expect(screen.getByText(/Your store isn.t active, so GiftGenius handles this order for now/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update Status →' })).toBeNull();
+  });
+
   it("a suspended store sees why and isn't offered product changes", async () => {
     Object.assign(db.stores[SANA], { status: 'SUSPENDED', statusReason: 'Late deliveries' });
     signedInAs(SANA);

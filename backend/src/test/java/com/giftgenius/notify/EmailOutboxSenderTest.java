@@ -69,9 +69,60 @@ class EmailOutboxSenderTest {
         return sender(smtp, TestProps.outbox());
     }
 
+    private static final String BODY = "Body ₹499 नमस्ते";
+
     private static EmailOutboxStore.Claimed claimed(int attempt) {
+        return claimed(attempt, null);
+    }
+
+    private static EmailOutboxStore.Claimed claimed(int attempt, String html) {
         return new EmailOutboxStore.Claimed(5, "order:42:confirmed:customer", "ORDER_CONFIRMED", "asha.rao@example.com",
-                "Your order", "Body", attempt);
+                "Your order", BODY, html, attempt);
+    }
+
+    // ── Plain text and HTML ──
+
+    @Test
+    void anEmailWithoutHtmlIsSentAsPlainText() throws Exception {
+        MimeMessage m = sender().message(smtp, claimed(1));
+        m.saveChanges();
+        assertThat(m.getContentType()).startsWith("text/plain").containsIgnoringCase("utf-8");
+        assertThat(m.getContent()).isEqualTo(BODY);
+        MimeMessage blank = sender().message(smtp, claimed(1, "  "));
+        blank.saveChanges();
+        assertThat(blank.getContent()).as("blank HTML counts as none").isEqualTo(BODY);
+    }
+
+    @Test
+    void anEmailWithHtmlCarriesBothBodiesTextFirstUnderTheSameMessageId() throws Exception {
+        String html = "<!DOCTYPE html><html><body><p>Body ₹499 नमस्ते</p></body></html>";
+        MimeMessage m = sender().message(smtp, claimed(2, html));
+        assertThat(m.getHeader("Message-ID")[0]).as("the same Message-ID as the plain-text form of this email")
+                .isEqualTo(sender().message(smtp, claimed(1)).getHeader("Message-ID")[0]);
+        m.saveChanges();
+        java.io.ByteArrayOutputStream wire = new java.io.ByteArrayOutputStream();
+        m.writeTo(wire);
+        MimeMessage parsed = new MimeMessage(m.getSession(), new java.io.ByteArrayInputStream(wire.toByteArray()));
+        List<String[]> parts = new java.util.ArrayList<>();
+        collect(parsed, parts);
+        assertThat(parts).as("plain text first, then HTML").hasSize(2);
+        assertThat(parts.get(0)[0]).startsWith("text/plain");
+        assertThat(parts.get(0)[1]).isEqualTo(BODY);
+        assertThat(parts.get(1)[0]).startsWith("text/html");
+        assertThat(parts.get(1)[1]).isEqualTo(html);
+        assertThat(wire.toString(java.nio.charset.StandardCharsets.US_ASCII)).contains("multipart/alternative");
+    }
+
+    /** The text parts of a message, in order: {content type, content}. */
+    private static void collect(jakarta.mail.Part part, List<String[]> out) throws Exception {
+        Object content = part.getContent();
+        if (content instanceof jakarta.mail.Multipart multi) {
+            for (int i = 0; i < multi.getCount(); i++) {
+                collect(multi.getBodyPart(i), out);
+            }
+        } else {
+            out.add(new String[] { part.getContentType().toLowerCase(java.util.Locale.ROOT), (String) content });
+        }
     }
 
     @Test
@@ -86,7 +137,7 @@ class EmailOutboxSenderTest {
                 .containsExactly("asha.rao@example.com");
         assertThat(m.getFrom()[0].toString()).isEqualTo("GiftGenius <test@giftgenius.local>");
         assertThat(m.getSubject()).isEqualTo("Your order");
-        assertThat(m.getContent()).isEqualTo("Body");
+        assertThat(m.getContent()).isEqualTo(BODY);
     }
 
     // ── Message-ID ─────────────────────────────────────────

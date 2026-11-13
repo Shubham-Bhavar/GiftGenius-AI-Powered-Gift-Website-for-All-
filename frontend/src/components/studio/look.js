@@ -33,12 +33,6 @@ export const PATTERNS = {
   botanical: 'Botanical', kraft: 'Kraft paper', polaroid: 'Photo frames',
 };
 export const CARD_STYLES = { noir: 'Noir & gold', ivory: 'Ivory', party: 'Party', kraft: 'Recycled kraft', photo: 'Photo card' };
-export const REVEAL_ORDERS = { 'card-first': 'Message first, then the gift', 'gift-first': 'Gift first, message last' };
-export const TEMPLATES = {
-  classic: 'Classic: their name, the box, then the reveal',
-  surprise: 'Surprise: straight to the box, confetti at the end',
-  sentimental: 'Sentimental: your message opens everything',
-};
 
 const nameOf = (list, hex) => list.find(([h]) => h === hex)?.[1];
 /** "Black box, gold ribbon, satin sheen": what the preview shows, in words (for screen readers and summaries). */
@@ -74,10 +68,25 @@ export function suggestThemes({ personality, occasion, interests = [], text = ''
 // stored by GiftGenius, and photos are never included. What a link carries is checked field by field when opened.
 
 const HEX = /^#[0-9a-f]{6}$/i;
-/** The reveals a link can ask for. A new link always names one; a link made before it could has none at all. */
-export const SHARED_EXPERIENCES = ['royal', 'birthday', 'sentimental', 'minimal', 'memory', 'classic'];
+/** The reveals a link can ask for: the five experiences. */
+export const SHARED_EXPERIENCES = ['royal', 'birthday', 'sentimental', 'minimal', 'memory'];
 const clip = (v, max) => (typeof v === 'string' ? v.slice(0, max) : '');
 const oneOf = (v, allowed, fallback) => (allowed.includes(v) ? v : fallback);
+
+/**
+ * The experience for a link made before the classic reveal was retired: one that names an experience keeps it; one
+ * that named the classic reveal, or none (made before experiences existed), gets the experience closest to the
+ * classic style it chose: "surprise" (confetti at the end) plays Birthday, "sentimental" (the message first) plays
+ * Sentimental, and the classic style plays Royal. Anything unrecognised opens on Royal.
+ */
+export function experienceFor(raw = {}) {
+  if (SHARED_EXPERIENCES.includes(raw.experience)) return raw.experience;
+  if (raw.experience === undefined || raw.experience === null || raw.experience === 'classic') {
+    if (raw.template === 'surprise') return 'birthday';
+    if (raw.template === 'sentimental') return 'sentimental';
+  }
+  return 'royal';
+}
 
 /** A configuration with every field present and valid; anything unknown or malformed falls back to a default. */
 export function sanitizeConfig(raw = {}) {
@@ -95,10 +104,7 @@ export function sanitizeConfig(raw = {}) {
     name: clip(raw.name, 40),
     message: clip(raw.message, 300),
     engraving: clip(raw.engraving, 80),
-    order: oneOf(raw.order, Object.keys(REVEAL_ORDERS), 'card-first'),
-    template: oneOf(raw.template, Object.keys(TEMPLATES), 'classic'),
-    // Older links have no experience, and keep playing exactly as they always did. One we don't recognise opens on Royal.
-    experience: raw.experience === undefined ? null : oneOf(raw.experience, SHARED_EXPERIENCES, 'royal'),
+    experience: experienceFor(raw),
     budget,
   };
 }
@@ -119,8 +125,8 @@ const fromBase64Url = (text) => {
  * can decode a link, so a reveal link carries only what the reveal shows: never the budget or the printed name.
  */
 export function shareFragment(config, view) {
-  const { products, theme, box, ribbon, pattern, card, name, message, engraving, order, template, experience, budget } = config;
-  const shared = { v: 1, view, products, theme, box, ribbon, pattern, card, name, message, order, template, experience: experience ?? undefined };
+  const { products, theme, box, ribbon, pattern, card, name, message, engraving, experience, budget } = config;
+  const shared = { v: 1, view, products, theme, box, ribbon, pattern, card, name, message, experience: experienceFor({ experience }) };
   return `gift=${toBase64Url(JSON.stringify(view === 'reveal' ? shared : { ...shared, engraving, budget }))}`;
 }
 

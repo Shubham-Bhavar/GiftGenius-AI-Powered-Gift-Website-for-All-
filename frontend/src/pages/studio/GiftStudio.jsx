@@ -8,7 +8,6 @@ import { CompareLab } from '../../components/studio/CompareLab.jsx';
 import { ExperienceSelector } from '../../components/studio/experiences/ExperienceSelector.jsx';
 import { EXPERIENCES } from '../../components/studio/experiences/experiences.js';
 import { MessageToGift } from '../../components/studio/MessageToGift.jsx';
-import { RevealPlayer } from '../../components/studio/RevealPlayer.jsx';
 import { StudioStage3D } from '../../components/studio/scene/StudioStage3D.jsx';
 import { StudioControls } from '../../components/studio/StudioControls.jsx';
 import { YourView } from '../../components/studio/YourView.jsx';
@@ -122,8 +121,8 @@ function Studio() {
   const [editing, setEditing] = useState(!state.shared);
   const [tab, setTab] = useState('their');
   const [photos, setPhotos] = useState([]);
-  // How the reveal plays. A link names the one chosen; an older link has none, and plays the classic reveal as it always did.
-  const [experience, setExperience] = useState(() => (state.shared ? state.config.experience ?? 'classic' : 'royal'));
+  // How the reveal plays: one of the five experiences. A link names its own (look.js maps older links to one).
+  const [experience, setExperience] = useState(() => (state.shared ? state.config.experience : 'royal'));
   const [preview, setPreview] = useState(null); // { key, run }: shown once, without changing the choice
   const photosRef = useRef(photos);
   const { config } = state;
@@ -162,13 +161,11 @@ function Studio() {
         <section className="page-hero"><h1>A gift preview, just for you</h1><p>Someone dressed up a gift with you in mind.</p></section>
         <div className="studio-solo">
           {loading && <Spinner label="Wrapping it up…" />}
-          {!loading && (EXPERIENCES[experience] ? (
+          {!loading && (
             <div className="studio-room">
-              <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[experience]} config={config} items={products} photos={[]} recipient />
+              <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[experience] ?? EXPERIENCES.royal} config={config} items={products} photos={[]} recipient />
             </div>
-          ) : (
-            <RevealPlayer config={config} look={look} items={products} photos={[]} occasion={undefined} />
-          ))}
+          )}
           <Link to="/studio" className="studio-link-btn">Make a gift preview of your own →</Link>
         </div>
       </div>
@@ -184,16 +181,9 @@ function Studio() {
             setExperience(key);
             setPreview(null);
           }} />
-        {EXPERIENCES[shownExperience] ? (
-          <>
-            <p className="studio-hint">This experience has its own presentation, so your box colours and wrap apply to the classic reveal. Your gift, name, message and photos are used here.</p>
-            <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[shownExperience]} run={preview?.run ?? 0}
-              config={config} items={products} photos={photos} autoPlay={Boolean(preview)} />
-          </>
-        ) : (
-          <RevealPlayer key={`${config.template}-${config.order}-${config.products.join('-')}`} config={config} look={look}
-            items={products} photos={photos} occasion={context.occasion} />
-        )}
+        <p className="studio-hint">Each experience has its own presentation. Your box colours, ribbon and wrap show in Your view, Compare and Gift box; your gift, name, message and photos are used here.</p>
+        <StudioStage3D key={config.products.join('-')} experience={EXPERIENCES[shownExperience] ?? EXPERIENCES.royal} run={preview?.run ?? 0}
+          config={config} items={products} photos={photos} autoPlay={Boolean(preview)} />
       </div>
     ),
     yours: products.length > 0 && <YourView config={config} products={products} look={look} photos={photos} />,

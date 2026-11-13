@@ -9,8 +9,7 @@ import { INIT_LIMIT_MS, StudioStage3D } from '../components/studio/scene/StudioS
 import { createStudioScene } from '../components/studio/scene/studioScene.js';
 import { EXPERIENCES } from '../components/studio/experiences/experiences.js';
 import { STAGES } from '../components/studio/experiences/useGiftAnimation.js';
-import { readShare, sanitizeConfig, shareFragment, SHARED_EXPERIENCES, themeLook } from '../components/studio/look.js';
-import { revealSteps } from '../components/studio/RevealPlayer.jsx';
+import { experienceFor, readShare, sanitizeConfig, shareFragment, SHARED_EXPERIENCES, themeLook } from '../components/studio/look.js';
 import { applyMatrix, matrixForQuad, overlayOpacity } from '../components/studio/scene/photoOverlay.js';
 import { loadPhoto, secureUrl } from '../components/studio/scene/studioMaterials.js';
 import { LOOKS, LOOK_KEYS, posterFor, thumbFor } from '../components/studio/scene/looks.js';
@@ -827,11 +826,15 @@ describe('while the 3D studio is getting ready', () => {
 });
 
 describe('share links remember the experience', () => {
-  /** A link exactly as the studio used to write it: no experience in it at all. */
-  const legacyLink = (template, view = 'reveal') => {
-    const fragment = shareFragment(sanitizeConfig({ ...themeLook('midnight'), products: [4], name: 'Aditi', message: 'With love', template }), view);
-    expect(JSON.parse(atob(fragment.slice(5).replace(/-/g, '+').replace(/_/g, '/')))).not.toHaveProperty('experience');
-    return `/studio#${fragment}`;
+  /**
+   * A link exactly as the studio used to write it: with the classic reveal's template and order, and either no
+   * experience at all (before experiences existed) or the retired "classic" one.
+   */
+  const legacyLink = (template, view = 'reveal', experience = undefined) => {
+    const old = { v: 1, view, ...themeLook('midnight'), products: [4], name: 'Aditi', message: 'With love', order: 'card-first', template, experience };
+    const bytes = new TextEncoder().encode(JSON.stringify(old));
+    const b64 = btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    return `/studio#gift=${b64}`;
   };
   const link = (experience, view = 'reveal', extra = {}) => `/studio#${shareFragment(sanitizeConfig({ ...themeLook('midnight'), products: [4], name: 'Aditi', message: 'With love', budget: 1500, engraving: 'A.R.', ...extra, experience }), view)}`;
   const raw = (href) => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(href.split('#gift=')[1].replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0))));
@@ -840,8 +843,9 @@ describe('share links remember the experience', () => {
     expect(readShare(link(key).split('/studio')[1]).config.experience).toBe(key);
   });
 
-  it('knows every experience the studio offers', () => {
-    expect([...SHARED_EXPERIENCES].sort()).toEqual([...Object.keys(EXPERIENCES), 'classic'].sort());
+  it('knows every experience the studio offers, and only those', () => {
+    expect([...SHARED_EXPERIENCES].sort()).toEqual(Object.keys(EXPERIENCES).sort());
+    expect(SHARED_EXPERIENCES).not.toContain('classic');
   });
 
   it('an unrecognised experience opens on Royal rather than failing', () => {
@@ -850,8 +854,18 @@ describe('share links remember the experience', () => {
     });
   });
 
-  it('a link with no experience stays that way, and its fields are untouched', () => {
-    expect(sanitizeConfig({ template: 'surprise' })).toMatchObject({ experience: null, template: 'surprise' });
+  it('an older link gets the experience closest to the classic style it chose', () => {
+    expect(experienceFor({ template: 'surprise' })).toBe('birthday');
+    expect(experienceFor({ template: 'sentimental' })).toBe('sentimental');
+    expect(experienceFor({ template: 'classic' })).toBe('royal');
+    expect(experienceFor({})).toBe('royal');
+    expect(experienceFor({ experience: 'classic', template: 'surprise' })).toBe('birthday');
+    expect(experienceFor({ experience: 'classic', template: 'classic' })).toBe('royal');
+    expect(experienceFor({ experience: 'minimal', template: 'surprise' })).toBe('minimal');
+    expect(experienceFor({ experience: 'neon', template: 'surprise' })).toBe('royal');
+    // The classic reveal's own fields are no longer kept.
+    expect(sanitizeConfig({ template: 'surprise', order: 'gift-first' })).not.toHaveProperty('template');
+    expect(sanitizeConfig({ template: 'surprise', order: 'gift-first' })).not.toHaveProperty('order');
   });
 
   it('a surprise link still carries no budget and no printed name', () => {
@@ -861,20 +875,25 @@ describe('share links remember the experience', () => {
     expect(shared).not.toHaveProperty('engraving');
   });
 
-  it.each(['classic', 'surprise', 'sentimental'])('an old %s surprise link plays exactly as it always did, with no 3D code', async (template) => {
-    withWebGL();
-    renderApp(legacyLink(template));
+  it.each([
+    ['classic', undefined, 'Royal Luxury Reveal'], ['surprise', undefined, 'Birthday Surprise'],
+    ['sentimental', undefined, 'Sentimental Unboxing'], ['surprise', 'classic', 'Birthday Surprise'],
+  ])('an old %s surprise link (experience %s) still opens, playing %s', async (template, experience, name) => {
+    withoutWebGL();
+    renderApp(legacyLink(template, 'reveal', experience));
     expect(await screen.findByRole('heading', { level: 1, name: 'A gift preview, just for you' })).toBeInTheDocument();
-    expect(await screen.findByText(`Step 1 of ${revealSteps(template, 'card-first').length}`)).toBeInTheDocument();
-    expect(createStudioScene).not.toHaveBeenCalled();
+    expect(await screen.findByRole('group', { name: new RegExp(`^${name}:`) })).toBeInTheDocument();
+    expect(screen.queryByText(/Step 1 of/)).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Choose Your Reveal Experience' })).not.toBeInTheDocument();
+    expect(screen.getByRole('main').textContent).not.toMatch(/₹/);
   });
 
-  it('an old friends link opens on the classic reveal, as before, and its template is kept', async () => {
+  it('an old friends link opens on the experience closest to its classic style, which is in use', async () => {
     withoutWebGL();
     renderApp(legacyLink('sentimental', 'friends'));
-    expect(await screen.findByRole('button', { name: 'In use: Classic reveal' })).toHaveAttribute('aria-pressed', 'true');
-    expect(await screen.findByText(`Step 1 of ${revealSteps('sentimental', 'card-first').length}`)).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'In use: Sentimental Unboxing' })).toHaveAttribute('aria-pressed', 'true');
+    expect(await screen.findByRole('group', { name: /^Sentimental Unboxing:/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Classic reveal/ })).not.toBeInTheDocument();
   });
 
   it.each(Object.values(EXPERIENCES).map((e) => [e.key, e.name]))('a surprise link for %s plays that experience, with nothing to choose and no prices', async (key, name) => {
@@ -888,11 +907,9 @@ describe('share links remember the experience', () => {
     expect(screen.getByRole('main').textContent).not.toMatch(/₹|1,?500/);
   });
 
-  it('a surprise link naming Classic plays the classic reveal', async () => {
-    withWebGL();
-    renderApp(link('classic'));
-    expect(await screen.findByText('Step 1 of 7')).toBeInTheDocument();
-    expect(createStudioScene).not.toHaveBeenCalled();
+  it('a new link never names the classic reveal', () => {
+    expect(raw(link('classic')).experience).toBe('royal');
+    expect(raw(link(undefined)).experience).toBe('royal');
   });
 
   it('a friends link opens on the experience it names', async () => {
@@ -974,10 +991,12 @@ describe('the studio page', () => {
     expect(violations.map((v) => v.id)).toEqual([]);
   });
 
-  it('the Classic reveal can still be chosen', async () => {
+  it('the Classic reveal is no longer offered', async () => {
     withoutWebGL();
-    const { user } = renderApp('/studio?product=4');
-    await user.click(await screen.findByRole('button', { name: 'Use This Experience: Classic reveal' }));
-    expect(await screen.findByText('Step 1 of 7')).toBeInTheDocument();
+    renderApp('/studio?product=4');
+    expect(await screen.findByRole('button', { name: 'In use: Royal Luxury Reveal' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Classic reveal/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Style')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: 'Order' })).not.toBeInTheDocument();
   });
 });

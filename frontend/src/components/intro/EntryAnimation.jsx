@@ -203,7 +203,9 @@ export default function EntryAnimation({ onFinish }) {
   useEffect(() => {
     if (!visible) return undefined;
     const onKey = (e) => {
-      if (e.key === 'Enter') keys.current.openGift();
+      // Enter on a control behind the intro (a link, a field) is meant for that control, not for the gift.
+      const elsewhere = e.target instanceof Element && e.target !== document.body && !e.target.closest('.gg-entry');
+      if (e.key === 'Enter' && !elsewhere) keys.current.openGift();
       if (e.key === 'Escape') keys.current.skip();
     };
     document.addEventListener('keydown', onKey);

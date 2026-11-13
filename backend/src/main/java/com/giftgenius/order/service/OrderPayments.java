@@ -44,6 +44,7 @@ public class OrderPayments {
         notifier.customer(o, OrderNotifier.CONFIRMED, "Payment received: GiftGenius order " + o.getOrderNumber() + " is confirmed",
                 "Thank you! We've received your payment and your order is confirmed.");
         notifier.sellers(o);
+        notifier.owner(o);
         events.publishEvent(InteractionEvent.purchase(
                 o.getItems().stream().map(OrderItem::getProductId).distinct().toList()));
     }

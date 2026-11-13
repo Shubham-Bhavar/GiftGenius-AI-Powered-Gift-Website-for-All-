@@ -17,10 +17,10 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 | GG-06 | Low | Catalogue | Shop sorts have no unique tie-breaker, so pages can repeat or skip products | Fixed |
 | GG-07 | Low | Backend startup | A generated in-memory password is written to the log at every start | Fixed |
 | GG-09 | Low | Documentation | README points to files that no longer exist and omits two endpoints | Fixed |
-| GG-10 | Medium | Rate limiting | Per-IP limits trust a client-supplied `X-Forwarded-For` when the API is reached without the bundled nginx (e.g. Railway) | Confirmed (locally); production impact Blocked |
+| GG-10 | Medium | Rate limiting | Per-IP limits trust a client-supplied `X-Forwarded-For` when the API is reached without the bundled nginx (e.g. Railway) | Fixed (2026-11-11), see GG-24 |
 | GG-11 | Low | Vercel config | The Vercel deployment sends no Content-Security-Policy | Confirmed, not changed |
 | GG-12 | Low | Frontend build | Production builds publish source maps | Confirmed, not changed |
-| GG-13 | Low | Dev environment | `engines.node` (≥ 20.19) is lower than what the test tooling needs (jsdom 30: ≥ 22.22.2) | Confirmed, not changed |
+| GG-13 | Low | Dev environment | `engines.node` (≥ 20.19) is lower than what the test tooling needs (jsdom 30: ≥ 22.22.2) | Fixed (2026-11-11): `^22.22.2 \|\| >=24.15.0` |
 | GG-14 | Info | API | Unknown `/api` paths answer 401 (not 404) to anonymous callers | By design, documented |
 | GG-15 | Low | API abuse | `POST /api/checkout/quote` is public and not rate-limited | Suspected risk |
 | GG-16 | Low | Workstation | Older project copies outside the repository include a `.env` file | Confirmed, not changed |
@@ -93,6 +93,12 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 - **Issue:** referenced `frontend/src/styles/giftgenius.css`, `frontend/src/config/site.js` and `frontend/src/pages/Info.jsx` (moved by the refactor), omitted `/api/search` and `/api/ai/gift-request`, and quoted old test counts (49 / 71 / 129).
 - **Fix:** paths, API table and test counts corrected.
 
+### GG-13 · Low · Node engine range
+
+`package.json` declares `node >= 20.19`, but jsdom 30 (tests) requires `^22.22.2 || ^24.15.0 || >= 26`. On the local Node 22.19 npm prints `EBADENGINE` warnings, though all tests pass. CI uses the latest Node 22, which satisfies it. Recommend raising `engines` or pinning CI and local Node to ≥ 22.22.2.
+- **Status:** Fixed on 2026-11-11: `engines` is now `^22.22.2 || >=24.15.0` (package.json and its lock file);
+  Docker (`node:22-alpine`) and CI (`node-version: "22"`) take the newest Node 22 release.
+
 ## Open
 
 ### GG-10 · Medium · Rate limits trust a client-supplied `X-Forwarded-For` without the bundled nginx
@@ -101,7 +107,7 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 - **Reproduction (local, API reached directly):** see TEST_RESULTS.md: 25 sign-in attempts from one machine, each with a different `X-Forwarded-For` value, are all processed, while the same attempts without the header are cut off at the per-minute limit (429).
 - **Root cause:** Spring's `ForwardedHeaderFilter` takes the client address from the first `X-Forwarded-For` value, whoever sent it. The code comments rely on nginx overwriting the header, which is true for the Docker setup in this repository. The README's Vercel + Railway topology puts the API directly behind Railway's proxy, where a client can send its own header; if Railway appends to it instead of replacing it, the per-IP limits on sign-in (credential stuffing) and AI calls can be bypassed. AI cost stays capped by the daily model budget (`AI_DAILY_CALL_LIMIT`), and BCrypt (cost 12) slows guessing.
 - **Recommended fix (owner decision, needs a Railway check):** on Railway set `SERVER_FORWARD_HEADERS_STRATEGY=native` (Tomcat's RemoteIpValve trusts the header only from private-range proxies and takes the right-most untrusted address), after confirming that Railway's proxy connects from a private address; otherwise every visitor would share one rate-limit bucket. No code change was made because the effect can't be verified without the hosted environment.
-- **Status:** Confirmed locally; production impact Blocked.
+- **Status:** Fixed on 2026-11-11 by switching to `native` (GG-24). Still to confirm on the chosen host: that its proxy connects from a private address, or set `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` to match it.
 
 ### GG-11 · Low · No Content-Security-Policy on Vercel
 
@@ -110,10 +116,6 @@ Severity: Critical (data loss, money or account compromise), High (core journey 
 ### GG-12 · Low · Public source maps
 
 `vite.config.js` has `build.sourcemap: true`, so 31 `.map` files are published with the site. They expose readable source and comments, not secrets (a secret scan of the bundle found none). Use `sourcemap: 'hidden'` if public maps aren't wanted. Owner decision; not changed.
-
-### GG-13 · Low · Node engine range
-
-`package.json` declares `node >= 20.19`, but jsdom 30 (tests) requires `^22.22.2 || ^24.15.0 || >= 26`. On the local Node 22.19 npm prints `EBADENGINE` warnings, though all tests pass. CI uses the latest Node 22, which satisfies it. Recommend raising `engines` or pinning CI and local Node to ≥ 22.22.2.
 
 ### GG-14 · Info · Unknown API paths answer 401 to anonymous callers
 
@@ -173,3 +175,131 @@ On branch `feat/gift-decision-assistant`; see [GIFT_STUDIO.md](GIFT_STUDIO.md). 
 - Secrets: none in the Git history (pattern scan) or in the built bundle; the Gemini key is server-side only and sent in a header; logs mask emails and reset tokens.
 - AI: invalid quiz input is rejected (400), and without a key the API answers from rules and says so (`source: "rules"`, shown in the UI as "Matched from our curated catalog").
 - Migrations: identical to `main`, so no checksum mismatch against an existing database.
+
+## Found in the full-roadmap run (2026-11-10 to 2026-11-12)
+
+On branch `feat/gift-decision-assistant`, uncommitted. Found by the PR #3 CI failure, a backend security audit, a
+data-integrity audit and a frontend audit, each verified before fixing; GG-51 to GG-53 were found while preparing
+the live demo (2026-11-13). Every fix has a regression test except GG-29, GG-30, GG-33, GG-44, GG-50 and GG-52
+(each says why below).
+
+Deliberate breaks (each fix undone on purpose, then the tests run; every file restored after its check): 38 run,
+37 caught the first time. The one missed (the gift assistant shown on checkout, admin and Seller Center) now has a
+test that catches it. The 38 include 9 for GG-28: each of its six catch sites, the two exception families it
+passes on, and the order placed through the API.
+
+| ID | Severity | Area | Title | Status |
+|---|---|---|---|---|
+| GG-21 | Medium | Sign-in dialog | The dialog's delayed autofocus moved focus to Email while the shopper typed the password (CI failed on fast runners) | Fixed |
+| GG-22 | High | Orders (admin) | An admin could cancel an order part of which a seller had already shipped: shipped units restocked, the whole order refunded | Fixed |
+| GG-23 | Medium | Seller privacy | A pending, suspended or rejected store could still read customers' names, phones and addresses on its orders | Fixed |
+| GG-24 | High | Rate limiting | Limits could be dodged with a `Forwarded` or `X-Forwarded-Prefix` header or a percent-encoded path, even behind nginx | Fixed |
+| GG-25 | Medium | Rate limiting | The limiter's memory wasn't bounded within one minute | Fixed |
+| GG-26 | Low | Logging | A broken unique key logged the offending value (an email) | Fixed |
+| GG-27 | Low | Validation | Size limits missing on the wishlist merge, sign-in email, current password, delivery email and admin product fields | Fixed |
+| GG-28 | Medium (latent) | Email outbox | A deadlock while queueing an email was swallowed, though MySQL had rolled back the whole order transaction | Fixed (2026-11-13; the first fix, 2026-11-11, didn't take effect) |
+| GG-29 | Low | Checkout | Two checkouts could deadlock on product rows (stock locked in cart order) | Fixed |
+| GG-30 | Low | Coupons | A coupon checkout locked every coupon row until commit (`upper(code)` defeated the unique index) | Fixed |
+| GG-31 | Low | Newsletter | Two sign-ups of one email at the same moment answered 409 | Fixed |
+| GG-32 | Low | Orders | Cancelling an order paid in full by a coupon (₹0) queued a ₹0 refund and promised one | Fixed |
+| GG-33 | Low | Email reconciliation | The 5-minute reconciliation scanned all order events (no index for it) | Fixed (V9 index) |
+| GG-34 | Medium | AI assistant | Text the model writes could claim a price, discount or stock level | Fixed in the new assistant |
+| GG-35 | Medium | Orders | Unlimited cash-on-delivery orders: confirmation emails to any address, stock held | Partly fixed: `POST /api/orders` is now rate-limited per client; a per-customer cap is an owner decision |
+| GG-36 | Medium | Catalogue | Saving a product form overwrites stock with the form's value (lost update if orders reserved stock meanwhile) | Open: needs the product API to carry a version (API change) |
+| GG-37 | Low | Auth | Access tokens can't be revoked before they expire (15 min); seller application returns a new session from an access token | Open, owner decision |
+| GG-38 | Low | Auth | A rotated refresh token can be exchanged again any number of times within its 30-second grace | Open: tightening it signs out a third tab refreshing at once |
+| GG-39 | Low | Auth | Registration answers 409 for a registered email (enumeration); no email verification | Open, product decision |
+| GG-40 | Low | Order tracking | The tracking lookup sends the order number and email in the query string (logs, history) | Open: API change |
+| GG-41 | High | Cart and wishlist | A saved guest cart or wishlist in an unexpected shape (an older version, another tab, a hand edit) blanked the whole site | Fixed |
+| GG-42 | Medium | Session | A server error or network blip while restoring the session showed a signed-in shopper as signed out, with no retry | Fixed |
+| GG-43 | Medium | Checkout | A failed price quote showed no error and no way to retry | Fixed |
+| GG-44 | Medium (suspected) | Cart and wishlist | A cart read in flight during the sign-in merge could land after it and show the pre-merge cart | Fixed defensively; a race, no deterministic test |
+| GG-45 | Medium (suspected) | Cart and wishlist | The sign-in merge isn't exactly-once: a retry after a lost response could add the guest lines twice | Open: needs an idempotency key on the merge (API change) |
+| GG-46 | Low | Gift assistant | "Start over" while a reply was on its way let that reply land in the new conversation, and left the panel busy | Fixed |
+| GG-47 | Low | Cart | Quick quantity clicks for a signed-in shopper could overwrite each other | Fixed |
+| GG-48 | Low | Checkout | While a changed delivery option was being priced, the Pay button showed and accepted the previous total | Fixed |
+| GG-49 | Low | Payment | A failed load of the Razorpay script was cached until the page was reloaded | Fixed |
+| GG-50 | Low | Layout | Search-box and link-scroll timers ran after the page changed; Enter on any control skipped the entry | Fixed; no dedicated test (timers) |
+| GG-51 | Low | Gift assistant | With nothing to go on, the assistant showed its question twice (the reply and the question are the same text) | Fixed (found in the 2026-11-13 demo run) |
+| GG-52 | Medium | Gift assistant | The sticky header covered the top of the assistant panel on phones and on short desktop windows | Fixed (found in the 2026-11-13 demo run) |
+| GG-53 | Low | Order confirmation | The confirmation page says "We've emailed a confirmation" even when no email provider is configured and nothing was sent | Open: the page can't tell; needs the API to say whether the email was queued for sending |
+
+### Details of the fixed items
+
+- **GG-21:** `AuthModal.jsx` moves focus to the first field 100 ms after the dialog opens or changes mode, unless focus is
+  already in one of the dialog's fields. Reproduced by scaling the timer to this machine's speed (the original tests then
+  failed exactly as on CI). Tests: `auth.test.jsx` "sign-in dialog first-field focus" (4); each fails without the guard.
+- **GG-22:** `OrderService.adminUpdateStatus` refuses CANCELLED (409) when any line has shipped, as the customer's cancel
+  already did. Test: `SellerMarketplaceIT.anAdminCantCancelAnOrderPartOfWhichHasShipped`.
+- **GG-23:** `SellerOrderService.get` returns the delivery details only to an approved store; the Seller Center page
+  says why they're missing. Tests: `SellerMarketplaceIT.aSuspendedStoreCantUpdateOrdersOrSeeTheCustomersDeliveryDetails`,
+  `seller.test.jsx`.
+- **GG-24 (and GG-10):** `server.forward-headers-strategy: native`: Tomcat takes the client address from
+  `X-Forwarded-For` only when the request comes from a trusted proxy (private and loopback ranges), right-most untrusted
+  address first, and ignores `Forwarded` and `X-Forwarded-Prefix`; the limiter classifies the decoded path; nginx no
+  longer passes `Forwarded`, `X-Forwarded-Host`, `X-Forwarded-Port` or `X-Forwarded-Prefix`. Tests over real HTTP through
+  Tomcat: `RateLimitClientAddressIT` (direct, every trick refused), `RateLimitBehindProxyIT` (appending proxy);
+  `RateLimitFilterTest` (encoded paths). On a host whose proxy connects from a public address, set
+  `SERVER_TOMCAT_REMOTEIP_INTERNAL_PROXIES` to match it, or every visitor shares one limit.
+- **GG-25:** once 100,000 windows are tracked in a minute, new clients share one overflow window per bucket.
+  Test: `RateLimitFilterTest.aFloodOfNewClientsSharesOneOverflowWindowInsteadOfGrowingMemory`.
+- **GG-26:** `GlobalExceptionHandler` logs the rule's name (`users.uk_users_email`), never the value.
+  Test: `GlobalExceptionHandlerLogTest`.
+- **GG-27:** `@Valid` on the wishlist merge; `@Size` limits; admin products: long description ≤ 10,000, at most
+  30 tags and 20 of each other list, each within its column. Test: `RequestLimitsIT`.
+- **GG-28:** order emails are queued inside the order's transaction (`EmailOutbox.enqueue`, plain JDBC, no
+  transaction of its own). On a deadlock MySQL rolls back that whole transaction, order included.
+  - First fix (2026-11-11): `enqueue` passes a `PessimisticLockingFailureException` on instead of swallowing it.
+    It didn't take effect: every caller in `OrderNotifier` (`customer`, `sellers`, `owner`, `partialShipment`)
+    caught `RuntimeException` around it and logged it as a content failure, so the request carried on as if the
+    order had been saved. Found in the pre-commit review of 2026-11-13.
+  - Fix (2026-11-13): `OrderNotifier.isTransactionFailure` tells a failure of the transaction (Spring's
+    `DataAccessException` and `TransactionException`, and JPA's `PersistenceException`, which Hibernate's lock
+    and lazy-load errors extend) from a content failure. All six catch sites in `OrderNotifier` pass the first
+    on and still skip and count the second. The request fails with a retryable 409 (`GlobalExceptionHandler`).
+    A statement-level database error inside `enqueue` is still "not queued" (`enqueue` returns false) and never
+    fails the order; nor does sending, which happens after commit. No new transaction was introduced.
+  - Tests: `OrderNotifierTest` (7 new: a deadlock from each of the four paths is passed on and stops further
+    emails; JPA and transaction failures while an email is built; the classification; a "not queued" answer
+    still fails nothing) and `OrderEmailDeadlockIT` (through the API: 409, no order, no stock held, no email
+    queued, the cart unchanged; the retry places the order). The deadlock is simulated with the exception Spring
+    makes of MySQL error 1213; no lock cycle that causes one in this code is known.
+- **GG-29:** stock is reserved and released in product id order. No test: a deadlock between two checkouts can't be
+  produced on demand; the existing parallel checkout tests pass.
+- **GG-30:** `CouponRepository.consume/release` match `c.code = :code` (codes are stored upper case; the collation is
+  case-insensitive), so one row is locked. The existing coupon tests (`CheckoutIT`, codes typed in lower case
+  included) pass; the narrower lock itself isn't asserted.
+- **GG-31:** `NewsletterService.subscribe` takes a unique-key clash as "already subscribed".
+  Test: `NewsletterConcurrencyIT` (6 at once, 3 rounds: all 200, one row).
+- **GG-32:** a cancelled order goes to REFUND_PENDING only when its total is above zero. Test: `FreeOrderCancelIT`.
+- **GG-33:** `V9__order_events_status_index.sql` adds `(status, created_at)` on `order_status_events`. Every
+  integration run applies it and validates the schema; the query plan wasn't measured on production-sized data.
+- **GG-34:** `GiftAssistantService` replaces model-written replies or reasons that mention prices, discounts, offers,
+  stock or delivery terms; the catalogue's real price and stock are shown beside each gift. Tests:
+  `GiftAssistantServiceTest`, `GiftAssistantIT.aModelsPriceOrDiscountClaimNeverReachesTheShopper`.
+- **GG-41:** `readGuestCart` and `readGuestWishlist` read the saved value through a sanitiser: anything that isn't a
+  list becomes empty, malformed lines are dropped, quantities are clamped to 1-10, keys rebuilt and duplicates merged.
+  The storage keys and the format written are unchanged. Tests: `resilience.test.jsx` (unit checks, and the site
+  rendering with three bad saved values).
+- **GG-42:** `AuthContext` retries a session restore twice (1 s, then 2 s) while the session hint is still there, which
+  only a transient failure leaves; afterwards it retries when the tab regains focus or the network returns. A real
+  401 still signs out at once. Tests: `resilience.test.jsx` (503 then success; 401).
+- **GG-43:** Checkout shows the quote's error with *Try again*. Test: `resilience.test.jsx`.
+- **GG-44:** the cart and wishlist merges cancel any read in flight before writing the merged result. A race between
+  two requests; no test reproduces it reliably.
+- **GG-46:** each conversation has a number; a reply for an earlier one is dropped. Test: `resilience.test.jsx`.
+- **GG-47:** a signed-in shopper's line waits for its change to reach the server before taking the next (its controls
+  are disabled meanwhile). Test: `resilience.test.jsx` (two clicks: quantity 3 on the server).
+- **GG-48:** the button reads *Updating the total…* and is disabled while the quote for a changed option loads.
+  Test: `resilience.test.jsx`.
+- **GG-49:** a load that brings no `Razorpay` clears the cached attempt, as a load error already did. Test:
+  `resilience.test.jsx`.
+- **GG-50:** the search box's blur timer is cleared on focus, the link-scroll timer is cleared when the page changes,
+  and the entry only skips on Enter pressed inside it. Cosmetic timers; no dedicated test.
+- **GG-51:** the panel shows the follow-up question only when it differs from the reply. The API is unchanged.
+  Test: `assistant.test.jsx` (the question appears exactly once; fails without the fix).
+- **GG-52:** the panel's height is capped so it ends below the header (desktop `100vh - 200px`, phones
+  `100vh - 224px`), keeping the header's account and cart buttons usable, and `.ga-panel` is at z-index 210
+  (above the header and mobile nav, below the cart drawer, quick view, toasts and sign-in dialogs) so it is never
+  hidden if they still meet. Checked in the browser at 1024x768 and 375x812, at the top of the page and scrolled;
+  the cart drawer still covers the panel. No automated test: the tests don't load CSS.

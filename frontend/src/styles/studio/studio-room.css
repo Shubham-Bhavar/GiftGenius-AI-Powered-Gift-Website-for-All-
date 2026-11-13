@@ -44,12 +44,6 @@
 .studio-room .exp-card-actions button[aria-pressed='true'] { color: var(--room-champagne); }
 .studio-room .exp-card-actions button:focus-visible { outline: 2px solid var(--room-champagne); outline-offset: -2px; }
 .studio-room .exp-described { font-size: 14px; line-height: 1.5; color: var(--room-muted); margin: 0; max-width: 72ch; }
-.studio-room .exp-classic { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 13px; color: var(--room-muted); margin: 0; }
-.studio-room .exp-classic button {
-  appearance: none; background: transparent; border: 0; padding: 4px 0; color: var(--room-ivory); font: inherit; text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
-}
-.studio-room .exp-classic button[aria-pressed='true'] { color: var(--room-champagne); text-decoration: none; }
-.studio-room .exp-classic button:focus-visible { outline: 2px solid var(--room-champagne); outline-offset: 2px; }
 .studio-room .studio-hint { color: var(--room-muted); margin: 0; }
 
 /* The stage */

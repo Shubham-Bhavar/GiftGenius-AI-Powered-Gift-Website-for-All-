@@ -163,7 +163,7 @@ describe('choosing the reveal in the Gift Studio', () => {
   const player = () => screen.getByRole('group', { name: /^Royal Luxury Reveal:/ });
   const controls = () => within(screen.getByRole('group', { name: 'Reveal controls' }));
 
-  it('lists each experience with its picture, theme and description, opens on Royal, and keeps the classic reveal available', async () => {
+  it('lists the five experiences with their picture, theme and description, opens on Royal, and offers no classic reveal', async () => {
     const { user } = await open();
     const section = screen.getByRole('heading', { name: 'Choose Your Reveal Experience' }).closest('section');
     const cards = within(section).getAllByRole('listitem');
@@ -175,10 +175,13 @@ describe('choosing the reveal in the Gift Studio', () => {
     expect(royal.getByRole('button', { name: 'Preview Experience: Royal Luxury Reveal' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
     expect(player()).toBeInTheDocument();
-    expect(screen.queryByText('Step 1 of 7')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
-    expect(screen.getByRole('button', { name: 'In use: Classic reveal' })).toHaveAttribute('aria-pressed', 'true');
-    expect(await screen.findByText('Step 1 of 7')).toBeInTheDocument(); // the existing player, unchanged
+    expect(screen.queryByText(/Step 1 of/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Classic reveal/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/classic reveal/i)).not.toBeInTheDocument();
+    expect(within(section).getAllByRole('button', { name: /^Use This Experience: / })).toHaveLength(4);
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Birthday Surprise' }));
+    expect(screen.getByRole('button', { name: 'In use: Birthday Surprise' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('group', { name: /^Birthday Surprise:/ })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: /^Royal Luxury Reveal:/ })).not.toBeInTheDocument();
   });
 
@@ -190,13 +193,14 @@ describe('choosing the reveal in the Gift Studio', () => {
 
     await useRoyal(user);
     expect(player()).toBeInTheDocument();
-    expect(screen.getByText(/your box colours and wrap apply to the classic reveal/)).toBeInTheDocument();
+    expect(screen.getByText(/Your box colours, ribbon and wrap show in Your view, Compare and Gift box/)).toBeInTheDocument();
     expect(screen.getByLabelText('Their name')).toHaveValue('Aditi');
     expect(screen.getByLabelText('Card message')).toHaveValue('Thank you');
 
-    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
-    expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
-    expect(screen.getByText('Aditi')).toBeInTheDocument(); // "A gift for Aditi"
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Minimal Aesthetic' }));
+    expect(screen.getByRole('group', { name: /^Minimal Aesthetic:/ })).toBeInTheDocument();
+    expect(screen.getByLabelText('Their name')).toHaveValue('Aditi');
+    expect(screen.getByLabelText('Card message')).toHaveValue('Thank you');
     expect(within(screen.getByRole('group', { name: 'Box colour' })).getByRole('radio', { name: 'Teal' })).toBeChecked();
     await user.click(screen.getByRole('tab', { name: 'Your view' }));
     expect(screen.getByRole('group', { name: /^Teal box/ })).toBeInTheDocument();
@@ -209,8 +213,8 @@ describe('choosing the reveal in the Gift Studio', () => {
     expect(controls().getByRole('button', { name: 'Pause' })).toBeInTheDocument(); // already playing
     expect(screen.getByRole('group', { name: /^Birthday Surprise:/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
-    await user.click(screen.getByRole('button', { name: 'Preview Experience: Classic reveal' }));
-    expect(screen.getByText('Step 1 of 7')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Preview Experience: Sentimental Unboxing' }));
+    expect(screen.getByRole('group', { name: /^Sentimental Unboxing:/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'In use: Royal Luxury Reveal' })).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -312,7 +316,7 @@ describe('choosing the reveal in the Gift Studio', () => {
     await user.click(screen.getByRole('button', { name: '🎁 Send as a surprise preview' }));
     const link = screen.getByLabelText('Share link').value;
     const raw = rawShare(link);
-    expect(Object.keys(raw).sort()).toEqual(['box', 'card', 'experience', 'message', 'name', 'order', 'pattern', 'products', 'ribbon', 'template', 'theme', 'v', 'view']);
+    expect(Object.keys(raw).sort()).toEqual(['box', 'card', 'experience', 'message', 'name', 'pattern', 'products', 'ribbon', 'theme', 'v', 'view']);
     expect(raw.experience).toBe('royal');
     unmount();
 

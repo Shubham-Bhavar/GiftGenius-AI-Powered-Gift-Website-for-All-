@@ -71,6 +71,12 @@ public abstract class AbstractIT {
     protected static final java.util.concurrent.atomic.AtomicReference<String[]> GEO_LAST_REQUEST =
             new java.util.concurrent.atomic.AtomicReference<>();
 
+    /**
+     * Whether an application context started for a test class runs the background email sender. Off, so tests read
+     * the queue undisturbed; a class that needs it turns it on before its context starts and off again afterwards.
+     */
+    protected static final AtomicBoolean OUTBOX_SENDER = new AtomicBoolean(false);
+
     @Autowired
     protected MockMvc mvc;
 
@@ -96,7 +102,7 @@ public abstract class AbstractIT {
         r.add("app.security.cookie-secure", () -> "false");
         r.add("app.security.allowed-origins", () -> SITE_ORIGIN);
         r.add("app.admin.email", () -> ADMIN_EMAIL);
-        r.add("app.mail.outbox.sender-enabled", () -> "false");
+        r.add("app.mail.outbox.sender-enabled", () -> String.valueOf(OUTBOX_SENDER.get()));
         r.add("app.admin.password", () -> ADMIN_PASSWORD);
         r.add("app.payment.razorpay-enabled", () -> "true");
         r.add("app.payment.razorpay-key-id", () -> "rzp_test_it");
@@ -231,17 +237,22 @@ public abstract class AbstractIT {
 
     /** One row of the email outbox. */
     protected record QueuedEmail(String dedupeKey, String kind, String recipient, String subject, String body,
-            String status, int attempts) {
+            String status, int attempts, String html) {
+    }
+
+    /** The emails of one kind queued about an order, oldest first. */
+    protected List<QueuedEmail> queuedEmails(String orderNumber, String kind) {
+        return queuedEmails(orderNumber).stream().filter(e -> e.kind().equals(kind)).toList();
     }
 
     /** The emails queued about one order, oldest first. */
     protected List<QueuedEmail> queuedEmails(String orderNumber) {
         return db.query("""
-                SELECT e.dedupe_key, e.kind, e.recipient, e.subject, e.body_text, e.status, e.attempts
+                SELECT e.dedupe_key, e.kind, e.recipient, e.subject, e.body_text, e.status, e.attempts, e.body_html
                 FROM email_outbox e JOIN orders o ON o.id = e.order_id
                 WHERE o.order_number = ? ORDER BY e.id""",
                 (rs, i) -> new QueuedEmail(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
-                        rs.getString(5), rs.getString(6), rs.getInt(7)), orderNumber);
+                        rs.getString(5), rs.getString(6), rs.getInt(7), rs.getString(8)), orderNumber);
     }
 
     protected static Map<String, Object> shipping(String email) {

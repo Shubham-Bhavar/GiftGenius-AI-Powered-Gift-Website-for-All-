@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.UrlPathHelper;
 
 import com.giftgenius.config.AppProperties;
 
@@ -24,9 +25,15 @@ import jakarta.servlet.http.HttpServletResponse;
  * AI calls cost money, auth endpoints attract credential stuffing, and the public lookups
  * (order tracking, newsletter, contact form, session refresh) can be abused for enumeration or spam.
  *
- * <p>The client IP is {@code request.getRemoteAddr()}, which Spring's forwarded-header support
- * derives from {@code X-Forwarded-For}. That is only trustworthy because nginx overwrites the
- * header with the real peer address (see frontend/nginx.conf). Never expose the backend directly.
+ * <p>The client IP is {@code request.getRemoteAddr()}. With {@code server.forward-headers-strategy: native}
+ * (the default in application.yml) Tomcat sets it from {@code X-Forwarded-For} only when the request comes from a
+ * trusted proxy address ({@code server.tomcat.remoteip.internal-proxies}: private and loopback ranges by default),
+ * taking the right-most address that isn't a trusted proxy; a client can't choose it by sending its own header, and
+ * the {@code Forwarded} and {@code X-Forwarded-Prefix} headers are not used. Requests are classified on their decoded
+ * path, so {@code /api/auth/%6cogin} counts as a sign-in.
+ *
+ * <p>The number of tracked windows is bounded: once it is reached within one minute, new clients share one overflow
+ * window per bucket, which may limit them sooner but never lets memory grow.
  *
  * <p>In-memory, so each instance limits independently. Use Redis or the gateway when running replicas.
  */
@@ -35,6 +42,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
 
     /** Upper bound on tracked windows, so a flood of distinct IPs can't exhaust memory. */
     static final int MAX_TRACKED = 100_000;
+    private static final UrlPathHelper PATHS = UrlPathHelper.defaultInstance;
 
     enum Bucket { AI, AUTH, PUBLIC }
 
@@ -69,7 +77,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
                 || path.startsWith("/api/auth/password/")) {
             return Bucket.AUTH;
         }
-        if (path.equals("/api/auth/refresh") || path.startsWith("/api/orders/track")
+        if (path.equals("/api/auth/refresh") || path.startsWith("/api/orders/track") || path.equals("/api/orders")
                 || path.startsWith("/api/newsletter/") || path.equals("/api/contact")
                 || path.startsWith("/api/location/")) {
             return Bucket.PUBLIC;
@@ -77,21 +85,26 @@ public class RateLimitFilter extends OncePerRequestFilter {
         return null;
     }
 
+    /** The request's path within the application, decoded ("/api/auth/%6cogin" is "/api/auth/login"). */
+    static String pathOf(HttpServletRequest request) {
+        return PATHS.getPathWithinApplication(request);
+    }
+
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return bucketFor(request.getMethod(), request.getRequestURI()) == null;
+        return bucketFor(request.getMethod(), pathOf(request)) == null;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        Bucket bucket = bucketFor(request.getMethod(), request.getRequestURI());
+        Bucket bucket = bucketFor(request.getMethod(), pathOf(request));
         int limit = switch (bucket) {
             case AI -> aiPerMinute;
             case AUTH -> authPerMinute;
             case PUBLIC -> publicPerMinute;
         };
-        if (!tryAcquire(bucket + ":" + request.getRemoteAddr(), limit)) {
+        if (!tryAcquire(bucket.name(), request.getRemoteAddr(), limit)) {
             response.setStatus(HttpStatus.TOO_MANY_REQUESTS.value());
             response.setHeader("Retry-After", "60");
             response.setContentType(MediaType.APPLICATION_PROBLEM_JSON_VALUE);
@@ -102,10 +115,14 @@ public class RateLimitFilter extends OncePerRequestFilter {
         chain.doFilter(request, response);
     }
 
-    boolean tryAcquire(String key, int limit) {
+    boolean tryAcquire(String bucket, String client, int limit) {
         long minute = clock.millis() / 60_000;
-        if (windows.size() >= MAX_TRACKED) {
+        String key = bucket + ":" + client;
+        if (windows.size() >= MAX_TRACKED && !windows.containsKey(key)) {
             evictOldWindows();
+            if (windows.size() >= MAX_TRACKED) {
+                key = bucket + ":overflow"; // a flood of new clients shares one window instead of growing the map
+            }
         }
         Window w = windows.compute(key, (k, existing) ->
                 existing == null || existing.minute() != minute ? new Window(minute, new AtomicInteger()) : existing);

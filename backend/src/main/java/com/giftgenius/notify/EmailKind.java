@@ -6,6 +6,8 @@ public enum EmailKind {
     ORDER_CONFIRMED,
     /** To a seller: a confirmed order has lines for them to fulfil. */
     ORDER_NEW_FOR_SELLER,
+    /** To the owner's notification addresses: an order was confirmed. */
+    ORDER_NEW_FOR_OWNER,
     /** To the customer: the order moved to a new status (shipped, delivered, cancelled...). */
     ORDER_STATUS,
     /** To the customer: one seller shipped or delivered their part of the order. */

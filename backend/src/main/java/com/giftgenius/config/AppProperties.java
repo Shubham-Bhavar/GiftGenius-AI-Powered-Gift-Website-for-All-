@@ -65,9 +65,13 @@ public record AppProperties(
     }
 
     /**
-     * @param outbox order emails: queued in the email_outbox table with the order, then delivered in the background
+     * @param outbox            order emails: queued in the email_outbox table with the order, then delivered in the
+     *                          background
+     * @param notifyAdminEmails who is told about each new order (NOTIFY_ADMIN_EMAILS, comma-separated); when empty,
+     *                          the admin account's address (ADMIN_EMAIL) is used
+     * @param timeZone          the zone order emails show times in (MAIL_TIME_ZONE), for example Asia/Kolkata
      */
-    public record Mail(String from, Outbox outbox) {
+    public record Mail(String from, Outbox outbox, List<String> notifyAdminEmails, String timeZone) {
     }
 
     /**

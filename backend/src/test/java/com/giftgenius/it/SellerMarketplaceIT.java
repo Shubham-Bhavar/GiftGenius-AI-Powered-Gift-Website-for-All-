@@ -426,8 +426,23 @@ class SellerMarketplaceIT extends AbstractIT {
                         .doesNotContain("Asha").doesNotContain("411001").doesNotContain("Pune");
                 assertThat(e.body()).contains(isA ? "Split Candle A" : "Split Mug B")
                         .doesNotContain(isA ? "Split Mug B" : "Split Candle A").doesNotContain("Chocolate");
+                assertThat(e.html()).as("the HTML body keeps the same privacy").startsWith("<!DOCTYPE html>")
+                        .contains(isA ? "Split Candle A" : "Split Mug B")
+                        .doesNotContain(isA ? "Split Mug B" : "Split Candle A").doesNotContain("Chocolate")
+                        .doesNotContain(customer.email()).doesNotContain("98765").doesNotContain("MG Road")
+                        .doesNotContain("Asha").doesNotContain("411001").doesNotContain("Pune");
             }
         }
+        // The owner is told once, with every line and who sells it; the customer's name, email and city, no more.
+        assertThat(emails).filteredOn(e -> e.kind().equals("ORDER_NEW_FOR_OWNER")).singleElement().satisfies(e -> {
+            assertThat(e.recipient()).isEqualTo(ADMIN_EMAIL);
+            for (String body : List.of(e.body(), e.html())) {
+                assertThat(body).contains(number).contains("Split Candle A").contains("Split Mug B")
+                        .contains("Sold by GiftGenius").contains("Asha Rao").contains(customer.email()).contains("Pune")
+                        .doesNotContain("98765").doesNotContain("MG Road").doesNotContain("411001");
+            }
+        });
+        assertThat(emails).as("customer, two sellers, owner").hasSize(4);
 
         // The customer sees one order with every line and who sells it.
         mvc.perform(customer.auth(get("/api/orders/" + number))).andExpect(status().isOk())
@@ -543,18 +558,48 @@ class SellerMarketplaceIT extends AbstractIT {
     }
 
     @Test
-    void aSuspendedStoreCantUpdateOrders() throws Exception {
+    void aSuspendedStoreCantUpdateOrdersOrSeeTheCustomersDeliveryDetails() throws Exception {
         Session s = approvedSeller("susp-order");
         long product = listedProduct(s, "Suspended Order Candle");
         Session customer = register(uniqueEmail("susp-buyer"));
         addToCart(customer, product, 1);
         String number = placeCod(customer).path("orderNumber").asString();
+        mvc.perform(s.auth(get("/api/seller/orders/" + number))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.shipping.fullName").value("Asha Rao"))
+                .andExpect(jsonPath("$.shipping.phone").exists());
         mvc.perform(admin().auth(patch("/api/admin/sellers/" + s.userId() + "/suspend")
                 .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("reason", "Review.")))))
                 .andExpect(status().isOk());
-        mvc.perform(s.auth(get("/api/seller/orders/" + number))).andExpect(status().isOk());
+        // Still their own lines, but the customer's name, phone and address are no longer theirs to see.
+        String detail = mvc.perform(s.auth(get("/api/seller/orders/" + number))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].name").value("Suspended Order Candle"))
+                .andExpect(jsonPath("$.shipping").doesNotExist())
+                .andReturn().getResponse().getContentAsString();
+        assertThat(detail).doesNotContain("Asha").doesNotContain("98765").doesNotContain("MG Road")
+                .doesNotContain(customer.email());
         mvc.perform(s.auth(patch("/api/seller/orders/" + number + "/status").contentType(MediaType.APPLICATION_JSON)
                 .content(json(fulfil("SHIPPED"))))).andExpect(status().isForbidden());
+    }
+
+    @Test
+    void anAdminCantCancelAnOrderPartOfWhichHasShipped() throws Exception {
+        Session s = approvedSeller("ship-cancel");
+        long product = listedProduct(s, "Shipped Cancel Candle");
+        Session customer = register(uniqueEmail("ship-cancel-buyer"));
+        addToCart(customer, product, 2);
+        addToCart(customer, 1, 1); // a GiftGenius line too, so the order stays CONFIRMED while the seller ships
+        String number = placeCod(customer).path("orderNumber").asString();
+        int stockAfterOrder = stockOf(product);
+        mvc.perform(s.auth(patch("/api/seller/orders/" + number + "/status").contentType(MediaType.APPLICATION_JSON)
+                .content(json(fulfil("SHIPPED"))))).andExpect(status().isOk());
+
+        mvc.perform(admin().auth(patch("/api/admin/orders/" + number + "/status").contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("status", "CANCELLED"))))).andExpect(status().isConflict());
+
+        mvc.perform(admin().auth(get("/api/admin/orders/" + number))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+        assertThat(stockOf(product)).as("goods in transit are not put back on sale").isEqualTo(stockAfterOrder);
+        assertThat(queuedEmails(number, "ORDER_STATUS")).as("no cancellation email").isEmpty();
     }
 
     // ── Hardening ──────────────────────────────────────────

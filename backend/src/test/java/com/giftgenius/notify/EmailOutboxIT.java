@@ -195,18 +195,24 @@ class EmailOutboxIT extends AbstractIT {
         String number = placeCod(s);
 
         List<QueuedEmail> queued = queuedEmails(number);
-        assertThat(queued).singleElement().satisfies(e -> {
-            assertThat(e.kind()).isEqualTo("ORDER_CONFIRMED");
-            assertThat(e.recipient()).isEqualTo(s.email());
-            assertThat(e.subject()).contains(number);
-            assertThat(e.status()).isEqualTo("PENDING");
-            assertThat(e.dedupeKey()).endsWith(":confirmed:customer");
-        });
+        assertThat(queued).extracting(QueuedEmail::kind).as("the customer's confirmation and the owner's copy")
+                .containsExactlyInAnyOrder("ORDER_CONFIRMED", "ORDER_NEW_FOR_OWNER");
+        QueuedEmail confirmation = queuedEmails(number, "ORDER_CONFIRMED").get(0);
+        assertThat(confirmation.recipient()).isEqualTo(s.email());
+        assertThat(confirmation.subject()).contains(number);
+        assertThat(confirmation.status()).isEqualTo("PENDING");
+        assertThat(confirmation.dedupeKey()).endsWith(":confirmed:customer");
+        assertThat(confirmation.body()).contains(number).contains("Delivering to");
+        assertThat(confirmation.html()).startsWith("<!DOCTYPE html>").contains(number);
+        QueuedEmail owner = queuedEmails(number, "ORDER_NEW_FOR_OWNER").get(0);
+        assertThat(owner.recipient()).isEqualTo(ADMIN_EMAIL);
+        assertThat(owner.subject()).contains(number);
+        assertThat(owner.dedupeKey()).contains(":confirmed:owner:").doesNotContain("@");
 
         // The application's own sender: no SMTP host is configured here, so nothing can be sent.
         appSender.drain();
-        assertThat(queuedEmails(number)).singleElement().satisfies(e -> assertThat(e.status()).isEqualTo("NOT_SENT"));
-        assertThat(row(queued.get(0).dedupeKey())).containsEntry("sent_at", null)
+        assertThat(queuedEmails(number)).hasSize(2).allSatisfy(e -> assertThat(e.status()).isEqualTo("NOT_SENT"));
+        assertThat(row(confirmation.dedupeKey())).containsEntry("sent_at", null)
                 .containsEntry("last_error", EmailOutboxSender.NO_PROVIDER);
         mvc.perform(s.auth(get("/api/orders/" + number))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));
@@ -253,8 +259,13 @@ class EmailOutboxIT extends AbstractIT {
 
         sender(smtp, Duration.ZERO, Duration.ZERO).drain();
 
-        assertThat(smtp.calls).as("two retries after the first attempt, then no more").hasValue(3);
-        QueuedEmail e = queuedEmails(number).get(0);
+        assertThat(smtp.calls).as("for each of the order's two emails: two retries after the first attempt, then no more")
+                .hasValue(6);
+        assertThat(queuedEmails(number)).hasSize(2).allSatisfy(q -> {
+            assertThat(q.status()).isEqualTo("FAILED");
+            assertThat(q.attempts()).isEqualTo(3);
+        });
+        QueuedEmail e = queuedEmails(number, "ORDER_CONFIRMED").get(0);
         assertThat(e.status()).isEqualTo("FAILED");
         assertThat(e.attempts()).isEqualTo(3);
         String error = (String) row(e.dedupeKey()).get("last_error");
@@ -262,7 +273,7 @@ class EmailOutboxIT extends AbstractIT {
                 .doesNotContain("asha.rao@example.com").contains("a***@example.com");
         // Later passes leave it alone.
         sender(smtp, Duration.ZERO, Duration.ZERO).drain();
-        assertThat(smtp.calls).hasValue(3);
+        assertThat(smtp.calls).hasValue(6);
         // The order was saved and stays confirmed, whatever happened to its email.
         mvc.perform(s.auth(get("/api/orders/" + number))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONFIRMED"));

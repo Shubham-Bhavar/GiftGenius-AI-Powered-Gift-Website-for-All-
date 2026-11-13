@@ -8,6 +8,7 @@ import com.giftgenius.recommendation.model.FitCheck;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -80,6 +81,23 @@ public final class AiDtos {
     /** What was understood from a gift request, in the catalogue's terms; by is "ai" or "rules". */
     public record Understood(String recipient, String occasion, Integer budget, List<String> interests,
             String personality, List<String> avoid, String by) {
+    }
+
+    /**
+     * One turn of the gift assistant: everything the shopper has said in this conversation, oldest first (the
+     * assistant's own replies aren't sent back: they add nothing it doesn't already know).
+     */
+    public record AssistantRequest(
+            @NotEmpty(message = "Tell the assistant what you're looking for")
+            @Size(max = 8, message = "Start a new conversation to keep going")
+            List<@NotBlank(message = "Write a message") @Size(max = 500, message = "Keep each message under 500 characters") String> messages) {
+    }
+
+    /**
+     * The assistant's answer: its reply, an optional follow-up question, what it has understood so far, and real
+     * catalogue picks (none when it still needs to ask). source is who ranked the picks ("ai" or "rules").
+     */
+    public record AssistantReply(String source, String reply, String question, Understood understood, List<Pick> picks) {
     }
 
     /** source is who ranked and explained the picks ("ai" or "rules"), as for the quiz. */

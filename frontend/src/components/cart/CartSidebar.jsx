@@ -72,14 +72,14 @@ export default function CartSidebar() {
                     <p className="ci-price">{rupees(i.unitPrice)}{i.quantity > 1 ? ` × ${i.quantity}` : ''}</p>
                     {i.customMessage && <p className="ci-note">“{i.customMessage}”</p>}
                     <div className="ci-qty" role="group" aria-label={`Quantity of ${i.name}`}>
-                      <button type="button" aria-label="Decrease quantity" disabled={i.quantity <= 1}
+                      <button type="button" aria-label="Decrease quantity" disabled={i.pending || i.quantity <= 1}
                         onClick={run(() => cart.update(i.key, i.quantity - 1))}>−</button>
                       <span>{i.quantity}</span>
-                      <button type="button" aria-label="Increase quantity" disabled={i.quantity >= Math.min(10, i.stock ?? 10)}
+                      <button type="button" aria-label="Increase quantity" disabled={i.pending || i.quantity >= Math.min(10, i.stock ?? 10)}
                         onClick={run(() => cart.update(i.key, i.quantity + 1))}>+</button>
                     </div>
                   </div>
-                  <button type="button" className="ci-del" aria-label={`Remove ${i.name} from cart`} onClick={run(() => cart.remove(i.key))}>✕</button>
+                  <button type="button" className="ci-del" aria-label={`Remove ${i.name} from cart`} disabled={i.pending} onClick={run(() => cart.remove(i.key))}>✕</button>
                 </div>
               ))}
             </>

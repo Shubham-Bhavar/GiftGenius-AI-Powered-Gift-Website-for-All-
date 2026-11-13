@@ -26,7 +26,7 @@ public final class AuthDtos {
     }
 
     public record LoginRequest(
-            @NotBlank(message = "Enter your email") @Email(message = "Enter a valid email") String email,
+            @NotBlank(message = "Enter your email") @Email(message = "Enter a valid email") @Size(max = 255) String email,
             @NotBlank(message = "Enter your password") @Size(max = 72) String password) {
     }
 
@@ -41,7 +41,7 @@ public final class AuthDtos {
     }
 
     public record ChangePasswordRequest(
-            @NotBlank(message = "Enter your current password") String currentPassword,
+            @NotBlank(message = "Enter your current password") @Size(max = 72) String currentPassword,
             @NotBlank(message = "Choose a new password")
             @Size(min = 8, max = 72, message = "Use 8 to 72 characters") String newPassword) {
     }

@@ -124,7 +124,7 @@ public final class ProductDtos {
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Size(max = 40) String category,
             @NotBlank @Size(max = 500) String description,
-            String longDescription,
+            @Size(max = 10_000) String longDescription,
             @NotNull @DecimalMin("0.00") BigDecimal price,
             @NotNull @DecimalMin("0.00") BigDecimal originalPrice,
             @DecimalMin("0.0") @DecimalMax("5.0") BigDecimal rating,
@@ -137,10 +137,10 @@ public final class ProductDtos {
             Boolean active,
             Boolean isCultural,
             Boolean isFestival,
-            Set<String> tags,
-            Set<String> occasion,
-            Set<String> forWhom,
-            Set<String> personality,
-            Set<String> relationship) {
+            @Size(max = 30) Set<@NotBlank @Size(max = 40) String> tags,
+            @Size(max = 20) Set<@NotBlank @Size(max = 40) String> occasion,
+            @Size(max = 20) Set<@NotBlank @Size(max = 20) String> forWhom,
+            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> personality,
+            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> relationship) {
     }
 }

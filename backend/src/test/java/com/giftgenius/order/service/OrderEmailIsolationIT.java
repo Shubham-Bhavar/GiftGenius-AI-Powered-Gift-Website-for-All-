@@ -36,7 +36,8 @@ class OrderEmailIsolationIT extends AbstractIT {
     /** Fails every email, as a bug in an email's template would. */
     private final EmailOutbox broken = new EmailOutbox(null, e -> { }, failures) {
         @Override
-        public boolean enqueue(String dedupeKey, EmailKind kind, Long orderId, String to, String subject, String body) {
+        public boolean enqueue(String dedupeKey, EmailKind kind, Long orderId, String to, String subject, String body,
+                String html) {
             throw new IllegalStateException("simulated template bug");
         }
     };
@@ -68,6 +69,6 @@ class OrderEmailIsolationIT extends AbstractIT {
 
         assertThat(queuedEmails(number)).as("nothing queued").isEmpty();
         assertThat(failures.find("giftgenius.email.queue.failures").tag("reason", "content").counter().count())
-                .as("each failed email counted: the confirmation and the cancellation").isEqualTo(2);
+                .as("each failed email counted: the confirmation, the owner's copy and the cancellation").isEqualTo(3);
     }
 }

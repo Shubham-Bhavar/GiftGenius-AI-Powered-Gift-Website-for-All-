@@ -28,6 +28,7 @@
 /* The website entry: the Gift Studio's Royal box, in the site's light or dark background. */
 @import './intro/entry.css';
 @import './ai/gift-finder-modal.css';
+@import './ai/assistant.css';
 @import './ai/gift-finder-results.css';
 
 /* Every page other than the homepage, built on the same tokens (with accessibility and contrast fixes). */

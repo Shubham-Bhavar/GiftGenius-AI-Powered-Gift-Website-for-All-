@@ -489,3 +489,70 @@ What the new tests prove:
   token, other endpoints opened with the token, the API chain permitting `/actuator/**` again, health details shown,
   `info` back on, the token logged, the Bearer challenge dropped, the missing-token warning dropped. Not observable:
   removing `@Order(1)`, because Spring then happens to keep the same order; the annotation is what guarantees it.
+
+## Full-roadmap run (2026-11-10 to 2026-11-12)
+
+Uncommitted on `feat/gift-decision-assistant` (HEAD `8486cc7`). Throw-away MySQL 8.0.43 on 127.0.0.1:3307, Java 21,
+Maven 3.9.11, Node 22. No paid service, real credential or real email was used; test SMTP is GreenMail on 127.0.0.1.
+
+| Check | Result |
+|---|---|
+| Backend unit tests (`mvn -o clean verify -Pintegration`, Surefire) | 351 run, 0 failures, 0 errors, 0 skipped |
+| Backend integration tests (Failsafe, same run) | 179 run, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS |
+| Frontend tests (`vitest run`) | 19 files, 457 passed, 0 failed, 0 skipped |
+| Frontend lint (`eslint .`) | 0 problems |
+| Frontend build (`vite build`) | OK; the existing warning that the 3D studio chunk is over 500 kB remains |
+| `npm audit --omit=dev` | 0 vulnerabilities |
+| Built bundle secret scan | nothing found (Razorpay, Google API key, private key, JWT and token names) |
+| Deliberate breaks (round 5) | 28 run: 27 caught at once; 1 missed (the assistant shown on checkout, admin and Seller Center), now caught by a new test |
+| Docker images and container health check | NOT RUN: every Alpine base image failed with "exec format error" on this machine |
+| CI | NOT RUN on these changes (nothing pushed); CI uses MySQL 8.4 |
+
+Since the last recorded run (323 unit, 153 integration, 433 frontend): order emails as HTML to customers, sellers
+and the store owner (`OrderEmailsTest`, `EmailDeliveryIT`, `EmailDeliveryAppIT`), the gift assistant
+(`GiftAssistantIT`, `GiftAssistantServiceTest`, `assistant.test.jsx`), the Classic reveal retired with old links
+mapped (studio tests), and the audit fixes GG-21 to GG-50 (`RateLimitClientAddressIT`, `RateLimitBehindProxyIT`,
+`RequestLimitsIT`, `NewsletterConcurrencyIT`, `FreeOrderCancelIT`, `GlobalExceptionHandlerLogTest`,
+`resilience.test.jsx`, and new cases in existing classes). Migrations V8 and V9 are new and additive; V1–V7 unchanged.
+
+Deliberate breaks caught: partly shipped order cancelled by an admin; delivery details shown to an inactive store;
+rate-limit path read undecoded; unbounded limiter memory; forwarded headers trusted from any client; a key's value
+logged; a simultaneous newsletter sign-up failing; a refund owed on a ₹0 order; model price claims shown; no question
+with nothing to go on; personalisation wording or the customer's phone in seller and owner emails; unescaped HTML;
+no owner email with only `ADMIN_EMAIL`; HTML never sent; old surprise links on Royal; the sign-in focus timer; a
+corrupt saved cart; uncleaned cart lines; a 503 during session restore; no retry for a failed quote; overlapping
+quantity clicks; a late assistant reply after Start over; the assistant on checkout, admin or Seller Center; a stale
+total on the Pay button; a failed Razorpay load cached. Each file was restored after its check.
+
+Not covered by a dedicated test (see BUG_REGISTER.md): GG-28, GG-29, GG-30, GG-33, GG-44, GG-50.
+
+## GG-28 correction and demo fixes (2026-11-13)
+
+Still uncommitted on `feat/gift-decision-assistant` (HEAD `8486cc7`), same throw-away MySQL 8.0.43.
+
+| Check | Result |
+|---|---|
+| Backend unit tests (`mvn -o clean verify -Pintegration`, Surefire) | 358 run, 0 failures, 0 errors, 0 skipped (351 before; 7 new in `OrderNotifierTest`) |
+| Backend integration tests (Failsafe, same run) | 180 run, 0 failures, 0 errors, 0 skipped (179 before; `OrderEmailDeadlockIT` new); BUILD SUCCESS |
+| Frontend tests (`vitest run`) | 19 files, 457 passed, 0 failed, 0 skipped (run after the demo fixes; no frontend file changed since) |
+| Frontend lint and `npm audit --omit=dev` | 0 problems; 0 vulnerabilities |
+| Deliberate breaks, all rounds of this run | 38 run, 37 caught the first time; the miss (the assistant shown on checkout, admin and Seller Center) is now caught by a new test |
+
+- **GG-28 (fixed properly):** a deadlock while queueing an order email was logged as a content failure by
+  `OrderNotifier`, so the request went on as if the order had been saved. `OrderNotifier` now passes on failures of
+  the order's transaction (Spring data access and transaction exceptions, JPA exceptions) at all six of its catch
+  sites, and still skips and counts genuine content failures. New tests: a deadlock from each of the four paths
+  (customer, sellers, owner, part-shipped) is passed on and stops further emails; JPA and transaction failures while
+  an email is built; the classification itself; a "not queued" answer from the outbox still fails nothing; and,
+  through the API, an order whose email meets a deadlock answers 409 and leaves no order, stock, queued email or
+  cart change behind, while the retry succeeds. 9 deliberate breaks (each catch site, each exception family, the API
+  case) were all caught. The deadlock is simulated with the exception Spring makes of MySQL error 1213.
+- **GG-51:** the gift assistant said its question twice when there was nothing to go on; `assistant.test.jsx` now
+  requires it once and fails without the fix.
+- **GG-52:** the sticky header covered the top of the assistant panel on phones and short desktop windows. Fixed in
+  CSS (layer and height); checked in the browser at 1024x768 and 375x812, scrolled and not; no automated test (the
+  tests don't load CSS).
+- **Harness note:** during the GG-28 breaks Windows briefly refused to reopen `OrderNotifier.java`, so one break was
+  left in place; it was found at once, restored by hand and confirmed against the intended code, and the harness
+  now retries and stops if a file can't be restored. All 9 breaks were then re-run, and the file was identical
+  before and after.

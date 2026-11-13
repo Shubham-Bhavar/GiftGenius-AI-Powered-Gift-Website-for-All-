@@ -4,7 +4,7 @@ import SafeImg from '../common/SafeImg.jsx';
 import { useCart } from '../../context/CartContext.jsx';
 import { useToast } from '../../context/ToastContext.jsx';
 import { rupees } from '../../utils/format.js';
-import { CARD_STYLES, REVEAL_ORDERS, THEMES, describeLook } from './look.js';
+import { CARD_STYLES, THEMES, describeLook } from './look.js';
 import { personalisable } from './StudioControls.jsx';
 
 export const totalOf = (products) => products.reduce((sum, p) => sum + Number(p.price), 0);
@@ -77,7 +77,6 @@ export function BuyerSummary({ config, products, look, photos, readOnly = false 
         <div><dt>Presentation</dt><dd>{THEMES[config.theme].label}: {describeLook(look)}</dd></div>
         <div><dt>Card</dt><dd>{CARD_STYLES[config.card]}{config.card === 'photo' ? ` with ${photos.length} photo${photos.length === 1 ? '' : 's'}` : ''}</dd></div>
         {engraved.length > 0 && <div><dt>Printed name</dt><dd>{config.engraving.trim() ? `“${config.engraving.trim()}” on the ${engraved[0].name}` : 'None'}</dd></div>}
-        <div><dt>Reveal</dt><dd>{REVEAL_ORDERS[config.order]}</dd></div>
       </dl>
     </section>
   );

@@ -6,7 +6,7 @@ import { splitRects, themeLook } from './compareLooks.js';
 import { chooseStart, INIT_LIMIT_MS, reviewOptions, SLOW_NOTICE_MS } from './StudioStage3D.jsx';
 import '../../../styles/studio/studio-room.css';
 
-/** The CSS box's look for a configuration, as the classic preview draws it. */
+/** The CSS box's look for a configuration, as the CSS preview draws it. */
 export const cssLookOf = (c) => ({ box: c.box, ribbon: c.ribbon, pattern: c.pattern, tissue: THEMES[c.theme].tissue });
 
 /** What the scene needs to know about an option's gift: the products, and the shopper's own name, words and photos. Never a price. */
@@ -38,7 +38,7 @@ function OpenToggle({ open, onOpen }) {
 /** The stage's description for screen readers: each option's look, in words. */
 const describe = (options) => options.map((o) => `Option ${o.key}: ${THEMES[o.config.theme].label}, ${describeLook(cssLookOf(o.config))}`).join('. ');
 
-/** The CSS fallback: the classic CSS boxes, side by side, opening together; or the one box, as the classic Your view had it. */
+/** The CSS fallback: the CSS boxes, side by side, opening together; or the one box. */
 function CssCompare({ options, photos, open, onOpen }) {
   if (options.length === 1) {
     const [o] = options;

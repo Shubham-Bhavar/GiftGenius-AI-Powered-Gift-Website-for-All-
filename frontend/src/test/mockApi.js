@@ -75,6 +75,8 @@ export function createDb() {
     orders: [],
     tokens: {},
     calls: [],
+    assistantCalls: [],
+    assistantDown: false,
     refreshCount: 0,
     nextLine: 100,
     aiSource: 'ai',
@@ -404,6 +406,28 @@ export function handlers(db) {
       });
     }),
 
+    // The gift assistant. Like the API: nothing to go on, a question and no picks; otherwise real products within the
+    // budget (read from the newest message that names one) and the next thing worth asking.
+    http.post(`${API}/ai/assistant`, async ({ request }) => {
+      const { messages } = await request.json();
+      db.assistantCalls.push(messages);
+      if (db.assistantDown) return problem(503, 'Unavailable');
+      const said = [...messages].reverse().join('. ').toLowerCase();
+      if (/^(hi|hello)( |$)/.test(said) && messages.length === 1) {
+        return HttpResponse.json({ source: 'rules', reply: 'Happy to help! Who is the gift for, and what’s the occasion? A budget helps too.',
+          question: 'Happy to help! Who is the gift for, and what’s the occasion? A budget helps too.', understood: {}, picks: [] });
+      }
+      const budget = Number((said.match(/under ₹?([\d,]+)/) ?? [])[1]?.replace(/,/g, '')) || null;
+      const picks = db.products.filter((p) => p.inStock && (!budget || p.price <= budget)).slice(0, 3)
+        .map((p, i) => ({ product: productDto(p), reason: `Reason ${i + 1} for ${p.name}.`, score: 80 - i, match: 90 - i * 10, checks: [] }));
+      return HttpResponse.json({
+        source: 'rules', reply: 'Here are a few ideas from the shop.',
+        question: said.includes('birthday') ? null : 'What’s the occasion? A birthday, an anniversary, a festival, or just because?',
+        understood: { recipient: 'parent', occasion: said.includes('birthday') ? 'birthday' : null, budget, interests: [], personality: null, avoid: [], by: 'rules' },
+        picks,
+      });
+    }),
+
     // Gift Studio: boxes of several gifts. Like the API, a suggestion never goes over the budget.
     http.post(`${API}/gift-box/suggestions`, async ({ request }) => {
       const body = await request.json();
@@ -590,7 +614,10 @@ function sellerHandlers(db, authed) {
     })),
     http.get(`${API}/seller/orders/:number`, S(({ params, user }) => {
       const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);
-      return o ? HttpResponse.json(orderDto(o)) : problem(404, 'Order not found.');
+      if (!o) return problem(404, 'Order not found.');
+      // As the API: only an approved store sees the customer's delivery details.
+      const { shipping, ...rest } = orderDto(o);
+      return HttpResponse.json(db.stores[user.id]?.status === 'APPROVED' ? { ...rest, shipping } : rest);
     })),
     http.patch(`${API}/seller/orders/:number/status`, S(async ({ request, params, user }) => {
       const o = db.sellerOrders.find((x) => x.sellerId === user.id && x.orderNumber === params.number);

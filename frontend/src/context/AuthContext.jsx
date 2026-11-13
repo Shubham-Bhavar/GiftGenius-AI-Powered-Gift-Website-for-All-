@@ -9,6 +9,9 @@ import { sellerKeys } from '../services/seller.js';
 import { adminKeys } from '../services/admin.js';
 
 const AuthContext = createContext(null);
+/** Session restore: retries after a transient failure, and the first wait (doubled each time). */
+export const RESTORE_RETRIES = 2;
+export const RESTORE_BACKOFF_MS = 1000;
 
 export function AuthProvider({ children }) {
   const qc = useQueryClient();
@@ -18,10 +21,41 @@ export function AuthProvider({ children }) {
 
   useEffect(() => onSessionChange(setUser), []);
 
+  // Restore the session. refreshSession clears the hint only when the session has really ended, so a hint that is
+  // still there after it answers null means the server couldn't be reached (a deploy, a network blip): try again
+  // a couple of times before showing the site, then again when the tab regains focus or the network comes back.
   useEffect(() => {
-    if (!hasSessionHint()) return;
-    refreshSession().finally(() => setReady(true));
+    if (!hasSessionHint()) return undefined;
+    let cancelled = false;
+    let timer;
+    const attempt = async (n) => {
+      const restored = await refreshSession();
+      if (cancelled) return;
+      if (restored || !hasSessionHint() || n >= RESTORE_RETRIES) {
+        setReady(true);
+        return;
+      }
+      timer = setTimeout(() => attempt(n + 1), RESTORE_BACKOFF_MS * 2 ** n);
+    };
+    attempt(0);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
   }, []);
+
+  useEffect(() => {
+    if (user || !ready) return undefined;
+    const retry = () => {
+      if (hasSessionHint()) refreshSession();
+    };
+    window.addEventListener('online', retry);
+    window.addEventListener('focus', retry);
+    return () => {
+      window.removeEventListener('online', retry);
+      window.removeEventListener('focus', retry);
+    };
+  }, [user, ready]);
 
   // Signing out in another tab signs this tab out too.
   useEffect(() => {

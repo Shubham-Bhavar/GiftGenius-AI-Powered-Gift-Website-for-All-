@@ -66,8 +66,8 @@ export default function Cart() {
                     {i.available === false && <p className="co-item-warn">Not enough stock — reduce the quantity or remove it.</p>}
                     <div className="co-item-actions">
                       <QuantityStepper value={i.quantity} max={Math.min(10, i.stock ?? 10)} label={`Quantity of ${i.name}`}
-                        onChange={run((n) => cart.update(i.key, n))} />
-                      <button type="button" className="co-remove" onClick={run(() => cart.remove(i.key))}>✕ Remove</button>
+                        disabled={i.pending} onChange={run((n) => cart.update(i.key, n))} />
+                      <button type="button" className="co-remove" disabled={i.pending} onClick={run(() => cart.remove(i.key))}>✕ Remove</button>
                     </div>
                   </div>
                   <strong className="co-item-total">{inr(i.lineTotal)}</strong>

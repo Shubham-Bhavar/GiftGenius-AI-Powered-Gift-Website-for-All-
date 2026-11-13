@@ -180,103 +180,6 @@
   .gb3d, .gb3d *, .swatch-dot, .studio-theme-chips i { forced-color-adjust: none; }
 }
 
-/* ─── Gift card (components/studio/MessageCard) ─── */
-.msg-card {
-  width: 100%; max-width: 300px; padding: 20px 22px 22px; border-radius: 6px; display: grid; gap: 10px; text-align: left;
-  box-shadow: 0 10px 28px rgba(15,34,37,0.18), 0 2px 6px rgba(15,34,37,0.1);
-}
-.msg-card figcaption { display: grid; gap: 8px; }
-.msg-card-to { font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.14em; text-transform: uppercase; }
-.msg-card-text {
-  font-family: var(--font-serif); font-size: 1.2rem; font-style: italic; line-height: 1.4;
-  white-space: pre-line; overflow-wrap: anywhere;
-}
-.msg-card--compact { max-width: 220px; padding: 14px 16px; gap: 8px; }
-.msg-card--compact .msg-card-text {
-  font-size: 1rem; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
-}
-.msg-card--noir {
-  background: #17181d; color: #f3efe7;
-  box-shadow: inset 0 0 0 1px rgba(212,175,55,0.55), inset 0 0 0 5px #17181d, inset 0 0 0 6px rgba(212,175,55,0.35), 0 10px 28px rgba(0,0,0,0.3);
-}
-.msg-card--noir .msg-card-to { color: #d4af37; }
-.msg-card--ivory { background: #fbf8f1; color: #2a2620; border: 1px solid #e5dccb; }
-.msg-card--ivory .msg-card-to { color: #6b5a3e; }
-.msg-card--party {
-  color: #4a1c17; background-color: #fff4d6;
-  background-image:
-    radial-gradient(circle at 10% 14%, rgba(242,100,90,0.35) 0 4px, transparent 4.5px),
-    radial-gradient(circle at 90% 12%, rgba(79,179,191,0.45) 0 3px, transparent 3.5px),
-    radial-gradient(circle at 93% 88%, rgba(255,210,63,0.7) 0 5px, transparent 5.5px),
-    radial-gradient(circle at 5% 92%, rgba(108,63,196,0.3) 0 3px, transparent 3.5px);
-}
-.msg-card--party .msg-card-to { color: #a3342a; }
-.msg-card--kraft {
-  color: #3b2a1a; background-color: #d8b892;
-  background-image: repeating-linear-gradient(8deg, rgba(60,40,20,0.06) 0 1px, transparent 1px 4px);
-}
-.msg-card--kraft .msg-card-to { color: #4e3420; }
-.msg-card--photo { background: #fffdfb; color: #2a2024; }
-.msg-card--photo .msg-card-to { color: #9c2f45; }
-.msg-card-photos { display: flex; gap: 6px; }
-.msg-card-photos img {
-  flex: 1 1 0; min-width: 0; aspect-ratio: 1; object-fit: cover;
-  border: 3px solid #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.18); transform: rotate(-2deg);
-}
-.msg-card-photos img:nth-child(2) { transform: rotate(2deg); }
-
-/* ─── The reveal (components/studio/RevealPlayer). "unbox", as .reveal is the scroll-reveal utility (reveal.css). ─── */
-.unbox {
-  position: relative; overflow: hidden; padding: 14px 14px 16px; text-align: center;
-  border: 1px solid var(--border-soft); border-radius: var(--radius);
-  background: radial-gradient(ellipse 75% 65% at 50% 38%, var(--surface), var(--cream-dark));
-}
-.unbox-stage { position: relative; height: 430px; }
-.unbox-intro { position: absolute; inset: 0; display: grid; place-content: center; gap: 6px; padding: 0 12px; animation: qFadeIn 0.6s both; }
-.unbox-intro span { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); }
-.unbox-intro strong {
-  font-family: var(--font-serif); font-size: clamp(2.2rem, 6vw, 3.2rem); font-weight: 600; font-style: italic;
-  line-height: 1.1; color: var(--text); overflow-wrap: anywhere;
-}
-.unbox-box { position: absolute; left: 0; right: 0; top: 30px; transition: opacity 0.4s; }
-.unbox--box .unbox-box, .unbox--untie .unbox-box { cursor: pointer; }
-.unbox--card .unbox-box { opacity: 0.28; }
-/* The card: centre stage on its own step, then leaning against the box. */
-.unbox-card { position: absolute; z-index: 2; left: 4%; bottom: 52px; width: min(200px, 46%); transform: rotate(-5deg); }
-.unbox-card.is-current {
-  z-index: 3; left: 50%; top: 50%; bottom: auto; width: min(320px, 88%);
-  transform: translate(-50%, -50%) rotate(-2deg); animation: ggCardIn 0.6s cubic-bezier(.2,.8,.2,1) both;
-}
-.unbox-card .msg-card { max-width: none; }
-.unbox-gift-names {
-  position: absolute; left: 0; right: 0; bottom: 12px; padding: 0 12px;
-  font-family: var(--font-serif); font-size: 1.05rem; font-style: italic; color: var(--text); animation: qFadeIn 0.6s 0.3s both;
-}
-.unbox-greeting {
-  position: absolute; z-index: 4; left: 0; right: 0; top: 10px; padding: 0 12px;
-  font-family: var(--font-serif); font-size: clamp(1.6rem, 4.5vw, 2.3rem); font-weight: 600; line-height: 1.15;
-  color: var(--gold-text); animation: ggPop 0.6s both;
-}
-[data-theme="dark"] .unbox-greeting { color: var(--gold-light); }
-.unbox-confetti { position: absolute; inset: 0; z-index: 5; pointer-events: none; }
-.unbox-confetti i {
-  position: absolute; top: -14px; left: var(--x, 50%); width: 8px; height: 13px; border-radius: 2px; background: #ffd23f;
-  animation: confettiFall 2.8s cubic-bezier(.3,.5,.6,1) var(--d, 0ms) both;
-}
-.unbox-confetti i:nth-child(5n+2) { background: #4fb3bf; }
-.unbox-confetti i:nth-child(5n+3) { background: #f2645a; width: 9px; height: 9px; border-radius: 50%; }
-.unbox-confetti i:nth-child(5n+4) { background: #6c3fc4; }
-.unbox-confetti i:nth-child(5n) { background: #ffffff; box-shadow: 0 0 0 1px rgba(0,0,0,0.08); }
-.unbox-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 14px; margin-top: 12px; }
-.unbox-progress { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); }
-.unbox-play {
-  background: transparent; border: 1.5px solid var(--border); color: var(--text); padding: 11px 18px;
-  border-radius: var(--radius-xs); font-size: 13.5px; line-height: 1; transition: var(--trans);
-}
-.unbox-play:hover, .unbox-play[aria-pressed="true"] { border-color: var(--gold); background: var(--gold-dim); }
-.unbox .studio-note { margin-top: 10px; }
-@media (max-width: 520px) { .unbox-stage { height: 390px; } }
-
 /* ─── Studio page (pages/studio/GiftStudio) ─── */
 .studio-layout {
   width: 90%; max-width: 1180px; margin: 0 auto; padding: 28px 0 72px;
@@ -299,7 +202,6 @@
   background: var(--teal-pale); border: 1px solid rgba(110,198,207,0.4); border-radius: var(--radius-sm); color: var(--text); font-size: 14px;
 }
 .studio-solo { width: 90%; max-width: 720px; margin: 28px auto 64px; display: grid; gap: 16px; justify-items: center; }
-.studio-solo > .unbox { width: 100%; }
 
 .studio-tabs {
   display: flex; gap: 2px; margin-bottom: 18px; border-bottom: 1.5px solid var(--border-soft);

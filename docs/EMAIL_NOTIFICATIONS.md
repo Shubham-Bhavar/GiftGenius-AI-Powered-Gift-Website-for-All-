@@ -1,8 +1,10 @@
 # Order email notifications
 
-Phase 2 of the premium roadmap: real transactional email for orders. This document covers Stage 2.1, reliable
-delivery. Branded HTML templates and the owner's new-order email (Stage 2.2) and end-to-end delivery tests with a test
-mail server (Stage 2.3) are not built yet.
+Phase 2 of the premium roadmap: real transactional email for orders.
+
+- **Stage 2.1, reliable delivery:** committed locally (`9089435`).
+- **Stage 2.2, branded HTML and the owner's email:** built 2026-11-11 (uncommitted).
+- **Stage 2.3, delivery tests with a mail server:** built 2026-11-11 (uncommitted), using GreenMail inside the tests.
 
 ## What is sent
 
@@ -12,11 +14,21 @@ Every order email goes through the email outbox:
 |---|---|---|---|
 | `ORDER_CONFIRMED` | customer | order confirmed: cash on delivery or nothing to pay at checkout, or online payment received (browser or webhook, whichever is first) | `order:<id>:confirmed:customer` |
 | `ORDER_NEW_FOR_SELLER` | each seller with lines in the order | with the confirmation | `order:<id>:confirmed:seller:<sellerUserId>` |
+| `ORDER_NEW_FOR_OWNER` | each owner notification address (`NOTIFY_ADMIN_EMAILS`, or `ADMIN_EMAIL` when that's empty; up to 10) | with the confirmation | `order:<id>:confirmed:owner:<first 16 hex of SHA-256(address)>` |
 | `ORDER_STATUS` | customer | shipped, out for delivery, delivered, cancelled (by the customer or the store) | `order:<id>:status:<STATUS>:customer` |
 | `ORDER_PART_SHIPPED` | customer | a seller shipped or delivered their part | `order:<id>:seller:<sellerUserId>:<STEP>:customer` |
 
-The wording is unchanged from before Stage 2.1 (plain text). Seller emails list only that seller's lines and never the
-customer's name, email, phone or address; sellers see delivery details in Seller Center, behind their login.
+Every order email has a plain-text body and a branded HTML body with the same content (`order/service/OrderEmails.java`,
+`notify/EmailLayout.java`): one card on the site's light teal, a dark teal header with the gold wordmark, plain tables
+and inline styles only. No images, scripts, web fonts or tracking, so nothing is fetched when an email is opened.
+Times are shown in `MAIL_TIME_ZONE` (default Asia/Kolkata), amounts as rupees with Indian digit grouping. Every value
+that comes from people (names, products, stores, notes) is HTML-escaped.
+
+| Recipient | Gets | Never gets |
+|---|---|---|
+| Customer | the order number, when it was placed (and updated), its status and payment, every item and amount (subtotal, discount and coupon, delivery, total), and in the confirmation the delivery address and phone; a tracking button | other customers' data |
+| Seller | the order number and time, the delivery speed, their own lines only, whether a line is personalised, a link to the order in Seller Center | the customer's name, email, phone or address; the personalisation wording; other sellers' lines; the order's total |
+| Owner | the order number, time, status, payment, delivery, coupon, the customer's name, email and city, every line with who sells it, the total, a link to Store Admin | the customer's phone, street, state or PIN code; the personalisation wording |
 
 Account, seller-application, product-review and contact-form emails still go through `Mailer` as before. Password-reset
 links stay there on purpose, so a one-time link is never stored in the database.
@@ -27,11 +39,20 @@ links stay there on purpose, so a one-time link is never stored in the database.
    or changes its status. The row is saved with the order, or not at all, and survives a restart.
 2. **Queued once.** `email_outbox.dedupe_key` is unique. Queueing the same key again (the same event handled twice,
    twice at once, or on two servers) changes nothing: `INSERT ... ON DUPLICATE KEY UPDATE`, no error.
-3. **Never fails the order.** Queueing runs through JDBC, so a failed insert rolls back that statement only and does not
-   mark the order's transaction for rollback; any database error is caught, logged and counted. Building an email's
-   text is guarded too: an error there is logged with the order number, counted as a `content` failure and skipped,
-   and the order goes ahead. (The seller lookup is a database query; a database error there still fails the
-   transaction, as any database error would.) Delivery happens later, outside the order's transaction.
+3. **Never fails the order, unless the order's transaction itself failed.**
+   - Queueing runs through JDBC in the order's transaction (no transaction of its own). A failed insert rolls back
+     that statement only and doesn't mark the transaction for rollback: `EmailOutbox.enqueue` logs it, counts it as a
+     `database` failure and answers "not queued", and the order goes ahead.
+   - Building an email's text is guarded too: an error there (a template bug, data it doesn't expect) is logged with
+     the order number, counted as a `content` failure and skipped, and the order goes ahead.
+   - A failure of the transaction itself is passed on, never taken for either of those (GG-28). On a deadlock or
+     lock timeout MySQL rolls back the whole transaction, order included, so `enqueue` passes the
+     `PessimisticLockingFailureException` on, and `OrderNotifier` passes on any `DataAccessException`,
+     `TransactionException` or JPA `PersistenceException` (for example from a lazy load while an email is built).
+     The request then fails with a retryable 409 instead of carrying on as if the order had been saved; nothing of
+     the order remains (no order, no stock held, no email queued, the cart unchanged), and a retry places it.
+     Until 2026-11-13 `OrderNotifier` caught these as content failures, so the first fix in `enqueue` had no effect.
+   - Delivery happens later, after the order's transaction has committed, and its failures never touch the order.
 4. **Delivered in the background.** `EmailOutboxSender` is woken when a queueing transaction commits, and also polls
    every 15 seconds (`MAIL_OUTBOX_POLL_INTERVAL`). Each pass claims due emails one at a time with
    `SELECT ... FOR UPDATE SKIP LOCKED` and commits the claim (`SENDING`, with a 5-minute lease) before sending, so
@@ -133,7 +154,11 @@ Found in the deployment-readiness check of 2026-11-09.
   8.4 but hasn't run this branch. Still needed: `SELECT VERSION(), @@version_comment;` on the production (or restored)
   database, `orders` using InnoDB (V7 adds a foreign key to it), the application user allowed to create tables,
   indexes and foreign keys, and the integration tests run on the production version.
-- **Real SMTP** delivery is untested until Stage 2.3.
+- **Real SMTP** delivery is tested against a mail server running inside the tests (GreenMail): see "Tests" below. A
+  real provider (Amazon SES, Postmark, SendGrid…) has not been tried: configure `SMTP_*` and `MAIL_FROM` on a domain you
+  control, then send one order to yourself before going live.
+- **Before the first order:** set `SMTP_*`, `MAIL_FROM` and `APP_PUBLIC_URL`. An email queued while no SMTP host is
+  configured is recorded as `NOT_SENT` and never sent later.
 
 ## Retention (recommendation; not implemented)
 
@@ -149,13 +174,17 @@ the delivery address). Recommended, once approved:
 
 Nothing deletes or blanks rows today.
 
-## The table (migration V7)
+## The table (migrations V7 and V8)
 
 `V7__email_outbox.sql` adds one table and touches nothing else: no existing table, column or row changes, so it is
 backward-compatible with the running application and its data. Columns: `dedupe_key` (unique), `kind`, `order_id`
 (foreign key to `orders`, nullable), `recipient`, `subject`, `body_text`, `status`, `attempts`, `next_attempt_at`,
 `locked_until`, `last_error`, `sent_at`, `created_at`, `updated_at`; indexed on `(status, next_attempt_at)` for the
 sender and on `order_id`.
+
+`V8__email_outbox_html.sql` adds one nullable column, `body_html` (the HTML alternative). Rows queued before it keep
+`NULL` and are sent as plain text, as before. `V9__order_events_status_index.sql` adds an index on
+`order_status_events (status, created_at)` for the reconciliation check. Neither changes a row.
 
 Rows are kept: they are the delivery record. There is no clean-up job yet.
 
@@ -164,7 +193,9 @@ Rows are kept: they are the delivery record. There is no clean-up job yet.
 | Variable | Default | |
 |---|---|---|
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_AUTH`, `SMTP_STARTTLS` | none, 587 | any SMTP provider; without a host nothing is sent |
-| `MAIL_FROM` | `GiftGenius <no-reply@giftgenius.local>` | sender address |
+| `MAIL_FROM` | `GiftGenius <no-reply@giftgenius.local>` | sender address (use a domain you control, with SPF and DKIM) |
+| `NOTIFY_ADMIN_EMAILS` | empty (then `ADMIN_EMAIL`) | who is told about each new order, comma-separated; malformed entries are dropped, duplicates kept once, at most 10 |
+| `MAIL_TIME_ZONE` | `Asia/Kolkata` | the time zone order emails show times in; an unknown zone falls back to Asia/Kolkata |
 | `MAIL_OUTBOX_SENDER_ENABLED` | `true` | whether this instance delivers queued emails (they are queued either way) |
 | `MAIL_OUTBOX_POLL_INTERVAL` | `15s` | how often to look for due emails and retries |
 
@@ -181,3 +212,22 @@ The lease (5 min), batch size (20) and retry delays are in `application.yml` und
   last pins the production retry schedule, and every other test reads it from `application.yml`); `EmailOutboxIT` and
   `OrderEmailIsolationIT` (MySQL), plus queue checks in `PaymentIT` (browser and webhook confirming at once) and
   `SellerMarketplaceIT` (split orders, seller privacy).
+
+## Tests (Stage 2.2 and 2.3)
+
+- `OrderEmailsTest` (12): what each email says in both bodies; what the seller and owner emails never contain; HTML
+  escaping of people's text; links; Indian rupee formatting; status labels.
+- `OrderNotifierTest` (19): keys, recipients, the owner's addresses (fallback, cleaning, duplicates, the cap of 10, none
+  at all), an unknown time zone, content errors and "not queued" answers that never fail the order, and (GG-28) a
+  deadlock, JPA or transaction failure passed on from each of the four paths and while an email is built.
+- `OrderEmailDeadlockIT` (1, MySQL, through the API): an order whose owner email meets a deadlock answers 409 and
+  leaves nothing behind (no order, stock or queued email; the cart unchanged), including the customer's confirmation
+  queued just before; the retry places the order.
+- `EmailOutboxSenderTest`: plain text without HTML, `multipart/alternative` (text first) with it, the same Message-ID.
+- `EmailDeliveryIT` (6, MySQL and GreenMail over real SMTP on 127.0.0.1): an order's confirmation and the owner's copy
+  arriving as text and HTML; a plain-text email's characters intact (₹, Devanagari); a mail server that is down, then
+  back (one delivery); one that stays down (FAILED after the configured attempts); SMTP sign-in, and a refused one that
+  never puts the password in the record or the logs; three senders delivering 24 emails exactly once.
+- `EmailDeliveryAppIT` (1): the application as configured in production, pointed at GreenMail: placing and cancelling an
+  order through the API delivers the confirmation, one copy per owner address and the cancellation, each once.
+- `SellerMarketplaceIT`, `PaymentIT`, `EmailOutboxIT` check the HTML bodies and the owner's email alongside the rest.

@@ -27,7 +27,7 @@ Open it at `/studio`, or from:
 | 6. Theme transformation | Built | 5 themes, each a whole presentation (box, wrap, ribbon, tissue, card): Midnight Luxury, Minimal Elegance, Birthday Celebration, Nature Inspired, Personal Memories. *One gift, every theme* shows all five side by side |
 | 7. Message to gift | Built | *Start from what you want to say*: shows only what was read ("We read: For: sibling. Nothing else is assumed about them."), catalogue picks, and a suggested look with its reason |
 | 8. A/B preview lab | Built | Option A (now) against option B (another theme, optionally another gift) in the 3D studio, opening together, and in one table: gifts, total, budget, packaging, card. The advice uses their answers only, and says "It can't predict how they'll feel" |
-| 9. Reveal timeline | Built | Templates: Classic, Surprise (confetti at the end) and Sentimental (the message opens everything). Card-first or gift-first |
+| 9. Reveal timeline | Built, then replaced | The classic reveal and its templates (Classic, Surprise, Sentimental; card-first or gift-first) were retired on 2026-11-11 (roadmap Phase 1: no Classic reveal). Each of the five experiences has its own sequence |
 | 10. Compatibility checker | Built (explicit rules) | Per dimension: occasion, price, balance, style, variety, recipient and packaging. Each is ✓, ⚠, ✕, ℹ or "not checked", never an overall score. Packaging always says "not checked": the catalogue has no product sizes |
 | 11. Memory photos | Built; on this device only | Up to 6 photos on the box's sides (photo wrap) and on the photo card. Never uploaded or put in a link; released when removed and when the studio closes |
 | 12. Shareable gift | Built as a link, with no server storage; **voting and access control not built** | "🔗 Share with friends" (the gift with its prices) and "🎁 Send as a surprise preview" (the reveal only) |
@@ -102,7 +102,7 @@ quiz answers / product page ─▶ /studio?product(s)=…&style&occasion&recipie
 - **Several gifts:** every gift in the box appears, up to the six a box or link can hold, rising in turn. Up to four share a row; five and six use two rows, the back one on a velvet step. All are named and counted below the stage.
 - **Catalogue photos:** a photo is requested over https first, since a redirect from http is what blocks WebGL on some hosts that otherwise allow it. If a host refuses WebGL outright, the same real image is laid over the print's window as an ordinary `<img>`, in true perspective (`photoOverlay.js`). It fades when turned away or when the box's wall would be in front of it, since a flat image can't pass behind anything. A photo that can't load at all gets no substitute: the print is left out and its name is shown below the stage.
 - **Honesty:** a product is shown as a flat photograph in a mat, never as a pretend 3D model. Only the shopper's words and photos appear; "Happy birthday" remains the only wording an experience adds. If a photo's host won't allow WebGL to draw it or is too slow, the print is left out and the photo is shown as a normal image below the stage.
-- **Share links:** a new link names the chosen experience, and plays it for the person who opens it. A link with no experience in it was made before this existed, and plays exactly as it always did: the classic reveal, with its own template and order. An experience we don't recognise opens on Royal. A preview isn't shared, only the choice. Photos never travel in a link, so a Memory link goes without them, and the shopper is told.
+- **Share links:** a link names the chosen experience, and plays it for the person who opens it. Links made before the classic reveal was retired still open: one with no experience, or naming `classic`, plays the experience closest to the classic style it chose (Surprise → Birthday, Sentimental → Sentimental, Classic → Royal; `look.js` `experienceFor`). An experience we don't recognise opens on Royal. A preview isn't shared, only the choice. Photos never travel in a link, so a Memory link goes without them, and the shopper is told. New links no longer carry the classic reveal's `template` and `order` fields.
 - **Reviewing:** in development or a build with `VITE_STUDIO_REVIEW=1`, `?motion=on` overrules a system set to reduced motion, `?quality=high|medium|reduced|low` pins a level and `?webgl=off` shows the CSS player. A normal production build ignores all three.
 
 ## Compare in the 3D studio
@@ -150,7 +150,7 @@ The homepage's first-visit entry is the Gift Studio's Royal box. It is a short f
 
 ## Reveal experiences in CSS, and the 360° studio view
 
-These are the fallback for devices that don't get the 3D studio, and the classic reveal stays selectable. Everything here is pure CSS 3D.
+These are the fallback for devices that don't get the 3D studio. Everything here is pure CSS 3D.
 
 | Experience | Look | What sets it apart |
 |---|---|---|

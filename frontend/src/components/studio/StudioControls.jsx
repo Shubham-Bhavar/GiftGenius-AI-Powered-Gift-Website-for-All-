@@ -1,7 +1,7 @@
 import { GiftMessageHelper } from '../ai/GiftMessageHelper.jsx';
 import { MemoryPhotos } from './MemoryPhotos.jsx';
 import {
-  BOX_COLOURS, CARD_STYLES, PATTERNS, REVEAL_ORDERS, RIBBON_COLOURS, TEMPLATES, THEMES, THEME_KEYS,
+  BOX_COLOURS, CARD_STYLES, PATTERNS, RIBBON_COLOURS, THEMES, THEME_KEYS,
 } from './look.js';
 
 export const personalisable = (p) => p.category === 'personalized' || p.tags?.includes('personalized');
@@ -93,22 +93,6 @@ export function StudioControls({ config, update, applyTheme, suggestions, produc
         <MemoryPhotos photos={photos} onChange={setPhotos} />
       </section>
 
-      <section aria-labelledby="studio-reveal-h">
-        <h2 id="studio-reveal-h" className="studio-h">The reveal</h2>
-        <fieldset className="studio-radios">
-          <legend className="studio-label">Order</legend>
-          {Object.entries(REVEAL_ORDERS).map(([k, label]) => (
-            <label key={k}>
-              <input type="radio" name="studio-order" value={k} checked={config.order === k} disabled={config.template === 'sentimental'}
-                onChange={() => update({ order: k })} /> {label}
-            </label>
-          ))}
-        </fieldset>
-        <label className="studio-label" htmlFor="studio-template">Style</label>
-        <select id="studio-template" className="pd-input" value={config.template} onChange={set('template')}>
-          {Object.entries(TEMPLATES).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
-        </select>
-      </section>
     </div>
   );
 }

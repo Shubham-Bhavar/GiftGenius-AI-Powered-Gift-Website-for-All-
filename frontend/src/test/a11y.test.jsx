@@ -74,8 +74,8 @@ describe('accessibility (axe-core)', () => {
     await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ });
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(await violations()).toEqual([]);
-    await user.click(screen.getByRole('button', { name: 'Use This Experience: Classic reveal' }));
-    await screen.findByText('Step 1 of 7');
+    await user.click(screen.getByRole('button', { name: 'Use This Experience: Sentimental Unboxing' }));
+    await screen.findByRole('group', { name: /^Sentimental Unboxing:/ });
     expect(await violations()).toEqual([]);
     for (const tab of ['Your view', 'Compare', 'Gift box']) {
       await user.click(screen.getByRole('tab', { name: tab }));
@@ -95,7 +95,7 @@ describe('accessibility (axe-core)', () => {
 
     renderApp(`/studio#${shareFragment(sanitizeConfig({ products: [4], name: 'Aditi' }), 'reveal')}`);
     await screen.findByRole('heading', { level: 1, name: 'A gift preview, just for you' });
-    await screen.findByText('Step 1 of 7');
+    await screen.findByRole('group', { name: /^Royal Luxury Reveal:/ });
     expect(await violations()).toEqual([]);
   });
 

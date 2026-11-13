@@ -70,6 +70,15 @@ public class EmailOutbox {
      * database error, both logged); true when it is in the queue, including when it already was.
      */
     public boolean enqueue(String dedupeKey, EmailKind kind, Long orderId, String to, String subject, String body) {
+        return enqueue(dedupeKey, kind, orderId, to, subject, body, null);
+    }
+
+    /**
+     * Queues one email with an HTML alternative. {@code html} may be null or blank for a plain-text email; when
+     * present, the email is sent as multipart/alternative with {@code body} as its plain-text part.
+     */
+    public boolean enqueue(String dedupeKey, EmailKind kind, Long orderId, String to, String subject, String body,
+            String html) {
         if (!StringUtils.hasText(dedupeKey) || dedupeKey.length() > MAX_KEY) {
             log.error("Email {} not queued: invalid dedupe key", kind);
             countFailure(Failure.INVALID_KEY);
@@ -87,11 +96,17 @@ public class EmailOutbox {
         try {
             // A second copy of the same key changes nothing: no error, no new row, the first one stands.
             jdbc.update("""
-                    INSERT INTO email_outbox (dedupe_key, kind, order_id, recipient, subject, body_text, status,
-                        attempts, next_attempt_at, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, 'PENDING', 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
+                    INSERT INTO email_outbox (dedupe_key, kind, order_id, recipient, subject, body_text, body_html,
+                        status, attempts, next_attempt_at, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', 0, UTC_TIMESTAMP(6), UTC_TIMESTAMP(6), UTC_TIMESTAMP(6))
                     ON DUPLICATE KEY UPDATE dedupe_key = dedupe_key""",
-                    dedupeKey, kind.name(), orderId, to.strip(), safeSubject, body == null ? "" : body);
+                    dedupeKey, kind.name(), orderId, to.strip(), safeSubject, body == null ? "" : body,
+                    StringUtils.hasText(html) ? html : null);
+        } catch (org.springframework.dao.PessimisticLockingFailureException e) {
+            // A deadlock rolls back the whole transaction in MySQL, not just this statement: pretending otherwise would
+            // let the rest of the request commit without the order. Fail the request; the client may retry (409).
+            countFailure(Failure.DATABASE);
+            throw e;
         } catch (DataAccessException e) {
             // The order matters more than its email: never let queueing fail the order. Logged for follow-up.
             log.error("Email {} ({}) could not be queued: {}", dedupeKey, kind,

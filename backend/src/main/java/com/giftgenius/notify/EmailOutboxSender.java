@@ -183,15 +183,26 @@ public class EmailOutboxSender {
         log.info("Email {} ({}) to {} sent on attempt {}", email.id(), email.kind(), to, email.attempt());
     }
 
-    /** The email as a MIME message, with the Message-ID every attempt at this email shares. */
+    /**
+     * The email as a MIME message, with the Message-ID every attempt at this email shares. With an HTML alternative
+     * it is multipart/alternative (plain text first, then HTML, as mail clients expect); otherwise plain text.
+     */
     MimeMessage message(JavaMailSender smtp, EmailOutboxStore.Claimed email) {
         try {
             MimeMessage mime = smtp.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
+            boolean html = StringUtils.hasText(email.html());
+            MimeMessageHelper helper = html
+                    ? new MimeMessageHelper(mime, MimeMessageHelper.MULTIPART_MODE_MIXED_RELATED,
+                            StandardCharsets.UTF_8.name())
+                    : new MimeMessageHelper(mime, false, StandardCharsets.UTF_8.name());
             helper.setFrom(from);
             helper.setTo(email.recipient());
             helper.setSubject(email.subject());
-            helper.setText(email.body(), false);
+            if (html) {
+                helper.setText(email.body(), email.html());
+            } else {
+                helper.setText(email.body(), false);
+            }
             // Spring's sender keeps an explicit Message-ID instead of generating a new one on each send.
             mime.setHeader("Message-ID", messageId(email.id(), email.dedupeKey(), messageIdDomain));
             return mime;

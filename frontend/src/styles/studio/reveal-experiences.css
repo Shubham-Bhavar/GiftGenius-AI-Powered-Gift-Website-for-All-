@@ -284,8 +284,6 @@
 .exp-card-actions .studio-link-btn { padding: 6px 10px; font-size: 12px; }
 .exp-swatch { position: relative; display: block; width: 40px; height: 40px; border-radius: 4px; overflow: hidden; background: var(--sw-box); box-shadow: inset 0 0 0 1px rgba(128,128,128,0.35); }
 .exp-swatch i { position: absolute; left: 16px; top: 0; bottom: 0; width: 8px; background: var(--sw-ribbon); }
-.exp-swatch--classic { background: var(--cream-dark); }
-.exp-swatch--classic i { left: 8px; right: 8px; top: 8px; bottom: 8px; width: auto; background: none; border: 1.5px solid var(--text-muted); }
 
 @media (max-width: 520px) {
   .xp-stage { height: 460px; }
