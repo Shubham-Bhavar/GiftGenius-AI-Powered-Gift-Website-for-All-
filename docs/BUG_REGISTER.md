@@ -223,6 +223,7 @@ passes on, and the order placed through the API.
 | GG-51 | Low | Gift assistant | With nothing to go on, the assistant showed its question twice (the reply and the question are the same text) | Fixed (found in the 2026-11-13 demo run) |
 | GG-52 | Medium | Gift assistant | The sticky header covered the top of the assistant panel on phones and on short desktop windows | Fixed (found in the 2026-11-13 demo run) |
 | GG-53 | Low | Order confirmation | The confirmation page says "We've emailed a confirmation" even when no email provider is configured and nothing was sent | Open: the page can't tell; needs the API to say whether the email was queued for sending |
+| GG-54 | Low | Tests | A gift assistant test raced a sign-in redirect: it failed on CI's fast runners and checked nothing locally | Fixed (test removed; the behaviour is covered by a reliable test) |
 
 ### Details of the fixed items
 
@@ -303,3 +304,7 @@ passes on, and the order placed through the API.
   (above the header and mobile nav, below the cart drawer, quick view, toasts and sign-in dialogs) so it is never
   hidden if they still meet. Checked in the browser at 1024x768 and 375x812, at the top of the page and scrolled;
   the cart drawer still covers the panel. No automated test: the tests don't load CSS.
+- **GG-54:** `assistant.test.jsx` "stays out of the way on %s" rendered checkout, admin and Seller Center signed
+  out, waited 50 ms and expected no assistant; signed-out visitors are redirected to `/login`, where it shows. It
+  failed on CI (PR #3 run 43404039472) and passed locally only because nothing had rendered yet. Removed; covered
+  by "stays out of the way while paying and in the back offices", which signs in and waits for each page.

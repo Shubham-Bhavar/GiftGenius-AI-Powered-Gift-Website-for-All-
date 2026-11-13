@@ -8,7 +8,7 @@ to customers, sellers and the store owner, the Classic reveal retired, the gift 
 ## Verdict
 
 **READY WITH BLOCKERS (2026-11-12, updated 2026-11-13).** The code passes every check that can run here: 358
-backend unit and 180 integration tests on MySQL 8.0.43, 457 frontend tests, lint, the production build and
+backend unit and 180 integration tests on MySQL 8.0.43 (and on CI's MySQL 8.4), 454 frontend tests, lint, the production build and
 `npm audit` (0). 37 of 38 deliberately reintroduced defects were caught at once, and a test now catches the 38th.
 The release blockers below are infrastructure, provider credentials and owner decisions; the open code defects
 (GG-36, GG-45, GG-53, see "Open code defects") are not release blockers but should be scheduled. The Docker images
@@ -86,8 +86,8 @@ This does not claim the system is "100 % production-ready"; it states what was v
 
 | Item | Status | Evidence |
 |---|---|---|
-| Frontend lint, tests, build; backend unit and integration tests | PASS (2026-11-13: 358 unit, 180 integration, 457 frontend) | TEST_RESULTS.md |
-| CI database version | NOT VERIFIED | CI's service is `mysql:8.4`; this run used 8.0.43. PR CI not rerun on these changes |
+| Frontend lint, tests, build; backend unit and integration tests | PASS (2026-11-13: 358 unit, 180 integration, 454 frontend) | TEST_RESULTS.md |
+| CI database version | PASS (backend) | CI's backend job (358 unit and 180 integration tests on `mysql:8.4`) passed for `ae8829e`, PR #3 run 43404039472; local runs use 8.0.43 |
 | Tests need no paid service or live credential | PASS | fakes and mocks for Razorpay, Nominatim, Gemini, mail |
 | Docker Compose configuration (base and production overlay) | PASS | `docker compose config` |
 | Docker image builds | BLOCKED | On 2026-11-12 the daemon ran, but every Alpine base image (`node:22-alpine`, Temurin Alpine) failed with "exec format error" on this machine, also after a cache prune and re-pull; CI builds them |

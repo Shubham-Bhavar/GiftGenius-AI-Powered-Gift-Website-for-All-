@@ -132,12 +132,6 @@ describe('gift assistant', () => {
     expect(within(panel()).queryByRole('list', { name: 'Suggested gifts' })).toBeNull();
   });
 
-  it.each(['/checkout', '/admin', '/seller'])('stays out of the way on %s', async (path) => {
-    renderApp(path);
-    await new Promise((r) => { setTimeout(r, 50); });
-    expect(screen.queryByRole('button', { name: /Gift assistant/ })).toBeNull();
-  });
-
   it('has no accessibility violations, closed or in a conversation', async () => {
     const { user } = await openAssistant();
     await say(user, 'A gift for my mom under ₹600');

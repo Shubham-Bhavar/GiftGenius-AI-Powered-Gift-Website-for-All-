@@ -556,3 +556,18 @@ Still uncommitted on `feat/gift-decision-assistant` (HEAD `8486cc7`), same throw
   left in place; it was found at once, restored by hand and confirmed against the intended code, and the harness
   now retries and stops if a file can't be restored. All 9 breaks were then re-run, and the file was identical
   before and after.
+
+## CI on PR #3 and the racy assistant test (2026-11-13)
+
+- **CI for `ae8829e`** (PR #3, GitHub Actions run 43404039472): the backend job passed (unit and MySQL integration
+  tests on `mysql:8.4`); the frontend job failed in three cases of one test; the Docker job was skipped because it
+  waits for both.
+- **Cause (GG-54):** `assistant.test.jsx` "stays out of the way on /checkout, /admin, /seller" rendered each page
+  signed out, waited a fixed 50 ms and expected no assistant. A signed-out visitor is redirected to `/login`, a shop
+  page where the assistant rightly shows. On CI's faster runners the redirect finished within 50 ms and the test
+  failed; on this PC the page hadn't rendered yet, so it passed without checking anything (which is why the round-5
+  deliberate break "assistant shown on checkout and admin" wasn't caught by it).
+- **Fix:** the test is removed. The same behaviour is covered by "stays out of the way while paying and in the back
+  offices, and is there on shop pages", which signs in and waits for each page's content; it passed on CI, and the two
+  deliberate breaks that show the assistant on those pages are caught by it (re-run after the removal).
+- **Frontend after the fix:** 19 files, 454 passed, 0 failed, 0 skipped (457 minus the 3 removed cases); lint 0.
