@@ -15,6 +15,7 @@ USER app
 # 8080: API (reached only through nginx). 9091: health + Prometheus metrics (never published).
 EXPOSE 8080 9091
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75 -XX:+ExitOnOutOfMemoryError"
+# Readiness on the management port, wherever MANAGEMENT_PORT puts it (open, status only).
 HEALTHCHECK --interval=30s --timeout=5s --start-period=90s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:9091/actuator/health/readiness | grep -q UP || exit 1
+  CMD wget -qO- "http://127.0.0.1:${MANAGEMENT_PORT:-9091}/actuator/health/readiness" | grep -q UP || exit 1
 ENTRYPOINT ["sh", "-c", "exec java $JAVA_OPTS -jar app.jar"]

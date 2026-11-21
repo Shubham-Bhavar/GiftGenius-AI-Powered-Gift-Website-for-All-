@@ -62,6 +62,22 @@ class PricingServiceTest {
     }
 
     @Test
+    void personalisedLinesOfOneProductArePricedAndStockCheckedTogether() {
+        Quote q = pricing.quote(List.of(new QuoteLineRequest(1L, 2), new QuoteLineRequest(1L, 2)), null,
+                DeliveryType.STANDARD, false);
+        assertThat(q.lines()).singleElement().satisfies(l -> assertThat(l.quantity()).isEqualTo(4));
+        assertThat(q.subtotal()).isEqualByComparingTo("1996");
+        assertThat(q.warnings()).isEmpty();
+
+        // 3 + 3 fit the stock of 5 one line at a time, but not together.
+        Quote over = pricing.quote(List.of(new QuoteLineRequest(1L, 3), new QuoteLineRequest(1L, 3)), null,
+                DeliveryType.STANDARD, false);
+        assertThat(over.warnings()).containsExactly("Only 5 left of Luxury Hamper Box.");
+        assertThatThrownBy(() -> pricing.quote(List.of(new QuoteLineRequest(1L, 3), new QuoteLineRequest(1L, 3)),
+                null, DeliveryType.STANDARD, true)).isInstanceOf(ApiException.class);
+    }
+
+    @Test
     void percentCouponRespectsCap() {
         Coupon c = new Coupon();
         c.setCode("GIFT20");

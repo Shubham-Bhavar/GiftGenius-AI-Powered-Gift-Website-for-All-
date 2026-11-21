@@ -333,3 +333,8 @@
   box-shadow: 0 4px 14px rgba(184,121,26,0.45);
   text-transform: uppercase;
 }
+
+/* Held invisible only until the GSAP entrance takes over (animations/heroMotion.js), which always removes the mark;
+   never set with reduced motion. */
+.hero[data-motion="pending"] .hero-left > *,
+.hero[data-motion="pending"] .hero-visual { opacity: 0; }

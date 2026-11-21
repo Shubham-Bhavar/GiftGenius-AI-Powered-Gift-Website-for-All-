@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { screen, waitFor, within } from '@testing-library/react';
+import { safeNext } from '../pages/auth/Auth.jsx';
 import { renderApp, seedGuestCart } from './renderApp.jsx';
 import { db } from './setup.js';
 
@@ -45,6 +46,12 @@ describe('product page', () => {
     renderApp('/product/999');
     expect(await screen.findByRole('heading', { name: "We couldn't find that gift" })).toBeInTheDocument();
   });
+
+  it('treats a malformed gift link as not found, not as a retryable error', async () => {
+    renderApp('/product/abc');
+    expect(await screen.findByRole('heading', { name: "We couldn't find that gift" })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Try again|Retry/ })).not.toBeInTheDocument();
+  });
 });
 
 describe('cart, sign-in and checkout', () => {
@@ -59,6 +66,18 @@ describe('cart, sign-in and checkout', () => {
     expect(screen.getByText('₹2,298')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Sign in to Checkout →' }));
     expect(screen.getByRole('dialog', { name: 'Sign in' })).toBeInTheDocument();
+  });
+
+  it('prices personalised lines of one product at their full quantity, as the order will be charged', async () => {
+    seedGuestCart([
+      { key: '1|Asha|', productId: 1, name: 'Luxury Hamper Box', image: null, unitPrice: 499, quantity: 10, customName: 'Asha' },
+      { key: '1|Ravi|', productId: 1, name: 'Luxury Hamper Box', image: null, unitPrice: 499, quantity: 5, customName: 'Ravi' },
+    ]);
+    renderApp('/cart');
+    expect(await screen.findByRole('heading', { name: /Your Cart/ })).toBeInTheDocument();
+    // 15 × ₹499, free standard delivery: not the 10 units a per-product cap of 10 would price.
+    expect(await screen.findAllByText('₹7,485')).not.toHaveLength(0);
+    expect(db.lastQuoteItems).toEqual([{ productId: 1, quantity: 10 }, { productId: 1, quantity: 5 }]);
   });
 
   it('shows a clear message for a wrong password', async () => {
@@ -81,6 +100,14 @@ describe('cart, sign-in and checkout', () => {
     await waitFor(() => expect(db.carts[1]).toEqual([expect.objectContaining({ productId: 6, quantity: 2 })]));
     expect(db.wishlists[1]).toEqual([3]);
     expect(db.calls.filter((c) => c.url === '/api/cart/merge')).toHaveLength(1);
+  });
+
+  it('accepts only same-site paths as the page to return to', () => {
+    expect(safeNext('/checkout')).toBe('/checkout');
+    expect(safeNext('/account/orders/GG-1?placed=1')).toBe('/account/orders/GG-1?placed=1');
+    for (const raw of [null, '', 'https://evil.example', '//evil.example', '/\\evil.example', '/\t/evil.example', '/\n/evil.example']) {
+      expect(safeNext(raw)).toBe('/');
+    }
   });
 
   it('never redirects to another site after sign-in', async () => {

@@ -1,6 +1,8 @@
-// Runs before first paint so the page never flashes the wrong theme.
+// Runs before first paint so the page never flashes the wrong theme: the visitor's own choice (the header toggle) if
+// they made one, otherwise the system's light or dark setting. Blocked storage still gets the system's.
+var t = null;
 try {
-  var t = localStorage.getItem('gg-theme');
-  if (t !== 'light' && t !== 'dark') t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  document.documentElement.dataset.theme = t;
-} catch (e) { /* storage blocked: CSS falls back to the system theme */ }
+  t = localStorage.getItem('gg-theme');
+} catch (e) { /* storage blocked: use the system's */ }
+if (t !== 'light' && t !== 'dark') t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+document.documentElement.dataset.theme = t;

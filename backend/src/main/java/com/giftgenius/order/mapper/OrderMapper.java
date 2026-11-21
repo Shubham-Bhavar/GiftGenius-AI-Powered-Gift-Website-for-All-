@@ -48,7 +48,7 @@ public class OrderMapper {
                 o.getCouponCode(),
                 new ShippingDto(s.getFullName(), s.getEmail(), s.getPhone(), s.getAddressLine(), s.getCity(),
                         s.getState(), s.getPincode()),
-                items(o, sellerRefs(List.of(o))), timeline(o), o.getCreatedAt(), pay);
+                items(o, sellerRefs(List.of(o))), timeline(o), o.getCreatedAt(), pay, null);
     }
 
     /** The public tracking view: no address beyond the city, first name only. */

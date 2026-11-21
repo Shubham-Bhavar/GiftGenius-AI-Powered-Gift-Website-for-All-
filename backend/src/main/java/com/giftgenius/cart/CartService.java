@@ -27,13 +27,15 @@ public class CartService {
 
     private final UserRepository users;
     private final ApplicationEventPublisher events;
+    private final CartMergeReceipts mergeReceipts;
 
     public CartService(CartRepository carts, ProductRepository products, UserRepository users,
-            ApplicationEventPublisher events) {
+            ApplicationEventPublisher events, CartMergeReceipts mergeReceipts) {
         this.carts = carts;
         this.products = products;
         this.users = users;
         this.events = events;
+        this.mergeReceipts = mergeReceipts;
     }
 
     /** Read-only: a shopper who never added anything simply has an empty cart (no row is created). */
@@ -52,9 +54,25 @@ public class CartService {
         return toDto(cart);
     }
 
+    /** A merge without a key, as older clients send it: always applied. */
     @Transactional
     public CartDto merge(Long userId, List<AddItemRequest> items) {
+        return merge(userId, items, null);
+    }
+
+    /**
+     * Adds the guest cart's lines to the account's (GG-45). With an {@code idempotencyKey}, a merge already made under
+     * that key changes nothing and answers the cart as it is, so a retry after a lost response, or a second tab,
+     * can't add the same lines twice. The user's row is locked first (as for every cart write), so two merges under
+     * one key run one after the other and the second sees the first's receipt.
+     */
+    @Transactional
+    public CartDto merge(Long userId, List<AddItemRequest> items, String idempotencyKey) {
         Cart cart = cartFor(userId);
+        String key = mergeKey(idempotencyKey);
+        if (key != null && !mergeReceipts.firstTime(userId, key)) {
+            return toDto(cart);
+        }
         if (items != null) {
             for (AddItemRequest item : items) {
                 try {
@@ -116,6 +134,17 @@ public class CartService {
      * the previous one left it. InnoDB takes the read snapshot after the lock is granted.
      */
     @Transactional
+    static String mergeKey(String key) {
+        if (!StringUtils.hasText(key)) {
+            return null;
+        }
+        String k = key.trim();
+        if (k.length() > 64) {
+            throw ApiException.badRequest("Idempotency-Key must be at most 64 characters.");
+        }
+        return k;
+    }
+
     public Cart cartFor(Long userId) {
         users.lockById(userId).orElseThrow(() -> ApiException.unauthorized("Please sign in again."));
         return carts.findByUserId(userId)

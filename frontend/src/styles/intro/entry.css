@@ -1,0 +1,83 @@
+/*
+ * The homepage's entry: the Gift Studio's Royal box, as a film (or two stills), with the brand above it and one action
+ * below. The box sits in a studio of the site's own background for the theme: the light teal of --bg (#E6F7FA), or
+ * the dark theme's (#0F1A1C). Each theme has its own film, whose edges are rendered as exactly that colour, so they
+ * melt into the page, and the entry fades into a homepage of the same colour. The colours are written out here rather
+ * than taken from the tokens, because they must stay the colours the films were rendered in.
+ */
+.gg-entry {
+  --entry-room: #e6f7fa;
+  --entry-ink: #0f2225;
+  --entry-muted: #3a5a60;
+  --entry-gold: #8f5c0e;
+  --entry-paper: #f7fcfd;
+  --entry-hover: #1a3035;
+  --entry-line: #b0dde6;
+  position: fixed; inset: 0; z-index: 10000; display: grid; grid-template-rows: auto 1fr auto; justify-items: center;
+  background: var(--entry-room); color: var(--entry-ink);
+  opacity: 1; transition: opacity 0.8s cubic-bezier(.4, 0, .2, 1);
+}
+.gg-entry.is-leaving { opacity: 0; pointer-events: none; }
+.gg-entry--dark {
+  --entry-room: #0f1a1c;
+  --entry-ink: #f3efe6;
+  --entry-muted: #8aabb0;
+  --entry-gold: #c8ae7e;
+  --entry-paper: #0f1a1c;
+  --entry-hover: #ffffff;
+  --entry-line: #2e4246;
+}
+html.gg-entry-lock, html.gg-entry-lock body { overflow: hidden; }
+/* The film has the band between the brand and the button to itself, so neither ever covers the box. */
+.gg-entry-stage { position: relative; grid-row: 2; width: 100%; min-height: 0; cursor: pointer; }
+.gg-entry-frame {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; opacity: 0; transition: opacity 0.6s ease;
+  /* Shown whole, on a screen of any shape: its edges melt into the room around it. */
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 16%, #000 84%, transparent), linear-gradient(transparent, #000 12%, #000 86%, transparent);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(to right, transparent, #000 16%, #000 84%, transparent), linear-gradient(transparent, #000 12%, #000 86%, transparent);
+  mask-composite: intersect;
+}
+.gg-entry-frame.is-shown, .gg-entry-arrive { opacity: 1; }
+.gg-entry-arrive.is-gone { opacity: 0; transition: none; }
+.gg-entry-open { transition: none; }
+.gg-entry--stills .gg-entry-end { transition: opacity 0.9s ease; }
+/* Leaving: the card comes towards you as the room fades, as if passing through it into the homepage. */
+.gg-entry.is-leaving { transition: opacity 0.7s cubic-bezier(.5, 0, .75, 0); }
+.gg-entry.is-leaving .gg-entry-stage { transform: scale(1.12); transition: transform 0.7s cubic-bezier(.4, 0, .2, 1); }
+
+.gg-entry-brand { position: relative; z-index: 1; text-align: center; padding: clamp(24px, 6vh, 56px) 16px 4px; transition: opacity 0.5s ease, transform 0.5s ease; pointer-events: none; }
+.gg-entry-brand p {
+  margin: 0 0 6px; font-family: 'DM Mono', monospace; font-size: 11.5px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--entry-gold);
+}
+.gg-entry-brand h2 {
+  margin: 0; font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 500; font-size: clamp(38px, 6vw, 64px); line-height: 1; color: var(--entry-ink); letter-spacing: 0.01em;
+}
+.gg-entry-brand h2 em { font-style: italic; }
+.gg-entry-actions {
+  position: relative; z-index: 1; grid-row: 3; display: grid; justify-items: center; gap: 10px; padding: 4px 16px clamp(28px, 7vh, 64px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.gg-entry-open-btn {
+  appearance: none; background: var(--entry-ink); color: var(--entry-paper); border: 1px solid var(--entry-ink); border-radius: 2px; font: inherit; font-size: 15px;
+  font-weight: 500; letter-spacing: 0.02em; padding: 12px 30px; min-height: 46px; cursor: pointer; transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+.gg-entry-open-btn:hover { background: var(--entry-hover); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.22); }
+.gg-entry-open-btn:focus-visible, .gg-entry-skip:focus-visible { outline: 2px solid var(--entry-gold); outline-offset: 3px; }
+.gg-entry-hint { margin: 0; font-size: 12.5px; color: var(--entry-muted); }
+.gg-entry-hint strong { color: var(--entry-ink); font-weight: 500; }
+.gg-entry-skip {
+  position: absolute; z-index: 2; top: 14px; right: 14px; appearance: none; background: transparent; border: 1px solid transparent; border-radius: 2px;
+  color: var(--entry-muted); font: inherit; font-size: 13px; padding: 8px 12px; min-height: 40px; cursor: pointer; transition: color 0.2s ease, border-color 0.2s ease;
+}
+.gg-entry-skip:hover { color: var(--entry-ink); border-color: var(--entry-line); }
+/* Once it opens, the words step aside for the box and the card. */
+.gg-entry.is-opening .gg-entry-brand, .gg-entry.is-leaving .gg-entry-brand { opacity: 0; transform: translateY(-8px); }
+.gg-entry.is-opening .gg-entry-actions, .gg-entry.is-leaving .gg-entry-actions { opacity: 0; transform: translateY(8px); pointer-events: none; }
+.gg-entry.is-opening .gg-entry-stage { cursor: default; }
+
+@media (prefers-reduced-motion: reduce) {
+  .gg-entry, .gg-entry-frame, .gg-entry--stills .gg-entry-end, .gg-entry-brand, .gg-entry-actions { transition-duration: 0.3s; }
+  .gg-entry.is-leaving .gg-entry-stage { transform: none; }
+  .gg-entry.is-opening .gg-entry-brand, .gg-entry.is-opening .gg-entry-actions { transform: none; }
+}

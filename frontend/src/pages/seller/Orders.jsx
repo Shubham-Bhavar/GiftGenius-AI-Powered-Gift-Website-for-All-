@@ -157,12 +157,16 @@ export function SellerOrderDetail() {
 
         <section className="od-card" aria-labelledby="sel-ship-h">
           <h2 id="sel-ship-h">🚚 Ship To</h2>
-          <address className="sel-address">
-            <strong>{o.shipping.fullName}</strong><br />
-            {o.shipping.addressLine}<br />
-            {o.shipping.city}{o.shipping.state ? `, ${o.shipping.state}` : ''} {o.shipping.pincode}<br />
-            📞 <a href={`tel:${o.shipping.phone.replace(/[^+0-9]/g, '')}`}>{o.shipping.phone}</a>
-          </address>
+          {o.shipping ? (
+            <address className="sel-address">
+              <strong>{o.shipping.fullName}</strong><br />
+              {o.shipping.addressLine}<br />
+              {o.shipping.city}{o.shipping.state ? `, ${o.shipping.state}` : ''} {o.shipping.pincode}<br />
+              📞 <a href={`tel:${o.shipping.phone.replace(/[^+0-9]/g, '')}`}>{o.shipping.phone}</a>
+            </address>
+          ) : (
+            <p className="co-muted">Delivery details are shown while your store is active. GiftGenius is handling this order for now.</p>
+          )}
           <p className="co-muted sel-fine">Customer order status: <StatusPill status={o.orderStatus} /></p>
         </section>
       </div>

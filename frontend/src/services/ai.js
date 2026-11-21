@@ -4,4 +4,8 @@ import { request } from './api/client.js';
 export const aiApi = {
   recommend: (body) => request('/ai/recommendations', { method: 'POST', body }),
   giftMessages: (body) => request('/ai/gift-message', { method: 'POST', body }),
+  /** A request in the shopper's own words ("I want to thank my sister…"): what was understood, and real picks. */
+  giftRequest: (body) => request('/ai/gift-request', { method: 'POST', body }),
+  /** One turn of the gift assistant: everything the shopper has said so far; a reply, maybe a question, real picks. */
+  assistant: (body) => request('/ai/assistant', { method: 'POST', body }),
 };

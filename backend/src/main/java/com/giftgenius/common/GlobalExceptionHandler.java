@@ -73,8 +73,28 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail handleIntegrity(DataIntegrityViolationException ex) {
-        log.warn("Data integrity violation: {}", ex.getMostSpecificCause().getMessage());
+        // The database's message quotes the offending value (an email, a name): log which rule was broken, not that.
+        log.warn("Data integrity violation: {}", integrityRule(ex.getMostSpecificCause()));
         return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "That conflicts with existing data.");
+    }
+
+    private static final java.util.regex.Pattern RULE = java.util.regex.Pattern.compile(
+            "(?:for key|constraint|CONSTRAINT|foreign key constraint fails \\(`[^`]*`\\.`[^`]*`, CONSTRAINT) [`']?([\\w.]+)[`']?");
+
+    /**
+     * The database rule a write broke ("users.uk_users_email"), without the value that broke it; when the rule can't
+     * be named, the error's type and SQL state only.
+     */
+    static String integrityRule(Throwable cause) {
+        String message = cause == null ? null : cause.getMessage();
+        if (message != null) {
+            java.util.regex.Matcher m = RULE.matcher(message);
+            if (m.find()) {
+                return "rule " + m.group(1);
+            }
+        }
+        String type = cause == null ? "unknown" : cause.getClass().getSimpleName();
+        return cause instanceof java.sql.SQLException sql ? type + " (SQL state " + sql.getSQLState() + ")" : type;
     }
 
     @ExceptionHandler(Exception.class)

@@ -260,6 +260,20 @@ describe('Seller Center', () => {
     expect(updated.image).toBe('https://img.example.com/rose-candle.jpg');
   });
 
+  it('keeps units sold while the edit form was open (GG-36), and says so', async () => {
+    signedInAs(SANA);
+    const { user } = renderApp('/seller/products/23/edit');
+    await screen.findByRole('heading', { name: '✏️ Edit: Rose Petal Candle' });
+    const shown = Number(screen.getByLabelText('Stock').value);
+    db.products.find((p) => p.id === 23).stock = shown - 3; // three sell while the form is open
+    await user.clear(screen.getByLabelText('Stock'));
+    await user.type(screen.getByLabelText('Stock'), String(shown + 10)); // the seller restocks by 10
+    await user.click(screen.getByRole('button', { name: 'Save as Draft' }));
+    expect(await screen.findByText(new RegExp(`Stock is ${shown + 7}: 3 sold while you were editing`))).toBeInTheDocument();
+    expect(db.products.find((p) => p.id === 23).stock).toBe(shown + 7);
+    expect(db.sellerRequests.find((r) => r.type === 'update').body).toMatchObject({ stock: shown + 10, stockSeen: shown });
+  });
+
   it('shows only the seller’s own order lines and updates their fulfilment', async () => {
     signedInAs(SANA);
     const { user, unmount } = renderApp('/seller/orders');
@@ -432,6 +446,19 @@ describe('store status and failures', () => {
     await user.selectOptions(screen.getByLabelText('State'), 'Maharashtra');
     await user.click(screen.getByRole('button', { name: 'Create Seller Account →' }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Sign in, then choose "Sell on GiftGenius" in your account');
+  });
+
+  it("a suspended store sees its order lines but not the customer's delivery details", async () => {
+    Object.assign(db.stores[SANA], { status: 'SUSPENDED', statusReason: 'Late deliveries' });
+    signedInAs(SANA);
+    renderApp('/seller/orders/GG-SELL0001');
+    await screen.findByRole('heading', { name: 'GG-SELL0001' });
+    const ship = screen.getByRole('heading', { name: '🚚 Ship To' }).closest('section');
+    expect(within(ship).getByText(/Delivery details are shown while your store is active/)).toBeInTheDocument();
+    expect(within(ship).queryByText('Asha Rao')).toBeNull();
+    expect(screen.queryByText(/98765/)).toBeNull();
+    expect(screen.getByText(/Your store isn.t active, so GiftGenius handles this order for now/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Update Status →' })).toBeNull();
   });
 
   it("a suspended store sees why and isn't offered product changes", async () => {

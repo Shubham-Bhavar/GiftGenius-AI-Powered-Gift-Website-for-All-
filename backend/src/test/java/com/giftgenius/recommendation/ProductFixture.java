@@ -11,6 +11,7 @@ import com.giftgenius.catalog.model.ProductStatus;
 public final class ProductFixture {
 
     private final long id;
+    private String name;
     private String category = "gift sets";
     private int price = 999;
     private double rating = 4.5;
@@ -31,6 +32,12 @@ public final class ProductFixture {
 
     public static ProductFixture product(long id) {
         return new ProductFixture(id);
+    }
+
+    /** Unset means "Product {id}". */
+    public ProductFixture name(String name) {
+        this.name = name;
+        return this;
     }
 
     public ProductFixture category(String category) {
@@ -96,7 +103,7 @@ public final class ProductFixture {
     }
 
     public ProductDto build() {
-        String name = "Product " + id;
+        String name = this.name != null ? this.name : "Product " + id;
         return new ProductDto(id, "p-" + id, name, category, BigDecimal.valueOf(price), BigDecimal.valueOf(price + 200),
                 BigDecimal.valueOf(rating), reviewCount, "★★★★★", "https://img/" + id, name, null, tags, occasions,
                 forWhom, personalities, relationships, name + " description", null, cultural, festival,

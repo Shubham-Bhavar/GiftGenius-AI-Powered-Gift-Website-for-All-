@@ -22,7 +22,14 @@ function loadScript() {
     const s = document.createElement('script');
     s.src = SCRIPT_SRC;
     s.async = true;
-    s.onload = () => (window.Razorpay ? resolve(window.Razorpay) : reject(new Error('Razorpay unavailable')));
+    s.onload = () => {
+      if (window.Razorpay) {
+        resolve(window.Razorpay);
+        return;
+      }
+      loading = null; // let "try again" load it afresh
+      reject(new Error("Couldn't load the payment window. Check your connection and try again."));
+    };
     s.onerror = () => {
       loading = null;
       reject(new Error("Couldn't load the payment window. Check your connection and try again."));

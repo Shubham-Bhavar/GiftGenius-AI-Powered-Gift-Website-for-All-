@@ -42,11 +42,14 @@ public class ProductService {
     private final ProductRepository products;
     private final SellerProfileRepository sellers;
     private final CacheManager cacheManager;
+    private final StockEdits stockEdits;
 
-    public ProductService(ProductRepository products, SellerProfileRepository sellers, CacheManager cacheManager) {
+    public ProductService(ProductRepository products, SellerProfileRepository sellers, CacheManager cacheManager,
+            StockEdits stockEdits) {
         this.products = products;
         this.sellers = sellers;
         this.cacheManager = cacheManager;
+        this.stockEdits = stockEdits;
     }
 
     @Transactional(readOnly = true)
@@ -132,7 +135,7 @@ public class ProductService {
     public ProductDto create(ProductUpsertRequest req) {
         Product p = new Product();
         p.setSlug(uniqueSlug(req.name()));
-        apply(p, req);
+        apply(p, req, req.stock());
         return ProductDto.from(products.save(p));
     }
 
@@ -143,7 +146,9 @@ public class ProductService {
         if (p.getSeller() != null) {
             sellers.lockById(p.getSeller().getUserId()); // the listing decision below reads the store's latest status
         }
-        apply(p, req);
+        // After the store's lock, as everywhere: only the stock change made in the form is applied (GG-36).
+        int stock = stockEdits.resolve(p, req.stock(), req.stockSeen(), 1_000_000);
+        apply(p, req, stock);
         return ProductDto.from(p);
     }
 
@@ -160,7 +165,7 @@ public class ProductService {
         }
     }
 
-    private void apply(Product p, ProductUpsertRequest r) {
+    private void apply(Product p, ProductUpsertRequest r, int stock) {
         if (r.originalPrice().compareTo(r.price()) < 0) {
             throw ApiException.badRequest("Original price can't be lower than the sale price.");
         }
@@ -180,7 +185,7 @@ public class ProductService {
         p.setAltText(r.alt());
         p.setBadgeText(r.badgeText());
         p.setBadgeClass(r.badgeClass());
-        p.setStock(r.stock());
+        p.setStock(stock);
         if (p.getSeller() != null) {
             // A seller's product is listed by approving it, not by ticking "visible".
             p.syncListing();
@@ -223,16 +228,18 @@ public class ProductService {
         return slug;
     }
 
-    private static Sort sortFor(String sort) {
+    /** Every order ends on the id, so products that tie (same price, rating or creation time) page consistently. */
+    static Sort sortFor(String sort) {
+        Sort byId = Sort.by("id");
         if (sort == null) {
-            return Sort.by("id");
+            return byId;
         }
         return switch (sort) {
-            case "price_asc", "price-asc" -> Sort.by("price").ascending();
-            case "price_desc", "price-desc" -> Sort.by("price").descending();
-            case "rating" -> Sort.by("rating").descending().and(Sort.by("reviewCount").descending());
-            case "newest" -> Sort.by("createdAt").descending();
-            default -> Sort.by("id");
+            case "price_asc", "price-asc" -> Sort.by("price").ascending().and(byId);
+            case "price_desc", "price-desc" -> Sort.by("price").descending().and(byId);
+            case "rating" -> Sort.by("rating").descending().and(Sort.by("reviewCount").descending()).and(byId);
+            case "newest" -> Sort.by("createdAt").descending().and(Sort.by("id").descending());
+            default -> byId;
         };
     }
 }

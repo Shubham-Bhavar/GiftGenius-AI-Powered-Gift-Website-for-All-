@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import { catalogQueries } from '../../services/catalog.js';
@@ -15,6 +15,7 @@ export function SearchBox() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
+  const blurTimer = useRef(null);
   const [highlighted, setHighlighted] = useState(-1);
   const catalog = useQuery(catalogQueries.catalog());
 
@@ -57,8 +58,8 @@ export function SearchBox() {
         aria-activedescendant={open && highlighted >= 0 ? `searchOpt${highlighted}` : undefined}
         value={query}
         onChange={(e) => { setQuery(e.target.value); setOpen(true); setHighlighted(-1); }}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        onFocus={() => { clearTimeout(blurTimer.current); setOpen(true); }}
+        onBlur={() => { blurTimer.current = setTimeout(() => setOpen(false), 150); }}
         onKeyDown={onKeyDown} />
       <div className={`search-suggestions ${open && suggestions.length ? 'open' : ''}`} id="searchSuggestions" role="listbox" aria-label="Search suggestions">
         {open && suggestions.map((s, i) => (

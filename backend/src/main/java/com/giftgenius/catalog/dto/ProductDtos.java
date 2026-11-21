@@ -117,14 +117,16 @@ public final class ProductDtos {
             @NotBlank(message = "Add an image link") @Size(max = 1000)
             @Pattern(regexp = SafeText.HTTPS_URL, message = SafeText.HTTPS_URL_MESSAGE) String image,
             @Size(max = 255) @Pattern(regexp = SafeText.NO_MARKUP, message = SafeText.NO_MARKUP_MESSAGE) String alt,
-            boolean submit) {
+            boolean submit,
+            /** Optional: the stock shown when the form was opened; only the change is applied (see StockEdits). */
+            @Min(0) @Max(1_000_000) Integer stockSeen) {
     }
 
     public record ProductUpsertRequest(
             @NotBlank @Size(max = 150) String name,
             @NotBlank @Size(max = 40) String category,
             @NotBlank @Size(max = 500) String description,
-            String longDescription,
+            @Size(max = 10_000) String longDescription,
             @NotNull @DecimalMin("0.00") BigDecimal price,
             @NotNull @DecimalMin("0.00") BigDecimal originalPrice,
             @DecimalMin("0.0") @DecimalMax("5.0") BigDecimal rating,
@@ -137,10 +139,12 @@ public final class ProductDtos {
             Boolean active,
             Boolean isCultural,
             Boolean isFestival,
-            Set<String> tags,
-            Set<String> occasion,
-            Set<String> forWhom,
-            Set<String> personality,
-            Set<String> relationship) {
+            @Size(max = 30) Set<@NotBlank @Size(max = 40) String> tags,
+            @Size(max = 20) Set<@NotBlank @Size(max = 40) String> occasion,
+            @Size(max = 20) Set<@NotBlank @Size(max = 20) String> forWhom,
+            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> personality,
+            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> relationship,
+            /** Optional: the stock shown when the form was opened; only the change is applied (see StockEdits). */
+            @Min(0) @Max(1_000_000) Integer stockSeen) {
     }
 }

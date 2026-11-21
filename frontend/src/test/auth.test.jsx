@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { delay, http, HttpResponse } from 'msw';
 import { renderApp, seedGuestCart } from './renderApp.jsx';
 import { db, server } from './setup.js';
@@ -67,6 +67,97 @@ describe('sign-in dialog modes', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Sign In →' }));
     expect(await screen.findByRole('button', { name: 'Account menu for Asha Rao' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Sign in' })).toBeNull();
+  });
+});
+
+/**
+ * The dialog focuses its first field 100 ms after it opens or changes mode. A shopper (or a fast test) who is already
+ * typing in Password by then must keep their place: focus moving to Email would split the password across both fields.
+ *
+ * These tests don't depend on the machine's speed. The dialog is opened, and Password focused, in one synchronous
+ * step (fireEvent and focus() don't yield), so the timer is always still pending; then they wait until it has
+ * certainly fired before typing the rest.
+ */
+describe('sign-in dialog first-field focus', () => {
+  /** Resolves after the dialog's 100 ms focus timer has fired (a later, longer timer always fires after it). */
+  const pastTheFocusTimer = () => new Promise((resolve) => { setTimeout(resolve, 150); });
+
+  /** With the timer still pending: fill Email, start the password, let the timer fire, finish the password. */
+  async function typeThePasswordAcrossTheFocusTimer(user, dialog) {
+    const email = within(dialog).getByLabelText('Email');
+    const password = within(dialog).getByLabelText('Password');
+    fireEvent.change(email, { target: { value: 'asha@example.com' } });
+    act(() => password.focus());
+    await user.keyboard('correct-h');
+    await pastTheFocusTimer();
+    expect(password).toHaveFocus();
+    await user.keyboard('orse');
+
+    expect(password).toHaveFocus();
+    expect(password).toHaveValue('correct-horse');
+    expect(email).toHaveValue('asha@example.com');
+  }
+
+  it('leaves focus in Password when the shopper is typing there as the dialog settles, and signs in', async () => {
+    const { user } = renderApp('/');
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to your account' }));
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+
+    await typeThePasswordAcrossTheFocusTimer(user, dialog);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Sign In →' }));
+    expect(await screen.findByRole('button', { name: 'Account menu for Asha Rao' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Sign in' })).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
+  it('does the same after Forgot password and Back to sign in', async () => {
+    const { user } = renderApp('/');
+    await user.click(screen.getByRole('button', { name: 'Sign in to your account' }));
+    await user.click(screen.getByRole('button', { name: 'Forgot password?' }));
+    expect(screen.getByRole('dialog', { name: 'Forgot password' })).toBeInTheDocument();
+    // Changing mode starts the timer again.
+    fireEvent.click(screen.getByRole('button', { name: '← Back to sign in' }));
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+
+    await typeThePasswordAcrossTheFocusTimer(user, dialog);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Sign In →' }));
+    expect(await screen.findByRole('button', { name: 'Account menu for Asha Rao' })).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Sign in' })).toBeNull();
+  });
+
+  it('still focuses Email on opening and after each change of mode when the shopper has not chosen a field', async () => {
+    const { user } = renderApp('/');
+    await user.click(screen.getByRole('button', { name: 'Sign in to your account' }));
+    let dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    await waitFor(() => expect(within(dialog).getByLabelText('Email')).toHaveFocus());
+
+    await user.click(within(dialog).getByRole('button', { name: 'Forgot password?' }));
+    dialog = screen.getByRole('dialog', { name: 'Forgot password' });
+    await waitFor(() => expect(within(dialog).getByLabelText('Email')).toHaveFocus());
+
+    await user.click(within(dialog).getByRole('button', { name: '← Back to sign in' }));
+    dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    await waitFor(() => expect(within(dialog).getByLabelText('Email')).toHaveFocus());
+    expect(within(dialog).getByLabelText('Email')).toHaveValue('');
+  });
+
+  it('still focuses Email when focus is on a button in the dialog or in a field outside it', async () => {
+    renderApp('/');
+    // A field outside the dialog (the header's search box) is not the shopper choosing a field in it.
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in to your account' }));
+    const dialog = screen.getByRole('dialog', { name: 'Sign in' });
+    act(() => screen.getByPlaceholderText('Search gifts…').focus());
+    await pastTheFocusTimer();
+    expect(within(dialog).getByLabelText('Email')).toHaveFocus();
+
+    // Nor is a button inside it: the timer restarts with the mode, and focus is put on Close at once.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Forgot password?' }));
+    const forgot = screen.getByRole('dialog', { name: 'Forgot password' });
+    act(() => within(forgot).getByRole('button', { name: 'Close forgot password' }).focus());
+    await pastTheFocusTimer();
+    expect(within(forgot).getByLabelText('Email')).toHaveFocus();
   });
 });
 

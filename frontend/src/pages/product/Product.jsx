@@ -36,7 +36,8 @@ export default function Product() {
   if (product.error) {
     return (
       <div className="gg-page">
-        {product.error.status === 404 ? (
+        {/* 400: an id that isn't a number (a mistyped or truncated link) can't be a gift either. */}
+        {product.error.status === 404 || product.error.status === 400 ? (
           <EmptyState level={1} icon="🎁" title="We couldn't find that gift" action={<Link to="/shop" className="btn-primary">Browse all gifts →</Link>}>
             It may have sold out for good or been renamed.
           </EmptyState>
@@ -154,6 +155,7 @@ export default function Product() {
           }}>
             {saved ? '❤️ Saved to Wishlist' : '♡ Save to Wishlist'}
           </button>
+          {!soldOut && <Link to={`/studio?product=${p.id}`} className="pd-btn-studio">🎁 Preview it as a gift</Link>}
 
           <div className="pd-trust">
             <div><span>🚀</span><p>Same-Day Delivery</p></div>

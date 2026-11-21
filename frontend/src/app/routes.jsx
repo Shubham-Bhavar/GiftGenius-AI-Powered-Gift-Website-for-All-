@@ -31,6 +31,7 @@ export const routes = [
       { path: 'shop', element: <Shop /> },
       { path: 'product/:id', element: <Product /> },
       { path: 'gift-finder', lazy: () => import('../pages/ai/GiftFinder.jsx').then((m) => ({ Component: m.default })) },
+      { path: 'studio', lazy: page(() => import('../pages/studio/GiftStudio.jsx')) },
       { path: 'collections', lazy: page(() => import('../pages/shop/Collections.jsx'), (m) => m.Collections) },
       { path: 'about', lazy: page(() => import('../pages/info/About.jsx'), (m) => m.About) },
       { path: 'contact', lazy: page(() => import('../pages/info/Contact.jsx'), (m) => m.Contact) },

@@ -241,6 +241,15 @@ class PaymentIT extends AbstractIT {
                 JsonNode paid = order(s, number);
                 assertThat(paid.path("paymentStatus").asString()).isEqualTo("PAID");
                 assertThat(paid.path("timeline")).as("confirmed exactly once").hasSize(2);
+                assertThat(queuedEmails(number, "ORDER_CONFIRMED"))
+                        .as("one confirmation email, though both confirmed the payment")
+                        .singleElement().satisfies(e -> {
+                            assertThat(e.recipient()).isEqualTo(s.email());
+                            assertThat(e.subject()).startsWith("Payment received");
+                        });
+                assertThat(queuedEmails(number, "ORDER_NEW_FOR_OWNER")).as("and one email to the owner")
+                        .singleElement().satisfies(e -> assertThat(e.recipient()).isEqualTo(ADMIN_EMAIL));
+                assertThat(queuedEmails(number)).as("nothing else").hasSize(2);
             }
         } finally {
             pool.shutdownNow();
@@ -261,6 +270,43 @@ class PaymentIT extends AbstractIT {
         assertThat(stockOf(8)).isEqualTo(before);
         mvc.perform(s.auth(get("/api/orders"))).andExpect(jsonPath("$.content[0].status").value("CANCELLED"));
         mvc.perform(s.auth(get("/api/cart"))).andExpect(jsonPath("$.itemCount").value(2));
+    }
+
+    /**
+     * The checkout page keeps its Idempotency-Key after a 503, and the error tells the shopper to try again or
+     * choose Cash on Delivery. That retry must place a real order, not hand back the attempt Razorpay's outage
+     * cancelled.
+     */
+    @Test
+    void retryAfterARazorpayOutageWithTheSameKeyPlacesANewOrder() throws Exception {
+        Session s = register(uniqueEmail("outage-retry"));
+        int before = stockOf(8);
+        addToCart(s, 8, 1);
+        String key = UUID.randomUUID().toString();
+        RAZORPAY_DOWN.set(true);
+
+        mvc.perform(s.auth(postJson("/api/orders", Map.of("shipping", shipping(s.email()),
+                "deliveryType", "STANDARD", "paymentMethod", "ONLINE"))).header("Idempotency-Key", key))
+                .andExpect(status().isServiceUnavailable());
+        String cancelled = body(mvc.perform(s.auth(get("/api/orders"))).andReturn())
+                .path("content").get(0).path("orderNumber").asString();
+
+        RAZORPAY_DOWN.set(false);
+        JsonNode retried = body(mvc.perform(s.auth(postJson("/api/orders", Map.of("shipping", shipping(s.email()),
+                "deliveryType", "STANDARD", "paymentMethod", "COD"))).header("Idempotency-Key", key))
+                .andExpect(status().isCreated()).andReturn());
+
+        assertThat(retried.path("orderNumber").asString()).isNotEqualTo(cancelled);
+        assertThat(retried.path("status").asString()).isEqualTo("CONFIRMED");
+        assertThat(retried.path("paymentMethod").asString()).isEqualTo("COD");
+        assertThat(stockOf(8)).isEqualTo(before - 1);
+
+        // The new order now owns the key: a further retry (a double-click) returns it rather than a third order.
+        mvc.perform(s.auth(postJson("/api/orders", Map.of("shipping", shipping(s.email()),
+                "deliveryType", "STANDARD", "paymentMethod", "COD"))).header("Idempotency-Key", key))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.orderNumber").value(retried.path("orderNumber").asString()));
+        assertThat(stockOf(8)).isEqualTo(before - 1);
     }
 
     @Test

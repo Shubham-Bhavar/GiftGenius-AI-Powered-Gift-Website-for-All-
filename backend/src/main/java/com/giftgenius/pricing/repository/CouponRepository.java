@@ -13,13 +13,16 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     Optional<Coupon> findByCodeIgnoreCase(String code);
 
-    /** Atomically consumes one use; returns 0 if the coupon ran out in the meantime. */
+    /**
+     * Atomically consumes one use; returns 0 if the coupon ran out in the meantime. Matched on the code itself (stored
+     * upper case, compared case-insensitively by its collation) so the unique index locks one row, not the table.
+     */
     @Modifying(flushAutomatically = true)
-    @Query("update Coupon c set c.usedCount = c.usedCount + 1 where upper(c.code) = upper(:code) "
+    @Query("update Coupon c set c.usedCount = c.usedCount + 1 where c.code = :code "
             + "and c.active = true and (c.usageLimit is null or c.usedCount < c.usageLimit)")
     int consume(@Param("code") String code);
 
     @Modifying(flushAutomatically = true)
-    @Query("update Coupon c set c.usedCount = c.usedCount - 1 where upper(c.code) = upper(:code) and c.usedCount > 0")
+    @Query("update Coupon c set c.usedCount = c.usedCount - 1 where c.code = :code and c.usedCount > 0")
     int release(@Param("code") String code);
 }

@@ -38,6 +38,24 @@ class CatalogIT extends AbstractIT {
         assertThat(search.path("content").get(0).path("name").asString()).containsIgnoringCase("perfume");
     }
 
+    /**
+     * Paging through the shop must show every product exactly once, whatever the sort. Many products tie on the sort
+     * column (the 20 seeded ones share one created_at, several share a rating), so the order needs a tie-breaker.
+     */
+    @Test
+    void everySortPagesThroughEachProductExactlyOnce() throws Exception {
+        int total = body(mvc.perform(get("/api/products?size=100")).andReturn()).path("totalElements").asInt();
+        for (String sort : List.of("featured", "newest", "rating", "price_asc", "price_desc")) {
+            List<Long> seen = new java.util.ArrayList<>();
+            for (int page = 0; page * 3 < total; page++) {
+                JsonNode p = body(mvc.perform(get("/api/products?size=3&sort=" + sort + "&page=" + page))
+                        .andExpect(status().isOk()).andReturn());
+                p.path("content").forEach(product -> seen.add(product.path("id").asLong()));
+            }
+            assertThat(seen).as("sort=" + sort).hasSize(total).doesNotHaveDuplicates();
+        }
+    }
+
     @Test
     void productDetailRelatedAndCategories() throws Exception {
         mvc.perform(get("/api/products/1")).andExpect(status().isOk())

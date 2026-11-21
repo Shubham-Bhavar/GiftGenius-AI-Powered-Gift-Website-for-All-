@@ -54,12 +54,14 @@ public class SellerProductService {
     private final ProductService productService;
     private final Mailer mailer;
     private final String publicUrl;
+    private final StockEdits stockEdits;
 
     public SellerProductService(ProductRepository products, SellerProfileRepository sellers,
-            ProductService productService, Mailer mailer, AppProperties properties) {
+            ProductService productService, Mailer mailer, AppProperties properties, StockEdits stockEdits) {
         this.products = products;
         this.sellers = sellers;
         this.productService = productService;
+        this.stockEdits = stockEdits;
         this.mailer = mailer;
         String url = properties.publicUrl();
         this.publicUrl = url != null && url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
@@ -99,7 +101,7 @@ public class SellerProductService {
         Product p = new Product();
         p.setSeller(seller);
         p.setSlug(productService.uniqueSlug(req.name()));
-        apply(p, req);
+        apply(p, req, req.stock());
         p.setStatus(req.submit() ? ProductStatus.PENDING_APPROVAL : ProductStatus.DRAFT);
         p.syncListing();
         return ProductDto.from(products.save(p));
@@ -112,13 +114,15 @@ public class SellerProductService {
         // Locked: an approved product stays listed after this edit only if the store is still allowed to sell.
         SellerProfile seller = lockedStore(sellerId);
         requireCanEdit(seller);
+        // After the store's lock, as everywhere: only the stock change made in the form is applied (GG-36).
+        int stock = stockEdits.resolve(p, req.stock(), req.stockSeen(), 100_000);
         boolean contentChanged = !Objects.equals(p.getName(), req.name().trim())
                 || !Objects.equals(p.getDescription(), req.description().trim())
                 || !Objects.equals(p.getLongDescription(), SafeText.clean(req.longDescription()))
                 || !Objects.equals(p.getCategory(), category(req.category()))
                 || !Objects.equals(p.getImageUrl(), req.image().trim())
                 || !Objects.equals(p.getAltText(), SafeText.clean(req.alt()));
-        apply(p, req);
+        apply(p, req, stock);
         if (req.submit()) {
             requireCanSubmit(seller);
             if (p.getStatus() != ProductStatus.APPROVED || contentChanged) {
@@ -263,7 +267,7 @@ public class SellerProductService {
         p.setRejectionReason(null);
     }
 
-    private static void apply(Product p, SellerProductRequest r) {
+    private static void apply(Product p, SellerProductRequest r, int stock) {
         if (r.compareAtPrice() != null && r.compareAtPrice().compareTo(r.price()) < 0) {
             throw ApiException.badRequest("The compare-at price can't be lower than the price.");
         }
@@ -273,7 +277,7 @@ public class SellerProductService {
         p.setCategory(category(r.category()));
         p.setPrice(r.price());
         p.setOriginalPrice(r.compareAtPrice() != null ? r.compareAtPrice() : r.price());
-        p.setStock(r.stock());
+        p.setStock(stock);
         p.setImageUrl(SafeText.httpsUrl(r.image(), "Image"));
         p.setAltText(SafeText.clean(r.alt()));
         replace(p.getOccasions(), allowed(r.occasion(), OCCASIONS, "occasion"));

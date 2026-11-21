@@ -58,8 +58,62 @@ final class Vocabulary {
             Map.entry("handmade", "cultural"),
             Map.entry("custom", "personalized"), Map.entry("customised", "personalized"),
             Map.entry("customized", "personalized"), Map.entry("personalised", "personalized"),
-            Map.entry("engraved", "personalized"),
-            Map.entry("hamper", "gift sets"), Map.entry("hampers", "gift sets"), Map.entry("gift set", "gift sets"));
+            Map.entry("engraved", "personalized"), Map.entry("books", "personalized"), Map.entry("reading", "personalized"),
+            Map.entry("journaling", "personalized"), Map.entry("writing", "personalized"),
+            Map.entry("photos", "personalized"),
+            Map.entry("hamper", "gift sets"), Map.entry("hampers", "gift sets"), Map.entry("gift set", "gift sets"),
+            Map.entry("plants", "home decor"), Map.entry("plant", "home decor"), Map.entry("gardening", "home decor"),
+            Map.entry("succulents", "home decor"),
+            Map.entry("skincare", "wellness"), Map.entry("candles", "wellness"), Map.entry("candle", "wellness"),
+            Map.entry("music", "accessories"), Map.entry("gadgets", "accessories"), Map.entry("tech", "accessories"));
+
+    /**
+     * Something the recipient doesn't like or already has, as the products it rules out: whole categories, products
+     * with a tag, and words that give it away in a product's name (singular: "rose" also catches "Roses").
+     */
+    record Avoid(Set<String> categories, Set<String> tags, Set<String> nameWords) {
+    }
+
+    /** The quiz's "anything they don't like?" options and the words people use for them, each with what it rules out. */
+    static final Map<String, Avoid> AVOID = Map.ofEntries(
+            Map.entry("perfume", new Avoid(Set.of("fragrance"), Set.of(), Set.of("perfume", "fragrance", "attar"))),
+            Map.entry("flowers", new Avoid(Set.of("flowers"), Set.of(), Set.of("flower", "rose", "bouquet"))),
+            Map.entry("sweets", new Avoid(Set.of("food & sweets"), Set.of(), Set.of("chocolate", "sweet", "mithai"))),
+            Map.entry("watches", new Avoid(Set.of(), Set.of(), Set.of("watch", "timepiece"))),
+            Map.entry("jewellery", new Avoid(Set.of(), Set.of(),
+                    Set.of("jewellery", "jewelry", "necklace", "earring", "bracelet"))),
+            Map.entry("candles", new Avoid(Set.of(), Set.of(), Set.of("candle"))),
+            Map.entry("plants", new Avoid(Set.of(), Set.of(), Set.of("plant", "succulent"))),
+            Map.entry("gadgets", new Avoid(Set.of(), Set.of(), Set.of("earbud", "headphone", "speaker", "gadget"))),
+            Map.entry("clothes", new Avoid(Set.of(), Set.of(), Set.of("shawl", "scarf", "stole"))),
+            Map.entry("personalised", new Avoid(Set.of("personalized"), Set.of("personalized"),
+                    Set.of("personalised", "personalized", "customised", "engraved"))),
+            Map.entry("hampers", new Avoid(Set.of("gift sets"), Set.of(), Set.of("hamper", "combo"))),
+            Map.entry("spa", new Avoid(Set.of("wellness"), Set.of(), Set.of("spa"))),
+            Map.entry("art", new Avoid(Set.of(), Set.of(), Set.of("art", "painting", "frame"))),
+            Map.entry("fitness gear", new Avoid(Set.of(), Set.of(), Set.of("gym", "dumbbell", "fitness"))));
+
+    /** Other words for the {@link #AVOID} entries ("chocolates" → "sweets"). */
+    static final Map<String, String> AVOID_WORDS = Map.ofEntries(
+            Map.entry("perfumes", "perfume"), Map.entry("fragrance", "perfume"), Map.entry("fragrances", "perfume"),
+            Map.entry("scent", "perfume"), Map.entry("scents", "perfume"), Map.entry("attar", "perfume"),
+            Map.entry("flower", "flowers"), Map.entry("rose", "flowers"), Map.entry("roses", "flowers"),
+            Map.entry("bouquet", "flowers"), Map.entry("bouquets", "flowers"),
+            Map.entry("sweet", "sweets"), Map.entry("chocolate", "sweets"), Map.entry("chocolates", "sweets"),
+            Map.entry("mithai", "sweets"), Map.entry("food & sweets", "sweets"),
+            Map.entry("watch", "watches"), Map.entry("timepiece", "watches"), Map.entry("jewelry", "jewellery"),
+            Map.entry("candle", "candles"), Map.entry("plant", "plants"), Map.entry("succulent", "plants"),
+            Map.entry("succulents", "plants"), Map.entry("gadget", "gadgets"), Map.entry("electronics", "gadgets"),
+            Map.entry("earbuds", "gadgets"), Map.entry("headphones", "gadgets"),
+            Map.entry("shawl", "clothes"), Map.entry("clothing", "clothes"), Map.entry("scarf", "clothes"),
+            Map.entry("personalized", "personalised"), Map.entry("customised", "personalised"),
+            Map.entry("customized", "personalised"), Map.entry("custom", "personalised"),
+            Map.entry("engraved", "personalised"),
+            Map.entry("hamper", "hampers"), Map.entry("gift set", "hampers"), Map.entry("gift sets", "hampers"),
+            Map.entry("wellness", "spa"), Map.entry("self-care", "spa"), Map.entry("skincare", "spa"),
+            Map.entry("paintings", "art"), Map.entry("artwork", "art"),
+            Map.entry("gym", "fitness gear"), Map.entry("gym equipment", "fitness gear"),
+            Map.entry("fitness", "fitness gear"));
 
     static final Map<String, String> PERSONALITIES = Map.ofEntries(
             Map.entry("luxury", "expressive"), Map.entry("luxurious", "expressive"), Map.entry("premium", "expressive"),

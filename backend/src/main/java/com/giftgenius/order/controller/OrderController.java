@@ -16,6 +16,7 @@ import com.giftgenius.common.PageResponse;
 import com.giftgenius.order.dto.OrderDtos.OrderDto;
 import com.giftgenius.order.dto.OrderDtos.OrderSummaryDto;
 import com.giftgenius.order.dto.OrderDtos.PlaceOrderRequest;
+import com.giftgenius.order.dto.OrderDtos.TrackRequest;
 import com.giftgenius.order.dto.OrderDtos.TrackingDto;
 import com.giftgenius.security.AuthUser;
 import com.giftgenius.order.service.OrderService;
@@ -48,6 +49,16 @@ public class OrderController {
         return orders.mine(user.id(), page, size);
     }
 
+    /**
+     * Public tracking by order number and email, sent in the body so the email isn't written to access logs, browser
+     * history or the Referer header (GG-40). Same answers and limits as the GET form below.
+     */
+    @PostMapping("/track")
+    public TrackingDto trackByBody(@Valid @RequestBody TrackRequest req) {
+        return orders.track(req.orderNumber(), req.email());
+    }
+
+    /** The original form, kept for links and clients that already use it; the site itself now sends POST. */
     @GetMapping("/track")
     public TrackingDto track(@RequestParam @NotBlank String orderNumber, @RequestParam @Email @NotBlank String email) {
         return orders.track(orderNumber, email);

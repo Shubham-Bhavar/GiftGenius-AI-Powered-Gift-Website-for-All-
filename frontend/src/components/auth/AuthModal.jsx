@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import AuthCard, { authLabel } from './AuthCard.jsx';
 import { useUi } from '../../context/UiContext.jsx';
@@ -6,26 +6,38 @@ import { useRestoreFocus } from '../../hooks/useRestoreFocus.js';
 import { trapFocus } from '../../utils/focus.js';
 import { homeFor } from './guards.jsx';
 
+/** The dialog's form fields (AuthCard renders inputs, a select and a textarea). */
+const FIELDS = 'input, select, textarea';
+
 /** The 👤 sign-in modal from the homepage header. */
 export default function AuthModal() {
   const { authMode, authOptions, openAuth, closeAuth } = useUi();
   const navigate = useNavigate();
   const open = !!authMode;
   const next = authOptions?.next;
+  const modalRef = useRef(null);
 
   useRestoreFocus(open);
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (e) => { if (e.key === 'Escape') closeAuth(); };
     document.addEventListener('keydown', onKey);
-    const t = setTimeout(() => document.querySelector('.auth-modal input')?.focus(), 100);
+    // Focus the first field shortly after the dialog opens or changes mode, unless the shopper is already in one of
+    // its fields: moving focus then would send the rest of what they are typing to the wrong field.
+    const t = setTimeout(() => {
+      const modal = modalRef.current;
+      const active = document.activeElement;
+      if (active && modal?.contains(active) && active.matches(FIELDS)) return;
+      modal?.querySelector('input')?.focus();
+    }, 100);
     return () => { document.removeEventListener('keydown', onKey); clearTimeout(t); };
   }, [open, authMode, closeAuth]);
 
   return (
     <div className={`auth-overlay ${open ? 'open' : ''}`} aria-hidden={!open} inert={!open}
       onClick={(e) => { if (e.target === e.currentTarget) closeAuth(); }}>
-      <div className="auth-modal" role="dialog" aria-modal="true" aria-label={authLabel(authMode)} onKeyDown={trapFocus}>
+      <div className="auth-modal" role="dialog" aria-modal="true" aria-label={authLabel(authMode)} onKeyDown={trapFocus}
+        ref={modalRef}>
         <button type="button" className="auth-close" aria-label={`Close ${authLabel(authMode).toLowerCase()}`} onClick={closeAuth}>✕</button>
         {open && (
           <AuthCard key={authMode} mode={authMode} note={authOptions?.note} initialAccountType={authOptions?.accountType}

@@ -61,6 +61,11 @@ final class AiPrompts {
         if (c.premium()) {
             sb.append("They would love something premium.\n");
         }
+        if (!c.avoid().isEmpty()) {
+            // Already left out of CANDIDATES; said so the reasons and message don't bring them up either.
+            sb.append("They don't like or already have: ").append(String.join(", ", c.avoid()))
+                    .append(". Don't mention these.\n");
+        }
         sb.append("<shopper_notes>\n").append(AiText.notes(notes)).append("\n</shopper_notes>\n");
         sb.append("CANDIDATES (id | name | category | price | tags | description):\n");
         for (Recommendation s : shortlist) {

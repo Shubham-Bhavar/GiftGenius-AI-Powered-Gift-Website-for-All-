@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,6 +22,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -38,7 +40,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Boots the whole application against a real MySQL database (Flyway-cleaned once per run) with a
- * fake Razorpay API on localhost. The LLM and outgoing mail are mocked so tests are deterministic.
+ * fake Razorpay API on localhost. The LLM and outgoing mail are mocked so tests are deterministic. Order emails are
+ * queued in the email outbox as in production, but its background sender is off: tests read the queue, and the
+ * outbox's own tests run senders explicitly.
  *
  * <p>Database settings come from IT_DB_URL, IT_DB_USERNAME and IT_DB_PASSWORD.
  */
@@ -51,6 +55,8 @@ public abstract class AbstractIT {
     protected static final String ADMIN_PASSWORD = "admin-password-123";
     protected static final String RZP_KEY_SECRET = "it-key-secret";
     protected static final String RZP_WEBHOOK_SECRET = "it-webhook-secret";
+    /** The one browser site allowed to call the API cross-origin, like the Vercel site in production. */
+    protected static final String SITE_ORIGIN = "https://shop.giftgenius.test";
     protected static final JsonMapper JSON = JsonMapper.builder().build();
 
     /** Fake Razorpay: POST /v1/orders returns a new order id, or 500 while {@link #RAZORPAY_DOWN} is set. */
@@ -65,6 +71,12 @@ public abstract class AbstractIT {
     protected static final java.util.concurrent.atomic.AtomicReference<String[]> GEO_LAST_REQUEST =
             new java.util.concurrent.atomic.AtomicReference<>();
 
+    /**
+     * Whether an application context started for a test class runs the background email sender. Off, so tests read
+     * the queue undisturbed; a class that needs it turns it on before its context starts and off again afterwards.
+     */
+    protected static final AtomicBoolean OUTBOX_SENDER = new AtomicBoolean(false);
+
     @Autowired
     protected MockMvc mvc;
 
@@ -73,6 +85,9 @@ public abstract class AbstractIT {
 
     @MockitoBean
     protected Mailer mailer;
+
+    @Autowired
+    protected JdbcTemplate db;
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry r) {
@@ -85,7 +100,9 @@ public abstract class AbstractIT {
         r.add("management.server.port", () -> "-1");
         r.add("app.security.jwt-secret", () -> "integration-test-secret-that-is-long-enough-1234");
         r.add("app.security.cookie-secure", () -> "false");
+        r.add("app.security.allowed-origins", () -> SITE_ORIGIN);
         r.add("app.admin.email", () -> ADMIN_EMAIL);
+        r.add("app.mail.outbox.sender-enabled", () -> String.valueOf(OUTBOX_SENDER.get()));
         r.add("app.admin.password", () -> ADMIN_PASSWORD);
         r.add("app.payment.razorpay-enabled", () -> "true");
         r.add("app.payment.razorpay-key-id", () -> "rzp_test_it");
@@ -164,7 +181,7 @@ public abstract class AbstractIT {
 
     /** A signed-in session: bearer token plus the refresh cookie. */
     protected record Session(String accessToken, Cookie refreshCookie, long userId, String email) {
-        MockHttpServletRequestBuilder auth(MockHttpServletRequestBuilder b) {
+        public MockHttpServletRequestBuilder auth(MockHttpServletRequestBuilder b) {
             return b.header("Authorization", "Bearer " + accessToken);
         }
     }
@@ -216,6 +233,26 @@ public abstract class AbstractIT {
     protected void addToCart(Session s, long productId, int qty) throws Exception {
         mvc.perform(s.auth(postJson("/api/cart/items", Map.of("productId", productId, "quantity", qty))))
                 .andExpect(status().isOk());
+    }
+
+    /** One row of the email outbox. */
+    protected record QueuedEmail(String dedupeKey, String kind, String recipient, String subject, String body,
+            String status, int attempts, String html) {
+    }
+
+    /** The emails of one kind queued about an order, oldest first. */
+    protected List<QueuedEmail> queuedEmails(String orderNumber, String kind) {
+        return queuedEmails(orderNumber).stream().filter(e -> e.kind().equals(kind)).toList();
+    }
+
+    /** The emails queued about one order, oldest first. */
+    protected List<QueuedEmail> queuedEmails(String orderNumber) {
+        return db.query("""
+                SELECT e.dedupe_key, e.kind, e.recipient, e.subject, e.body_text, e.status, e.attempts, e.body_html
+                FROM email_outbox e JOIN orders o ON o.id = e.order_id
+                WHERE o.order_number = ? ORDER BY e.id""",
+                (rs, i) -> new QueuedEmail(rs.getString(1), rs.getString(2), rs.getString(3), rs.getString(4),
+                        rs.getString(5), rs.getString(6), rs.getInt(7), rs.getString(8)), orderNumber);
     }
 
     protected static Map<String, Object> shipping(String email) {

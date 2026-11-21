@@ -204,9 +204,11 @@ export default function Checkout() {
         </div>
 
         <SummaryCard items={cart.items} quote={q} loading={quote.isFetching}>
+          {quote.isError && !quote.isFetching && <ErrorNote error={quote.error} onRetry={() => quote.refetch()} />}
           <ErrorNote error={error} />
-          <button className="co-btn-checkout" disabled={busy || !q || (q.warnings?.length ?? 0) > 0}>
-            {busy ? 'Placing your order…' : effectiveMethod === 'ONLINE' ? `Pay ${q ? inr(q.total) : ''} →` : `Place Order · ${q ? inr(q.total) : ''} →`}
+          <button className="co-btn-checkout" disabled={busy || !q || quote.isPlaceholderData || (q.warnings?.length ?? 0) > 0}>
+            {busy ? 'Placing your order…' : quote.isPlaceholderData ? 'Updating the total…'
+              : effectiveMethod === 'ONLINE' ? `Pay ${q ? inr(q.total) : ''} →` : `Place Order · ${q ? inr(q.total) : ''} →`}
           </button>
           <Link to="/cart" className="co-continue">← Back to Cart</Link>
         </SummaryCard>

@@ -1,0 +1,398 @@
+/* ═══════════════════════════════════════════════════════
+   REVEAL EXPERIENCES (components/studio/experiences)
+   One photo studio and one box in CSS 3D, dressed five ways. Geometry lives in StudioGiftBox.jsx; this file is the
+   set, the materials and the motion. Each experience only sets the variables in its block at the end, plus any motion
+   of its own. The stage is a set with its own light in both site themes; the controls below it follow the site's theme.
+═══════════════════════════════════════════════════════ */
+
+/* ─── Studio set: a seamless backdrop sweeping down into the floor, and softboxes on stands ─── */
+.xp { container-type: inline-size; display: grid; gap: 12px; }
+.xp-stage {
+  position: relative; height: 520px; overflow: hidden; border-radius: var(--radius);
+  background:
+    radial-gradient(ellipse 60% 42% at 50% 40%, var(--set-glow), transparent 72%),
+    linear-gradient(var(--set-top), var(--set-wall) 46%, var(--set-sweep) 66%, var(--set-floor));
+  box-shadow: inset 0 0 0 1px var(--set-edge);
+}
+.xp-set { position: absolute; inset: 0; pointer-events: none; }
+.xp-softbox {
+  position: absolute; top: 26px; width: 118px; height: 84px; border-radius: 3px; background: var(--softbox-frame);
+  filter: blur(0.6px); opacity: var(--softbox-opacity);
+}
+.xp-softbox::before {
+  content: ''; position: absolute; inset: 4px; border-radius: 1.5px;
+  background: linear-gradient(145deg, var(--softbox-light), var(--softbox-light-2));
+  box-shadow: 0 0 34px var(--softbox-glow);
+}
+/* The stand: a pole, then three legs on the floor. */
+.xp-softbox::after {
+  content: ''; position: absolute; left: calc(50% - 1px); top: 100%; width: 2px; height: 248px; background: var(--softbox-frame);
+}
+.xp-softbox i {
+  position: absolute; left: calc(50% - 26px); top: calc(100% + 248px); width: 52px; height: 15px;
+  background:
+    linear-gradient(to bottom left, transparent calc(50% - 1px), var(--softbox-frame) calc(50% - 1px), var(--softbox-frame) calc(50% + 1px), transparent calc(50% + 1px)) 0 0 / 50% 100% no-repeat,
+    linear-gradient(to bottom right, transparent calc(50% - 1px), var(--softbox-frame) calc(50% - 1px), var(--softbox-frame) calc(50% + 1px), transparent calc(50% + 1px)) 100% 0 / 50% 100% no-repeat,
+    linear-gradient(var(--softbox-frame), var(--softbox-frame)) 50% 0 / 2px 100% no-repeat;
+}
+.xp-softbox--left { left: 4.5%; transform: perspective(520px) rotateY(32deg) rotateZ(-5deg); }
+.xp-softbox--right { right: 4.5%; transform: perspective(520px) rotateY(-32deg) rotateZ(5deg); }
+@container (max-width: 640px) { .xp-set { display: none; } }
+
+/* ─── Camera ─── */
+.xp-viewport {
+  position: absolute; inset: 0; perspective: 1300px; perspective-origin: 50% 34%;
+  cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none;
+}
+.xp-viewport.is-dragging { cursor: grabbing; }
+.xp-viewport:focus-visible { outline: 2px solid var(--xp-accent); outline-offset: -5px; border-radius: var(--radius); }
+.xp-scene {
+  --fit: 1.08; --pull-y: 36px; --pull-scale: 0.98; --final-x: -140px; --final-y: 26px; --final-scale: 0.96;
+  position: absolute; left: 50%; top: 60%; width: 0; height: 0; transform-style: preserve-3d;
+  transform: rotateX(var(--rx, -24deg)) rotateY(var(--ry, -30deg)); scale: var(--fit);
+}
+@container (max-width: 640px) {
+  .xp-scene { --fit: 0.92; --pull-y: 42px; --pull-scale: 0.82; --final-x: 0px; --final-y: -62px; --final-scale: 0.72; top: 65%; }
+}
+@container (max-width: 420px) {
+  .xp-scene { --fit: 0.72; --pull-y: 44px; --pull-scale: 0.66; --final-y: -68px; --final-scale: 0.58; }
+}
+.xp-body, .xp-mirror, .xp-lid-pivot, .xp-lid, .xp-bow, .xp-loop, .xp-knot, .xp-loop-shape, .xp-gift-anchor, .xp-riser {
+  position: absolute; left: 0; top: 0; width: 0; height: 0; transform-style: preserve-3d;
+}
+.xp-mirror { transform-origin: 0 0; pointer-events: none; }
+/* The reflection is a luxury of bigger screens: on a phone it's too small to see, and costs the most. */
+@container (max-width: 640px) { .xp-mirror { display: none; } }
+.xp-f { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+
+/* ─── Floor: glossy, so the reflection below shows through; it melts into the backdrop at its edges ─── */
+.xp-floor { background: radial-gradient(closest-side, var(--floor-near), var(--floor-mid) 52%, transparent 84%); }
+.xp-shadow { background: var(--shadow); }
+.xp-shadow--floor { border-radius: 50%; filter: blur(16px); opacity: var(--shadow-floor); }
+.xp-shadow--soft { border-radius: 30px; filter: blur(22px); opacity: var(--shadow-soft); }
+.xp-shadow--contact { border-radius: 4px; filter: blur(4px); opacity: var(--shadow-contact); }
+.xp-shadow--lid { border-radius: 40px; filter: blur(20px); opacity: 0; }
+
+/* ─── Turntable ─── */
+.xp-disc {
+  border-radius: 50%;
+  background:
+    repeating-radial-gradient(circle, transparent 0 7px, var(--disc-line) 7px 7.5px),
+    radial-gradient(circle at 42% 38%, var(--disc-light), var(--disc));
+  box-shadow: inset 0 0 0 1px var(--disc-edge-line);
+}
+/* A small index mark, so you can see the table itself turn. */
+.xp-disc-mark { position: absolute; left: calc(50% - 1.5px); bottom: 6px; width: 3px; height: 10px; border-radius: 1px; background: var(--xp-accent); opacity: 0.8; }
+.xp-disc-edge { background: linear-gradient(var(--disc-edge), var(--disc-edge-low)); }
+
+/* ─── Box materials. Each wall darkens by how far it has turned from the light (--shade-*, set as the box turns). ─── */
+.xp-wall {
+  background-color: var(--wall);
+  background-image: var(--wall-print, none), linear-gradient(rgba(255,255,255,0.05), transparent 40%, rgba(0,0,0,0.16));
+  background-size: var(--wall-print-size, auto), 100% 100%;
+  box-shadow: inset 0 0 0 0.5px var(--edge);
+}
+.xp-wall::after { content: ''; position: absolute; inset: 0; background: var(--shade-ink, #000); opacity: calc(var(--shade, 0.1) * var(--shade-amount, 1)); }
+.xp-wall--front { --shade: var(--shade-front); }
+.xp-wall--right { --shade: var(--shade-right); }
+.xp-wall--back { --shade: var(--shade-back); }
+.xp-wall--left { --shade: var(--shade-left); }
+.xp-bottom { background: var(--shadow); }
+.xp-lid-top {
+  background-color: var(--lid);
+  background-image: var(--wall-print, none), linear-gradient(120deg, rgba(255,255,255,0.09), transparent 44%, rgba(0,0,0,0.16));
+  background-size: var(--wall-print-size, auto), 100% 100%;
+  box-shadow: inset 0 0 0 0.5px var(--edge-lid);
+}
+/* The softbox reflected in the lid: a soft strip that slides across as the box turns. */
+.xp-lid-top::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: linear-gradient(112deg, transparent 38%, rgba(255,255,255,var(--gloss, 0.08)) 48%, rgba(255,255,255,calc(var(--gloss, 0.08) * 0.4)) 54%, transparent 62%) var(--sheen, 40%) 0 / 300% 100%;
+}
+.xp-skirt { box-shadow: inset 0 0.5px 0 var(--edge-lid), inset 0 -0.5px 0 rgba(0,0,0,0.5); }
+.xp-foil-line { position: absolute; inset: 12px; border: 0.75px solid var(--foil-line); }
+.xp-rim { background: var(--rim); box-shadow: inset 0 0 0 0.5px var(--foil-line); }
+.xp-rim--lid { background: var(--rim-lid); }
+.xp-lining { background-color: var(--lining); }
+.xp-lining--wall { background-image: linear-gradient(var(--lining-top), var(--lining-low)); }
+.xp-lining--back { background-image: linear-gradient(var(--lining-back), var(--lining-low)); }
+.xp-lining--floor { background: radial-gradient(ellipse at 50% 42%, var(--lining-floor), var(--lining-floor-low) 88%); }
+.xp-lining--skirt { background: var(--lining-skirt); }
+.xp-lining--ceiling {
+  display: flex; flex-direction: column; justify-content: flex-start; align-items: center; padding-top: 18px; overflow: hidden;
+  background: radial-gradient(ellipse at 50% 34%, var(--ceiling), var(--ceiling-low) 78%);
+  box-shadow: inset 0 0 0 7px var(--lining-skirt), inset 0 0 0 7.75px var(--foil-line);
+}
+.xp-foil-name {
+  max-width: 82%; font-family: var(--font-serif); font-size: 19px; font-style: italic; line-height: 1.15; text-align: center;
+  color: var(--foil-ink); overflow-wrap: anywhere;
+}
+.xp-hinge { background: var(--hinge); border-radius: 1.5px; box-shadow: 0 0 2px rgba(0,0,0,0.7); }
+/* The shopper's own photo, as a framed print. */
+.xp-print { display: block; object-fit: cover; background: #fff; }
+.xp-print--lid { position: absolute; left: calc(50% - 72px); top: calc(50% - 52px); width: 144px; height: 104px; padding: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.35); }
+.xp-lining--ceiling.has-print { align-items: flex-start; padding: 14px 0 0 20px; }
+.xp-lining--ceiling.has-print .xp-foil-name { max-width: 130px; margin-top: 6px; font-size: 15px; text-align: left; }
+.xp-print--lining { width: 122px; height: 94px; padding: 4px; box-shadow: 0 3px 8px rgba(0,0,0,0.3); }
+
+/* ─── Ribbon: satin laid over the box, slightly proud of it ─── */
+.xp-ribbon-holder { display: flex; justify-content: center; pointer-events: none; }
+.xp-band {
+  --weave: repeating-linear-gradient(90deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 2px);
+  background-image: var(--weave), linear-gradient(90deg, var(--rib));
+  box-shadow: 0 0 3px var(--rib-shadow); clip-path: inset(-8px);
+}
+.xp-band--wall, .xp-band--skirt { position: relative; height: 100%; }
+.xp-band--across { background-image: repeating-linear-gradient(rgba(255,255,255,0.05) 0 1px, transparent 1px 2px), linear-gradient(var(--rib)); }
+/* A band on a wall falls into the same shade as the wall. */
+.xp-band--wall::after, .xp-band--skirt::after { content: ''; position: absolute; inset: 0; background: var(--shade-ink, #000); opacity: calc(var(--shade, 0) * var(--shade-amount, 1) * 0.85); }
+
+/* ─── Bow: strips bent along a curve, each segment lit by the way it faces (--dark, --shine) ─── */
+.xp-seg {
+  position: absolute; left: 0; top: 0; transform-origin: 0 0;
+  background-image:
+    linear-gradient(rgba(255,244,215,var(--shine)), rgba(255,244,215,var(--shine))),
+    linear-gradient(rgba(var(--rib-dark, 16,10,0),var(--dark)), rgba(var(--rib-dark, 16,10,0),var(--dark))),
+    linear-gradient(var(--rib));
+}
+.xp-tail-pivot { position: absolute; left: 0; top: 0; width: 0; height: 0; transform-origin: 0 0; }
+.xp-tail { position: absolute; left: 4px; transform-origin: 0 50%; background: linear-gradient(var(--rib)); clip-path: polygon(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%); }
+.xp-loop-shape { transform-origin: 0 0; }
+
+/* ─── Gifts: taller than the box, so hidden until the lid is fully open; they rise from below the rim ─── */
+.xp-gift-anchor {
+  visibility: hidden;
+  transform: translate3d(var(--gx), var(--gy), var(--gz)) rotateY(calc(var(--ry, 0deg) * -1)) rotateX(calc(var(--rx, 0deg) * -1)) scale(var(--gs));
+}
+.xp-gift {
+  --gift-from: 90px; --gift-to: 0px;
+  position: absolute; left: -58px; bottom: 0; width: 116px; height: 116px; padding: 4px;
+  background: var(--plate); box-shadow: 0 0 0 0.75px var(--plate-line), 0 10px 22px rgba(0,0,0,0.42);
+  transform: translateY(var(--gift-from));
+}
+.xp-gift img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.xp-riser { visibility: hidden; transform: translateY(90px); }
+.xp-riser-top { background: var(--riser-top); box-shadow: inset 0 0 0 0.75px var(--foil-line); }
+.xp-riser-side { background: linear-gradient(var(--riser-side), var(--riser-low)); }
+
+/* ─── The sequence: each stage's motion starts when it is reached, and holds. --ribbon-pace and --lid-time set the
+   pace per experience; --arrive names the entrance. Never animate opacity on a 3D group (.xp-body, .xp-lid and so
+   on): the browser flattens it for as long as the animation applies, and the faces lose their depth order. ─── */
+.xp[data-reached~="entrance"] .xp-viewport { animation: xpFadeIn 0.8s ease-out both; }
+.xp[data-reached~="entrance"] .xp-body { animation: var(--arrive, xpArrive) var(--arrive-time, 1s) var(--arrive-ease, cubic-bezier(.22,.8,.3,1)) both; }
+
+.xp[data-reached~="ribbon"] .xp-loop-shape { animation: xpBowOut calc(0.5s * var(--ribbon-pace, 1)) cubic-bezier(.6,0,.8,.4) both; }
+.xp[data-reached~="ribbon"] .xp-knot .xp-loop-shape { animation-delay: calc(0.3s * var(--ribbon-pace, 1)); animation-duration: calc(0.3s * var(--ribbon-pace, 1)); }
+.xp[data-reached~="ribbon"] .xp-tail { animation: xpTailOut calc(0.45s * var(--ribbon-pace, 1)) calc(0.15s * var(--ribbon-pace, 1)) cubic-bezier(.6,0,.8,.4) both; }
+.xp[data-reached~="ribbon"] :is(.xp-peel-up, .xp-peel-down, .xp-peel-left, .xp-peel-right) { animation: var(--peel) calc(0.5s * var(--ribbon-pace, 1)) calc(0.5s * var(--ribbon-pace, 1)) cubic-bezier(.45,0,.55,1) both; }
+.xp-peel-up { --peel: xpPeelUp; }
+.xp-peel-down { --peel: xpPeelDown; }
+.xp-peel-left { --peel: xpPeelLeft; }
+.xp-peel-right { --peel: xpPeelRight; }
+.xp[data-reached~="ribbon"] .xp-band--skirt { animation: xpPeelDown calc(0.25s * var(--ribbon-pace, 1)) calc(0.95s * var(--ribbon-pace, 1)) linear both; }
+.xp[data-reached~="ribbon"] .xp-band--wall { animation: xpPeelDown calc(0.45s * var(--ribbon-pace, 1)) calc(1.15s * var(--ribbon-pace, 1)) cubic-bezier(.3,0,.7,1) both; }
+
+.xp[data-reached~="lid"] .xp-lid { animation: var(--lid-open, xpLidOpen) var(--lid-time, 1.5s) var(--lid-ease, cubic-bezier(.45,.05,.3,1)) both; }
+/* The camera backs off as the lid rises, so the open lid stays in frame. */
+.xp[data-reached~="lid"] .xp-scene { animation: xpPullBack var(--pull-time, 1.3s) cubic-bezier(.4,0,.2,1) both; }
+.xp[data-reached~="lid"] .xp-shadow--lid { animation: xpShadowIn 1.2s 0.3s ease-out both; opacity: var(--shadow-lid); }
+.xp[data-reached~="reveal"] :is(.xp-gift-anchor, .xp-riser) { visibility: visible; }
+.xp[data-reached~="reveal"] .xp-riser { animation: xpRiserUp 1.2s var(--gift-delay, 0s) cubic-bezier(.2,.75,.25,1) both; }
+.xp[data-reached~="reveal"] .xp-gift { animation: xpGiftRise 1.2s calc(var(--gift-delay, 0s) + var(--gift-stagger, 0ms)) cubic-bezier(.2,.75,.25,1) both; }
+.xp[data-reached~="reveal"] .xp-scene { animation: xpPullBack var(--pull-time, 1.3s) cubic-bezier(.4,0,.2,1) both, xpCompose 1.4s cubic-bezier(.4,0,.2,1) both; }
+
+.xp.is-paused * { animation-play-state: paused !important; }
+/* Skip: straight to the final composition. */
+.xp.is-instant * { animation-duration: 0.01ms !important; animation-delay: 0s !important; }
+/* Reduced motion: each stage appears whole, with no parts arriving late (durations are handled by reduced-motion.css). */
+@media (prefers-reduced-motion: reduce) {
+  .xp * { animation-delay: 0s !important; }
+}
+
+/* ─── Confetti: one burst, then gone ─── */
+.xp-confetti { position: absolute; left: 50%; top: 56%; width: 0; height: 0; pointer-events: none; }
+.xp-confetti i {
+  position: absolute; width: 7px; height: 11px; border-radius: 1px; background: #f2645a; opacity: 0;
+  animation: xpConfetti 1.9s var(--delay) cubic-bezier(.16,.72,.4,1) both;
+}
+.xp-confetti i:nth-child(4n+1) { background: #ffd23f; }
+.xp-confetti i:nth-child(4n+2) { background: #1f9e96; }
+.xp-confetti i:nth-child(4n+3) { background: #fff; width: 6px; height: 6px; border-radius: 50%; }
+
+/* ─── Final composition: the words beside the box, or below it on narrow screens ─── */
+.xp-dim { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: #000; }
+.xp-caption {
+  position: absolute; right: 6%; top: 50%; width: 37%; transform: translateY(-50%); display: grid; gap: 10px; text-align: left; color: var(--xp-ink);
+  animation: xpCaptionIn 0.8s 0.5s ease-out both;
+}
+.xp-caption-photo { width: 76px; height: 76px; object-fit: cover; padding: 3px; background: #fff; }
+.xp-caption-print { display: none; }
+.xp-caption-for { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--xp-accent); overflow-wrap: anywhere; }
+.xp-caption-gift { font-family: var(--font-serif); font-size: 1.6rem; font-weight: 500; line-height: 1.15; overflow-wrap: anywhere; }
+.xp-caption-message {
+  padding-top: 10px; border-top: 0.75px solid var(--rule); font-family: var(--font-serif); font-size: 1.08rem; font-style: italic; line-height: 1.4;
+  color: var(--xp-ink-soft); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden;
+}
+.xp-caption-printed { font-size: 12px; color: var(--xp-ink-soft); overflow-wrap: anywhere; }
+/* The greeting card, for the experiences that have one. */
+.xp-card { display: grid; gap: 8px; padding: 16px 18px; background: var(--card); color: var(--card-ink); box-shadow: 0 12px 28px rgba(0,0,0,0.28), inset 0 0 0 0.75px var(--card-line); }
+.xp-card .xp-caption-message { color: inherit; padding-top: 0; border-top: 0; }
+.xp-card .xp-caption-for { color: var(--card-accent); }
+.xp-card-heading { font-family: var(--font-serif); font-size: 1.5rem; font-weight: 600; line-height: 1.15; color: var(--card-accent); overflow-wrap: anywhere; }
+@container (max-width: 640px) {
+  .xp-caption { left: 6%; right: 6%; top: auto; bottom: 16px; width: auto; transform: none; gap: 6px; text-align: center; justify-items: center; }
+  .xp-caption-photo { display: none; }
+  .xp-caption-gift { font-size: 1.25rem; }
+  .xp-caption-message { padding-top: 6px; font-size: 0.98rem; -webkit-line-clamp: 3; }
+  .xp-card { padding: 10px 14px; gap: 4px; }
+  .xp-card-heading { font-size: 1.15rem; }
+}
+
+/* ─── Controls (they follow the site's theme) ─── */
+.xp-controls { display: grid; gap: 10px; }
+.xp-controls-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; }
+.xp-stages { display: flex; gap: 6px; list-style: none; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-muted); }
+.xp-stages li { padding-bottom: 4px; border-bottom: 2px solid var(--border-soft); }
+.xp-stages li.is-reached { color: var(--text); border-bottom-color: var(--gold); }
+.xp-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.xp-buttons .btn-primary { padding: 11px 22px; }
+.xp-button {
+  padding: 10px 14px; font-size: 13px; line-height: 1; color: var(--text); background: transparent;
+  border: 1.5px solid var(--border); border-radius: var(--radius-xs); transition: var(--trans);
+}
+.xp-button:hover:not(:disabled) { border-color: var(--gold); background: var(--gold-dim); }
+.xp-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.xp-button[aria-pressed="true"] { border-color: var(--gold); background: var(--gold-dim); }
+.xp-turn { justify-content: flex-start; }
+.xp-spin { white-space: nowrap; }
+.xp-dial { display: flex; flex: 1 1 200px; align-items: center; gap: 10px; min-width: 0; font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+.xp-dial input { flex: 1; min-width: 0; height: 24px; accent-color: var(--gold); cursor: pointer; }
+.xp-readout { width: 38px; font-family: var(--font-mono); font-size: 12px; text-align: right; color: var(--text); }
+
+/* ─── Choosing an experience ─── */
+.exp-select { display: grid; gap: 10px; margin-bottom: 16px; }
+.exp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.exp-card {
+  display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 10px 12px; align-content: start; padding: 12px;
+  background: var(--surface); border: 1.5px solid var(--border-soft); border-radius: var(--radius-sm);
+}
+.exp-card.is-shown { border-color: var(--gold); }
+.exp-card h3 { font-family: var(--font-serif); font-size: 1.05rem; font-weight: 600; line-height: 1.2; color: var(--text); }
+.exp-card p { font-size: 12.5px; line-height: 1.4; color: var(--text-muted); }
+.exp-card-theme { margin-top: 3px; font-family: var(--font-mono); font-size: 10.5px !important; }
+.exp-card-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; }
+.exp-card-actions .studio-link-btn { padding: 6px 10px; font-size: 12px; }
+.exp-swatch { position: relative; display: block; width: 40px; height: 40px; border-radius: 4px; overflow: hidden; background: var(--sw-box); box-shadow: inset 0 0 0 1px rgba(128,128,128,0.35); }
+.exp-swatch i { position: absolute; left: 16px; top: 0; bottom: 0; width: 8px; background: var(--sw-ribbon); }
+
+@media (max-width: 520px) {
+  .xp-stage { height: 460px; }
+  .xp-stages { font-size: 9.5px; gap: 4px; }
+}
+@media (forced-colors: active) {
+  .xp-stage, .xp-stage * { forced-color-adjust: none; }
+}
+
+/* ═══ The five art directions ═══ */
+
+/* Royal Luxury: a low-key studio. Black soft-touch board, emerald lining, gold. */
+.xp-royal {
+  --set-top: #08090b; --set-wall: #101114; --set-sweep: #17181c; --set-floor: #1c1d21; --set-glow: rgba(150,140,118,0.13); --set-edge: rgba(255,255,255,0.05);
+  --softbox-frame: #1d1e22; --softbox-light: #d8d6cf; --softbox-light-2: #8e8c84; --softbox-glow: rgba(240,235,220,0.1); --softbox-opacity: 0.66;
+  --floor-near: rgba(46,45,44,0.82); --floor-mid: rgba(34,34,36,0.72); --shadow: #020203; --shadow-floor: 0.55; --shadow-soft: 0.62; --shadow-contact: 0.9; --shadow-lid: 0.5;
+  --disc: #1a1b1f; --disc-light: #2a2b30; --disc-line: rgba(255,255,255,0.025); --disc-edge-line: rgba(255,255,255,0.08); --disc-edge: #2a2b30; --disc-edge-low: #0d0e10;
+  --wall: #26272c; --lid: #26272c; --edge: rgba(255,255,255,0.1); --edge-lid: rgba(255,255,255,0.14); --gloss: 0.1;
+  --rim: #16362e; --rim-lid: #122c26; --foil-line: rgba(217,187,108,0.42); --foil-ink: #d9bb6c; --hinge: linear-gradient(90deg, #6d5420, #d6b768 48%, #7d6226);
+  --lining: #0f3a30; --lining-top: rgba(14,52,43,0.2); --lining-low: rgba(1,10,8,0.82); --lining-back: rgba(38,92,76,0.4); --lining-floor: #174c3f; --lining-floor-low: #06211b;
+  --lining-skirt: #0d352c; --ceiling: #1c5a4a; --ceiling-low: #0b3229; --riser-top: #1a5244; --riser-side: #124035; --riser-low: #06211b;
+  --rib: #7b5e20, #c7a14c 12%, #ecd48f 38%, #f6e7b4 50%, #d4b265 68%, #a98438 88%, #6f541c; --rib-shadow: rgba(0,0,0,0.75);
+  --plate: #f4f0e6; --plate-line: rgba(217,187,108,0.8);
+  --xp-ink: #f0ece2; --xp-ink-soft: #d8d3c6; --xp-accent: #d9bb6c; --rule: rgba(217,187,108,0.4);
+}
+
+/* Birthday Surprise: a bright, high-key set. Coral box, sunshine ribbon, a card that flips in. */
+.xp-birthday {
+  --set-top: #ffe9d6; --set-wall: #ffe0c8; --set-sweep: #fbd2b4; --set-floor: #f6c6a4; --set-glow: rgba(255,255,255,0.65); --set-edge: rgba(120,60,30,0.1);
+  --softbox-frame: #6b4a3a; --softbox-light: #fffdf6; --softbox-light-2: #ffe9c9; --softbox-glow: rgba(255,250,235,0.7); --softbox-opacity: 0.85;
+  --floor-near: rgba(255,226,202,0.84); --floor-mid: rgba(250,212,184,0.74); --shadow: #6b2f1c; --shadow-floor: 0.22; --shadow-soft: 0.34; --shadow-contact: 0.55; --shadow-lid: 0.24;
+  --disc: #fff2e4; --disc-light: #fffaf3; --disc-line: rgba(160,90,50,0.05); --disc-edge-line: rgba(160,90,50,0.14); --disc-edge: #f4dcc4; --disc-edge-low: #d9b393;
+  --wall: #ef6a5b; --lid: #f4776a; --edge: rgba(255,255,255,0.2); --edge-lid: rgba(255,255,255,0.3); --gloss: 0.16; --shade-ink: #5a1208; --shade-amount: 0.7;
+  --wall-print:
+    radial-gradient(circle at 18% 22%, rgba(255,216,79,0.95) 0 2.4px, transparent 2.8px), radial-gradient(circle at 64% 38%, rgba(255,255,255,0.9) 0 1.9px, transparent 2.3px),
+    radial-gradient(circle at 38% 74%, rgba(31,158,150,0.95) 0 2.2px, transparent 2.6px), radial-gradient(circle at 86% 82%, rgba(255,216,79,0.8) 0 1.7px, transparent 2.1px);
+  --wall-print-size: 44px 44px, 44px 44px, 44px 44px, 44px 44px;
+  --rim: #fff3dc; --rim-lid: #ffeccb; --foil-line: rgba(180,90,40,0.35); --foil-ink: #a3342a; --hinge: linear-gradient(90deg, #b9851a, #ffe98f 48%, #c8921c);
+  --lining: #ffe7a8; --lining-top: rgba(255,240,190,0.2); --lining-low: rgba(190,120,40,0.55); --lining-back: rgba(255,246,210,0.45); --lining-floor: #ffedb8; --lining-floor-low: #f0c368;
+  --lining-skirt: #fbdc92; --ceiling: #fff2c4; --ceiling-low: #fbdb8c; --riser-top: #1f9e96; --riser-side: #178177; --riser-low: #0c5a53;
+  --rib: #a8760f, #d39d1f 12%, #f6c93a 38%, #ffe98f 50%, #ffd84f 68%, #d39d1f 88%, #a8760f; --rib-shadow: rgba(90,20,10,0.5); --rib-dark: 150,74,8;
+  --plate: #fff; --plate-line: rgba(31,158,150,0.6);
+  --xp-ink: #3e1a14; --xp-ink-soft: #5a2a20; --xp-accent: #9c2f22; --rule: rgba(156,47,34,0.35);
+  --card: #fffdf4; --card-ink: #3e1a14; --card-line: rgba(242,100,90,0.5); --card-accent: #b5352a;
+  --arrive: xpBounce; --arrive-time: 1.05s; --arrive-ease: linear; --ribbon-pace: 0.75; --lid-open: xpLidPop; --lid-time: 1.1s; --lid-ease: cubic-bezier(.3,.7,.3,1); --pull-time: 0.9s;
+}
+.xp-birthday[data-reached~="reveal"] .xp-card { animation: xpCardFlip 0.85s 0.25s cubic-bezier(.2,1.1,.4,1) both; transform-origin: 0 50%; }
+
+/* Sentimental Unboxing: a dark red room, one soft light. A slow push in, then the message before the gift. */
+.xp-sentimental {
+  --set-top: #120406; --set-wall: #1d070b; --set-sweep: #2a0c12; --set-floor: #321016; --set-glow: rgba(190,90,90,0.18); --set-edge: rgba(255,220,210,0.06);
+  --softbox-frame: #2a0d12; --softbox-light: #e6c9b4; --softbox-light-2: #8c5f54; --softbox-glow: rgba(240,190,170,0.12); --softbox-opacity: 0.55;
+  --floor-near: rgba(70,24,30,0.82); --floor-mid: rgba(52,18,24,0.72); --shadow: #080102; --shadow-floor: 0.6; --shadow-soft: 0.65; --shadow-contact: 0.9; --shadow-lid: 0.5;
+  --disc: #2b0c12; --disc-light: #47161e; --disc-line: rgba(255,220,210,0.03); --disc-edge-line: rgba(255,220,210,0.1); --disc-edge: #47161e; --disc-edge-low: #1a0609;
+  --wall: #6a1526; --lid: #74192b; --edge: rgba(255,225,215,0.14); --edge-lid: rgba(255,225,215,0.2); --gloss: 0.12;
+  --rim: #efe3d6; --rim-lid: #e6d8c8; --foil-line: rgba(201,173,130,0.55); --foil-ink: #7a1c2d; --hinge: linear-gradient(90deg, #8d7350, #f7ebd2 48%, #9c8158);
+  --lining: #e8dccb; --lining-top: rgba(255,250,240,0.2); --lining-low: rgba(120,80,60,0.55); --lining-back: rgba(255,250,240,0.45); --lining-floor: #f1e7d8; --lining-floor-low: #c6b297;
+  --lining-skirt: #ddcfbc; --ceiling: #f7efe3; --ceiling-low: #dfd1bd; --riser-top: #7a1c2d; --riser-side: #5e1020; --riser-low: #360811;
+  --rib: #7f6646, #b1966c 12%, #d9c19a 38%, #f7ebd2 50%, #ecd9b6 68%, #b1966c 88%, #7f6646; --rib-shadow: rgba(10,0,2,0.7); --rib-dark: 70,42,20;
+  --plate: #fbf6ec; --plate-line: rgba(201,173,130,0.8);
+  --xp-ink: #f6ece2; --xp-ink-soft: #e4d6ca; --xp-accent: #e3c9a0; --rule: rgba(227,201,160,0.4);
+  --card: #fbf6ec; --card-ink: #3a1118; --card-line: rgba(122,28,45,0.3); --card-accent: #7a1c2d;
+  --ribbon-pace: 1.8; --lid-time: 2.3s; --lid-ease: cubic-bezier(.4,.1,.25,1); --pull-time: 2s; --arrive: xpDrift; --arrive-time: 1.4s; --arrive-ease: ease-out;
+}
+.xp-sentimental[data-reached~="entrance"] .xp-scene { animation: xpCinematic 3.5s cubic-bezier(.3,0,.2,1) both; }
+.xp-sentimental[data-reached~="lid"] .xp-scene { animation: xpCinematic 3.5s cubic-bezier(.3,0,.2,1) both, xpPullBack var(--pull-time) cubic-bezier(.4,0,.2,1) both; }
+.xp-sentimental[data-reached~="reveal"] .xp-scene { animation: xpCinematic 3.5s cubic-bezier(.3,0,.2,1) both, xpPullBack var(--pull-time) cubic-bezier(.4,0,.2,1) both, xpCompose 1.4s 1.7s cubic-bezier(.4,0,.2,1) both; }
+/* The message first: centre stage over a dimmed box. It then moves aside as the gift rises. */
+.xp-sentimental.has-card { --gift-delay: 1.9s; }
+.xp-sentimental.has-card[data-reached~="reveal"] .xp-dim { animation: xpDimFor 3s ease-in-out both; }
+.xp-sentimental.has-card[data-reached~="reveal"] .xp-caption { animation: none; z-index: 2; }
+.xp-sentimental.has-card[data-reached~="reveal"] .xp-card { animation: xpCardCentre 3.1s cubic-bezier(.4,0,.2,1) both; }
+.xp-sentimental.has-card[data-reached~="reveal"] :is(.xp-caption-gift, .xp-caption-printed, .xp-caption-photo) { animation: xpCaptionIn 0.9s 2.3s ease-out both; }
+@container (max-width: 640px) {
+  .xp-sentimental.has-card[data-reached~="reveal"] .xp-card { animation-name: xpCardCentreNarrow; }
+  .xp-sentimental[data-reached~="reveal"] .xp-scene { animation-delay: 0s, 0s, 1.7s; }
+}
+
+/* Minimal Aesthetic: flat, shadowless-looking daylight. Ivory on cream, one thin band, restrained motion. */
+.xp-minimal {
+  --set-top: #f5f1e9; --set-wall: #f1ece2; --set-sweep: #ebe5d8; --set-floor: #e5decf; --set-glow: rgba(255,255,255,0.7); --set-edge: rgba(90,80,60,0.1);
+  --softbox-frame: #b9b09f; --softbox-light: #ffffff; --softbox-light-2: #f4f0e8; --softbox-glow: rgba(255,255,255,0.8); --softbox-opacity: 0.55;
+  --floor-near: rgba(243,239,230,0.86); --floor-mid: rgba(236,230,219,0.76); --shadow: #5a4e3a; --shadow-floor: 0.12; --shadow-soft: 0.2; --shadow-contact: 0.34; --shadow-lid: 0.14;
+  --disc: #efe9dd; --disc-light: #f8f5ee; --disc-line: rgba(90,80,60,0.035); --disc-edge-line: rgba(90,80,60,0.12); --disc-edge: #e9e2d4; --disc-edge-low: #cfc6b4;
+  --wall: #f4efe6; --lid: #f8f4ec; --edge: rgba(120,105,80,0.18); --edge-lid: rgba(120,105,80,0.2); --gloss: 0.5; --shade-ink: #5a4e3a; --shade-amount: 0.42;
+  --rim: #fbf8f2; --rim-lid: #f6f1e7; --foil-line: rgba(140,120,90,0.25); --foil-ink: #6b5a3e; --hinge: linear-gradient(90deg, #a89a84, #e3dacb 48%, #a89a84);
+  --lining: #f7f2e8; --lining-top: rgba(255,255,255,0.3); --lining-low: rgba(150,130,100,0.34); --lining-back: rgba(255,255,255,0.55); --lining-floor: #fbf8f1; --lining-floor-low: #e4dccb;
+  --lining-skirt: #efe8da; --ceiling: #fbf8f2; --ceiling-low: #efe8da; --riser-top: #fbf8f1; --riser-side: #ede6d8; --riser-low: #d2c8b5;
+  --rib: #907e65, #a99679 12%, #c7b69c 38%, #ddcfb9 50%, #d3c3aa 68%, #a99679 88%, #907e65; --rib-shadow: rgba(90,78,58,0.3); --rib-dark: 96,78,52;
+  --plate: #fff; --plate-line: rgba(140,120,90,0.35);
+  --xp-ink: #2c261e; --xp-ink-soft: #4d4436; --xp-accent: #6b5a3e; --rule: rgba(107,90,62,0.3);
+  --arrive: xpDrift; --arrive-time: 1.2s; --arrive-ease: ease-out; --lid-open: xpLidSoft; --lid-time: 2s; --lid-ease: cubic-bezier(.45,.05,.2,1); --ribbon-pace: 0.8; --pull-time: 1.8s;
+}
+
+/* Personalised Memory: warm linen under one key light, with the shopper's own photo as a framed print. */
+.xp-memory {
+  --set-top: #1e1a17; --set-wall: #2a2521; --set-sweep: #362f2a; --set-floor: #3d3630; --set-glow: rgba(235,210,180,0.15); --set-edge: rgba(255,240,225,0.06);
+  --softbox-frame: #2c2622; --softbox-light: #f2e6d4; --softbox-light-2: #a8957f; --softbox-glow: rgba(250,230,200,0.14); --softbox-opacity: 0.7;
+  --floor-near: rgba(82,72,63,0.82); --floor-mid: rgba(62,54,48,0.72); --shadow: #0c0907; --shadow-floor: 0.5; --shadow-soft: 0.55; --shadow-contact: 0.85; --shadow-lid: 0.42;
+  --disc: #38312b; --disc-light: #4d443c; --disc-line: rgba(255,240,225,0.03); --disc-edge-line: rgba(255,240,225,0.1); --disc-edge: #4d443c; --disc-edge-low: #1f1b18;
+  --wall: #cfc4b6; --lid: #d6ccbf; --edge: rgba(255,255,255,0.2); --edge-lid: rgba(255,255,255,0.3); --gloss: 0.22; --shade-ink: #2c221a; --shade-amount: 0.7;
+  --wall-print: repeating-linear-gradient(90deg, rgba(90,75,60,0.05) 0 1px, transparent 1px 3px), repeating-linear-gradient(rgba(255,255,255,0.05) 0 1px, transparent 1px 3px); --wall-print-size: auto, auto;
+  --rim: #f4eee4; --rim-lid: #ebe3d6; --foil-line: rgba(133,70,78,0.3); --foil-ink: #6f333a; --hinge: linear-gradient(90deg, #8a7a68, #e6dccd 48%, #8a7a68);
+  --lining: #f2ebdf; --lining-top: rgba(255,252,246,0.25); --lining-low: rgba(120,100,80,0.5); --lining-back: rgba(255,252,246,0.5); --lining-floor: #f6f0e6; --lining-floor-low: #cfc2af;
+  --lining-skirt: #e8dfd1; --ceiling: #f8f3ea; --ceiling-low: #e6dccd; --riser-top: #a85a63; --riser-side: #8c4650; --riser-low: #5e2c33;
+  --rib: #6f333a, #94484f 12%, #b9676f 38%, #d99aa1 50%, #c47a82 68%, #94484f 88%, #6f333a; --rib-shadow: rgba(40,20,20,0.5); --rib-dark: 66,18,28;
+  --plate: #fffdf8; --plate-line: rgba(168,90,99,0.5);
+  --xp-ink: #f5ece0; --xp-ink-soft: #e2d6c8; --xp-accent: #e8b9be; --rule: rgba(232,185,190,0.4);
+  --lid-time: 1.7s; --pull-time: 1.5s;
+}
+.xp-memory .xp-caption-print { display: block; width: 100%; max-width: 190px; aspect-ratio: 4 / 3; object-fit: cover; padding: 5px; background: #fff; box-shadow: 0 10px 24px rgba(0,0,0,0.4); transform: rotate(-1.5deg); }
+@container (max-width: 640px) { .xp-memory .xp-caption-print { display: none; } }

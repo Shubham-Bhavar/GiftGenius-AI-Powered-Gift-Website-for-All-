@@ -7,7 +7,10 @@ export const cartApi = {
   updateCartItem: (id, quantity) => request(`/cart/items/${id}`, { method: 'PATCH', body: { quantity } }),
   removeCartItem: (id) => request(`/cart/items/${id}`, { method: 'DELETE' }),
   clearCart: () => request('/cart', { method: 'DELETE' }),
-  mergeCart: (items) => request('/cart/merge', { method: 'POST', body: { items } }),
+  // The key makes the merge safe to retry: the same guest cart sent twice is added once (GG-45).
+  mergeCart: (items, idempotencyKey) => request('/cart/merge', {
+    method: 'POST', body: { items }, headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : {},
+  }),
 };
 
 export const cartKeys = {

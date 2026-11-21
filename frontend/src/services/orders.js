@@ -9,7 +9,8 @@ export const ordersApi = {
   orders: (page = 0, size = 10) => request(`/orders${qs({ page, size })}`),
   order: (number) => request(`/orders/${encodeURIComponent(number)}`),
   cancelOrder: (number) => request(`/orders/${encodeURIComponent(number)}/cancel`, { method: 'POST' }),
-  track: (orderNumber, email) => request(`/orders/track${qs({ orderNumber, email })}`, { auth: false }),
+  // POST, so the email stays out of URLs, browser history and access logs (GG-40).
+  track: (orderNumber, email) => request('/orders/track', { method: 'POST', body: { orderNumber, email }, auth: false }),
 };
 
 /** Cache keys. ordersKeys.all() covers the list and every order. */

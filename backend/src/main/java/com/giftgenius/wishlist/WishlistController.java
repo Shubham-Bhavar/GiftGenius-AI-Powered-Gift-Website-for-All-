@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.giftgenius.catalog.dto.ProductDtos.ProductDto;
 import com.giftgenius.security.AuthUser;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 
 @RestController
@@ -46,7 +47,7 @@ public class WishlistController {
     }
 
     @PostMapping("/merge")
-    public List<ProductDto> merge(@AuthenticationPrincipal AuthUser user, @RequestBody MergeRequest req) {
+    public List<ProductDto> merge(@AuthenticationPrincipal AuthUser user, @Valid @RequestBody MergeRequest req) {
         return wishlist.merge(user.id(), req.productIds());
     }
 }

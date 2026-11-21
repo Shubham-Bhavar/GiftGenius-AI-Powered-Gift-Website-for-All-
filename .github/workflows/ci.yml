@@ -68,7 +68,39 @@ jobs:
       - name: Build images
         run: |
           cp .env.example .env
+          # Throw-away values for this run only: the API refuses to start without a JWT secret and an admin password.
+          sed -i "s|^JWT_SECRET=.*|JWT_SECRET=$(openssl rand -base64 48 | tr -d '\n')|" .env
+          sed -i "s|^ADMIN_PASSWORD=.*|ADMIN_PASSWORD=ci-admin-$(openssl rand -hex 12)|" .env
           docker compose build
           docker compose -f docker-compose.yml -f docker-compose.prod.yml config --quiet
         env:
           DOMAIN: ci.example.com
+      # A built image isn't a working one: start the stack and check it the way a host would.
+      - name: Start the stack and check it runs
+        run: |
+          docker compose up -d --wait --wait-timeout 300
+          docker compose ps
+          # The site and the API, through nginx.
+          # Responses are captured first: `curl | grep -q` can fail under pipefail when grep stops reading early.
+          page=$(curl -fsS http://localhost:8081/);                          grep -q '<div id="root">' <<<"$page"
+          products=$(curl -fsS "http://localhost:8081/api/products?size=1"); grep -q '"content"' <<<"$products"
+          headers=$(curl -fsSI http://localhost:8081/);                      grep -qi '^content-security-policy:' <<<"$headers"
+          # Readiness answers inside the container; metrics stay refused without METRICS_SCRAPE_TOKEN (fail closed).
+          ready=$(docker compose exec -T backend wget -qO- http://127.0.0.1:9091/actuator/health/readiness)
+          grep -q '"UP"' <<<"$ready"
+          if docker compose exec -T backend wget -qO- http://127.0.0.1:9091/actuator/prometheus; then
+            echo "metrics answered without a token"; exit 1
+          fi
+          # The management port is never published. `docker port` fails when the container has no host mapping for it
+          # and prints the mapping when it has one (`docker compose port` prints ":0" for an unpublished port).
+          backend=$(docker compose ps -q backend)
+          if [ -z "$backend" ]; then echo "no backend container to check"; exit 1; fi
+          if docker port "$backend" 9091 >/dev/null 2>&1; then
+            echo "port 9091 is published:"; docker port "$backend" 9091; exit 1
+          fi
+      - name: Logs if the stack failed
+        if: failure()
+        run: docker compose logs --no-color --tail=200
+      - name: Stop the stack
+        if: always()
+        run: docker compose down -v --timeout 30

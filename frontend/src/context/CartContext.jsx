@@ -5,12 +5,63 @@ import { storage } from '../utils/storage.js';
 import { useAuth } from './AuthContext.jsx';
 
 export const GUEST_CART_KEY = 'gg-cart';
+/** The pending merge of the guest cart: its Idempotency-Key and the cart it was made for (GG-45). */
+export const MERGE_KEY = 'gg-cart-merge';
 export const MAX_QTY = 10;
 
 const CartContext = createContext(null);
 
-const clean = (s) => (s && s.trim() ? s.trim() : null);
+const clean = (s) => (typeof s === 'string' && s.trim() ? s.trim() : null);
 const lineKey = (productId, customName, customMessage) => `${productId}|${customName ?? ''}|${customMessage ?? ''}`;
+
+/**
+ * The guest cart as stored, made safe to use: anything that isn't a list of cart lines (a value from an older version,
+ * another tab or a hand edit) becomes an empty cart, malformed lines are dropped, quantities are clamped to 1–10 and
+ * every line gets its key again. Never throws: a bad value must not blank the site.
+ */
+export function readGuestCart(value) {
+  if (!Array.isArray(value)) return [];
+  const byKey = new Map();
+  for (const raw of value) {
+    if (!raw || typeof raw !== 'object') continue;
+    const productId = Number(raw.productId);
+    const quantity = Math.floor(Number(raw.quantity));
+    if (!Number.isInteger(productId) || productId <= 0 || !Number.isFinite(quantity) || quantity < 1) continue;
+    const customName = clean(raw.customName);
+    const customMessage = clean(raw.customMessage);
+    const key = lineKey(productId, customName, customMessage);
+    const unitPrice = Number(raw.unitPrice);
+    const stock = Number.isInteger(raw.stock) && raw.stock >= 0 ? raw.stock : undefined;
+    const previous = byKey.get(key);
+    byKey.set(key, {
+      key, productId, customName, customMessage, stock,
+      name: typeof raw.name === 'string' ? raw.name : '',
+      image: typeof raw.image === 'string' ? raw.image : null,
+      unitPrice: Number.isFinite(unitPrice) && unitPrice >= 0 ? unitPrice : 0,
+      quantity: Math.min(MAX_QTY, quantity + (previous?.quantity ?? 0)),
+    });
+  }
+  return [...byKey.values()];
+}
+
+const newKey = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+/**
+ * The Idempotency-Key for merging these guest lines into the account. It stays the same while the guest cart does,
+ * so a merge retried after a lost response (or by a second tab) is added once; a guest cart that changed gets a new
+ * key, so it is merged as the new cart it is. Exported for tests.
+ */
+/** The guest lines as the merge sends them (and as its key is keyed on). */
+const mergeLines = (guest) => guest.map(({ productId, quantity, customName, customMessage }) => ({ productId, quantity, customName, customMessage }));
+
+export function mergeKeyFor(lines) {
+  const cart = JSON.stringify(lines);
+  const saved = storage.getJson(MERGE_KEY, null);
+  if (saved && typeof saved.key === 'string' && saved.cart === cart) return saved.key;
+  const key = newKey();
+  storage.setJson(MERGE_KEY, { key, cart });
+  return key;
+}
 
 /**
  * One cart API for everyone. Guests keep lines in localStorage (synced across tabs); signed-in
@@ -19,21 +70,27 @@ const lineKey = (productId, customName, customMessage) => `${productId}|${custom
 export function CartProvider({ children }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [guest, setGuest] = useState(() => storage.getJson(GUEST_CART_KEY, []));
+  const [guest, setGuest] = useState(() => readGuestCart(storage.getJson(GUEST_CART_KEY, [])));
 
   useEffect(() => {
     storage.setJson(GUEST_CART_KEY, guest);
+    // The merge key is made with the cart, not at sign-in, so tabs that merge at the same moment share it.
+    if (guest.length > 0) mergeKeyFor(mergeLines(guest));
   }, [guest]);
 
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === GUEST_CART_KEY) setGuest(storage.getJson(GUEST_CART_KEY, []));
+      if (e.key === GUEST_CART_KEY) setGuest(readGuestCart(storage.getJson(GUEST_CART_KEY, [])));
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   const server = useQuery({ ...cartQueries.cart(), enabled: !!user });
+
+  // Lines with a change on its way to the server: their controls wait for it, so quick clicks each start from the
+  // quantity the server last confirmed instead of all sending the same one.
+  const [pendingKeys, setPendingKeys] = useState(() => new Set());
 
   // Fold the guest cart into the account once, right after sign-in. Until it lands, the cart
   // reports "loading" so checkout doesn't see a half-merged (empty) cart.
@@ -43,11 +100,15 @@ export function CartProvider({ children }) {
     if (!user || guest.length === 0 || merging.current) return;
     merging.current = true;
     setMergePending(true);
+    const lines = mergeLines(guest);
     cartApi
-      .mergeCart(guest.map(({ productId, quantity, customName, customMessage }) => ({ productId, quantity, customName, customMessage })))
-      .then((cart) => {
+      .mergeCart(lines, mergeKeyFor(lines))
+      .then(async (cart) => {
+        // A cart read started before the merge committed must not land after it and undo it.
+        await qc.cancelQueries({ queryKey: cartKeys.cart() });
         qc.setQueryData(cartKeys.cart(), cart);
         setGuest([]);
+        storage.remove(MERGE_KEY);
       })
       .catch(() => {
         /* keep the guest lines; the next sign-in retries */
@@ -73,12 +134,26 @@ export function CartProvider({ children }) {
         customMessage: i.customMessage,
         stock: i.stock,
         available: i.available,
+        pending: pendingKeys.has(String(i.id)),
       }));
     }
-    return guest.map((l) => ({ ...l, lineTotal: l.unitPrice * l.quantity, available: true }));
-  }, [user, server.data, guest]);
+    return guest.map((l) => ({ ...l, lineTotal: l.unitPrice * l.quantity, available: true, pending: false }));
+  }, [user, server.data, guest, pendingKeys]);
 
   const setServerCart = useCallback((cart) => qc.setQueryData(cartKeys.cart(), cart), [qc]);
+
+  const whilePending = useCallback(async (key, work) => {
+    setPendingKeys((s) => new Set(s).add(key));
+    try {
+      return await work();
+    } finally {
+      setPendingKeys((s) => {
+        const next = new Set(s);
+        next.delete(key);
+        return next;
+      });
+    }
+  }, []);
 
   const add = useCallback(
     async (product, quantity = 1, { customName, customMessage } = {}) => {
@@ -118,23 +193,23 @@ export function CartProvider({ children }) {
     async (key, quantity) => {
       const q = Math.max(1, Math.min(MAX_QTY, quantity));
       if (user) {
-        setServerCart(await cartApi.updateCartItem(key, q));
+        await whilePending(key, async () => setServerCart(await cartApi.updateCartItem(key, q)));
         return;
       }
       setGuest((lines) => lines.map((l) => (l.key === key ? { ...l, quantity: Math.min(q, l.stock ?? MAX_QTY) } : l)));
     },
-    [user, setServerCart],
+    [user, setServerCart, whilePending],
   );
 
   const remove = useCallback(
     async (key) => {
       if (user) {
-        setServerCart(await cartApi.removeCartItem(key));
+        await whilePending(key, async () => setServerCart(await cartApi.removeCartItem(key)));
         return;
       }
       setGuest((lines) => lines.filter((l) => l.key !== key));
     },
-    [user, setServerCart],
+    [user, setServerCart, whilePending],
   );
 
   const clear = useCallback(async () => {

@@ -13,15 +13,26 @@ const snapshot = (p) => ({
   inStock: p.inStock,
 });
 
+/** The guest wishlist as stored, made safe to use: a list of saved products with a positive id, each once. */
+export function readGuestWishlist(value) {
+  if (!Array.isArray(value)) return [];
+  const seen = new Set();
+  return value.filter((p) => {
+    if (!p || typeof p !== 'object' || !Number.isInteger(p.id) || p.id <= 0 || seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+}
+
 export function WishlistProvider({ children }) {
   const { user } = useAuth();
   const qc = useQueryClient();
-  const [guest, setGuest] = useState(() => storage.getJson(GUEST_WISHLIST_KEY, []));
+  const [guest, setGuest] = useState(() => readGuestWishlist(storage.getJson(GUEST_WISHLIST_KEY, [])));
 
   useEffect(() => storage.setJson(GUEST_WISHLIST_KEY, guest), [guest]);
   useEffect(() => {
     const onStorage = (e) => {
-      if (e.key === GUEST_WISHLIST_KEY) setGuest(storage.getJson(GUEST_WISHLIST_KEY, []));
+      if (e.key === GUEST_WISHLIST_KEY) setGuest(readGuestWishlist(storage.getJson(GUEST_WISHLIST_KEY, [])));
     };
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
@@ -35,7 +46,8 @@ export function WishlistProvider({ children }) {
     merging.current = true;
     wishlistApi
       .mergeWishlist(guest.map((p) => p.id))
-      .then((list) => {
+      .then(async (list) => {
+        await qc.cancelQueries({ queryKey: wishlistKeys.wishlist() });
         qc.setQueryData(wishlistKeys.wishlist(), list);
         setGuest([]);
       })
