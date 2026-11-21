@@ -78,7 +78,24 @@ public final class OrderDtos {
             List<OrderItemDto> items,
             List<StatusEventDto> timeline,
             Instant createdAt,
-            PaymentInstructions payment) {
+            PaymentInstructions payment,
+            /**
+             * What happened to the order confirmation email (GG-53): SENDING, SENT (accepted by the mail server, not
+             * proof of delivery), FAILED or NOT_SENT (no email provider configured); null when none was queued or
+             * the view doesn't say. Only the customer's own order detail includes it.
+             */
+            String confirmationEmail) {
+
+        public OrderDto withConfirmationEmail(String emailStatus) {
+            return new OrderDto(orderNumber, status, paymentMethod, paymentStatus, deliveryType, subtotal, discount,
+                    deliveryFee, total, couponCode, shipping, items, timeline, createdAt, payment, emailStatus);
+        }
+    }
+
+    /** A public tracking lookup sent in the request body, so the email stays out of URLs and access logs (GG-40). */
+    public record TrackRequest(
+            @NotBlank(message = "Enter your order number") @Size(max = 40) String orderNumber,
+            @NotBlank(message = "Enter your email") @Email(message = "Enter a valid email") @Size(max = 255) String email) {
     }
 
     /** Public tracking view: no address or phone, only what's needed to follow the parcel. */

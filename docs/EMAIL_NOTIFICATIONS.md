@@ -100,6 +100,21 @@ accepts, recording `SENT` fails, the lease runs out: one delivery, `FAILED`, no 
 `aSendThatOutlivesItsLeaseIsStillRecordedAsSentWhenItSucceeds`, and the Message-ID tests in `EmailOutboxSenderTest`
 (including through Spring's real `JavaMailSenderImpl`, which keeps an explicit Message-ID) and `EmailOutboxIT`.
 
+## What the customer is told (GG-53)
+
+The order page never assumes an email was sent. The customer's own order detail (`GET /api/orders/{n}`) carries
+`confirmationEmail`, read from the outbox row of the order's confirmation (`EmailStatus`):
+
+| `confirmationEmail` | Outbox and settings | The page says |
+|---|---|---|
+| `SENDING` | `PENDING` or `SENDING`, with an SMTP host | "We're sending a confirmation to …" (and looks again for about a minute) |
+| `SENT` | `SENT`: the mail server accepted it (not proof it reached the inbox) | "We've sent a confirmation to …" |
+| `FAILED` | `FAILED` | "We couldn't send the confirmation email to … Your order is confirmed: its details are here and in My Orders." |
+| `NOT_SENT` | no SMTP host, or `NOT_SENT` | "This shop doesn't send confirmation emails yet, so none was sent." |
+| absent | no confirmation queued (content error, older order) | only "Your order's details are here and in My Orders." |
+
+Order lists, admin views and public tracking don't include it.
+
 ## Monitoring and reconciliation
 
 Read-only, on the management port's Prometheus endpoint (`/actuator/prometheus`, port `MANAGEMENT_PORT`, 9091 by

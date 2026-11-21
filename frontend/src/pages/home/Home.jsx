@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useQuery } from '@tanstack/react-query';
 import EntryAnimation from '../../components/intro/EntryAnimation.jsx';
@@ -14,6 +14,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle.js';
 import { catalogQueries } from '../../services/catalog.js';
 import { shouldShowWelcome } from '../../components/intro/welcome.js';
 import { Reveal } from '../../animations/Reveal.jsx';
+import { holdHero, playHero } from '../../animations/heroMotion.js';
 
 /* Fuzzy search from the original homepage: all query characters appear in order. */
 function fuzzyMatch(str, query) {
@@ -44,7 +45,13 @@ export default function Home() {
   const { user } = useAuth();
   const { openWelcome } = useUi();
   // Entry animation → welcome screen (Log In / Sign Up / Continue without an account) for first-time visitors.
+  // The hero's entrance plays once the entry has handed over (straight away when there is no entry).
+  const hero = useRef(null);
+  const [heroCue, setHeroCue] = useState(false);
+  useLayoutEffect(() => holdHero(hero.current), []);
+  useEffect(() => (heroCue ? playHero(hero.current) : undefined), [heroCue]);
   const onEntryFinished = useCallback(() => {
+    setHeroCue(true);
     if (shouldShowWelcome(user)) openWelcome();
   }, [user, openWelcome]);
   const [filter, setFilter] = useState('all');
@@ -71,7 +78,7 @@ export default function Home() {
     <>
       <EntryAnimation onFinish={onEntryFinished} />
 
-      <section className="hero" aria-label="Welcome to GiftGenius">
+      <section className="hero" aria-label="Welcome to GiftGenius" ref={hero}>
         <div className="hero-left">
           <p className="hero-eyebrow" aria-hidden="true"><span className="eyebrow-line" />Curated With Love</p>
           <h1>Find the <br /><em>Perfect Gift</em><br />for Every Occasion</h1>

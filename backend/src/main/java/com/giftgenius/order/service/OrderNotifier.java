@@ -79,6 +79,11 @@ class OrderNotifier {
         return "status:" + status.name();
     }
 
+    /** The outbox key of an order's confirmation email to the customer. */
+    static String confirmationKey(Order o) {
+        return "order:" + o.getId() + ":" + CONFIRMED + ":customer";
+    }
+
     /**
      * Whether a failure belongs to the order's database transaction rather than to an email's content: Spring's data
      * access and transaction exceptions, and JPA's (Hibernate's), which a lazy load can throw while an email is built.

@@ -12,6 +12,37 @@ import { dateTime, inr } from '../../utils/format.js';
 import { OrderItems, OrderTotals } from '../../components/order/OrderSummary.jsx';
 import { CANCELLABLE, DELIVERY_LABEL } from '../../constants/orders.js';
 
+/**
+ * What the page may say about the order confirmation email: only what the server knows (GG-53). SENT means the mail
+ * server accepted it, which is not proof it reached the inbox; nothing is called sent when it wasn't.
+ */
+export function ConfirmationEmailNote({ status, email }) {
+  const to = <strong>{email}</strong>;
+  switch (status) {
+    case 'SENT':
+      return <p className="od-success-note">We&apos;ve sent a confirmation to {to}.</p>;
+    case 'SENDING':
+      return <p className="od-success-note">We&apos;re sending a confirmation to {to}.</p>;
+    case 'FAILED':
+      return (
+        <p className="od-success-note">
+          We couldn&apos;t send the confirmation email to {to}. Your order is confirmed: its details are here and in My Orders.
+        </p>
+      );
+    case 'NOT_SENT':
+      return (
+        <p className="od-success-note">
+          This shop doesn&apos;t send confirmation emails yet, so none was sent. Your order&apos;s details are here and in My Orders.
+        </p>
+      );
+    default:
+      return <p className="od-success-note">Your order&apos;s details are here and in My Orders.</p>;
+  }
+}
+
+/** While a confirmation is on its way, look again a few times so the note can say when it was sent. */
+const EMAIL_RECHECKS = 12;
+
 export default function OrderDetail() {
   const { number } = useParams();
   const [params] = useSearchParams();
@@ -22,7 +53,12 @@ export default function OrderDetail() {
   const order = useQuery({
     ...ordersQueries.detail(number),
     // While payment is pending, look again now and then: the Razorpay webhook may confirm it at any moment.
-    refetchInterval: (q) => (q.state.data?.status === 'PENDING_PAYMENT' ? 15_000 : false),
+    refetchInterval: (q) => {
+      if (q.state.data?.status === 'PENDING_PAYMENT') return 15_000;
+      const justPlacedPage = params.get('placed') === '1';
+      return justPlacedPage && q.state.data?.confirmationEmail === 'SENDING' && q.state.dataUpdateCount <= EMAIL_RECHECKS
+        ? 5_000 : false;
+    },
   });
   useDocumentTitle(`Order ${number}`);
 
@@ -71,7 +107,7 @@ export default function OrderDetail() {
             <h2>Order Placed Successfully!</h2>
             <p>Thank you! Your gift is being packed with love 💕</p>
             <div className="od-order-id">Order ID: {o.orderNumber}</div>
-            <p className="od-success-note">We&apos;ve emailed a confirmation to <strong>{o.shipping.email}</strong>.</p>
+            <ConfirmationEmailNote status={o.confirmationEmail} email={o.shipping.email} />
             <div className="od-success-actions">
               <a className="btn-primary" href="#tracking">📦 Track Your Order</a>
               <Link to="/shop" className="btn-outline">← Continue Shopping</Link>

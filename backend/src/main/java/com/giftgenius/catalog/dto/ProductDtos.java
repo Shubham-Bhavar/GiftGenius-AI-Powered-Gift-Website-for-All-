@@ -117,7 +117,9 @@ public final class ProductDtos {
             @NotBlank(message = "Add an image link") @Size(max = 1000)
             @Pattern(regexp = SafeText.HTTPS_URL, message = SafeText.HTTPS_URL_MESSAGE) String image,
             @Size(max = 255) @Pattern(regexp = SafeText.NO_MARKUP, message = SafeText.NO_MARKUP_MESSAGE) String alt,
-            boolean submit) {
+            boolean submit,
+            /** Optional: the stock shown when the form was opened; only the change is applied (see StockEdits). */
+            @Min(0) @Max(1_000_000) Integer stockSeen) {
     }
 
     public record ProductUpsertRequest(
@@ -141,6 +143,8 @@ public final class ProductDtos {
             @Size(max = 20) Set<@NotBlank @Size(max = 40) String> occasion,
             @Size(max = 20) Set<@NotBlank @Size(max = 20) String> forWhom,
             @Size(max = 20) Set<@NotBlank @Size(max = 30) String> personality,
-            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> relationship) {
+            @Size(max = 20) Set<@NotBlank @Size(max = 30) String> relationship,
+            /** Optional: the stock shown when the form was opened; only the change is applied (see StockEdits). */
+            @Min(0) @Max(1_000_000) Integer stockSeen) {
     }
 }

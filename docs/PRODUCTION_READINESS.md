@@ -7,13 +7,14 @@ to customers, sellers and the store owner, the Classic reveal retired, the gift 
 
 ## Verdict
 
-**READY WITH BLOCKERS (2026-11-12, updated 2026-11-13).** The code passes every check that can run here: 358
-backend unit and 180 integration tests on MySQL 8.0.43 (and on CI's MySQL 8.4), 454 frontend tests, lint, the production build and
-`npm audit` (0). 37 of 38 deliberately reintroduced defects were caught at once, and a test now catches the 38th.
-The release blockers below are infrastructure, provider credentials and owner decisions; the open code defects
-(GG-36, GG-45, GG-53, see "Open code defects") are not release blockers but should be scheduled. The Docker images
-can't be built on this machine, but CI built them for `d54a34d` (PR #3 run 43419302488, all jobs green); no
-container has been started from them yet.
+**CODE READY, EXTERNAL PRODUCTION BLOCKERS (2026-11-14).** The code passes every check that can run here: 361
+backend unit and 196 integration tests on MySQL 8.0.43 (358 and 180 also on CI's MySQL 8.4 for `d54a34d`), 470
+frontend tests, lint, the production build and `npm audit` (0, development dependencies included). GG-36, GG-45,
+GG-53 and GG-40 are fixed with tests; every deliberately reintroduced defect of this round (12 of 12) was caught.
+What remains is outside the code: no production host or database, no SMTP, Gemini or Razorpay credentials to test
+with, containers never started (CI builds the images; its new runtime check runs on the next push; Docker on the
+development PC can't run current Alpine images), and owner decisions (GG-35, GG-37 to GG-39, GG-55). Uncommitted on
+`09d91df`.
 
 Earlier assessment (2026-10-28): the **code** is in a production-ready development state for the journeys that can be exercised locally: every supported check passes (242 unit, 110 integration and 140 frontend tests, lint and build), the confirmed defects found in this audit are fixed with regression tests, and the main shopper, admin and authorization journeys were verified against a real backend and database.
 
@@ -78,7 +79,7 @@ This does not claim the system is "100 % production-ready"; it states what was v
 | Problem-detail errors with safe messages; no stack traces in responses | PASS | live checks |
 | Health (liveness/readiness) and Prometheus on a separate port | PASS locally | live check on the management port |
 | Actuator access: probes open and status-only; metrics need `METRICS_SCRAPE_TOKEN`; the rest closed, on either port | PASS locally (2026-11-09; committed locally, not pushed) | `ManagementSecurityIT`, `ManagementSecurityNoTokenIT`, `ManagementSecuritySamePortIT` (real HTTP) |
-| Docker container health check with the new Actuator security | NOT VERIFIED | the readiness request it makes passes over HTTP in `ManagementSecurityIT`; the image builds on CI, but no container has been started from it, so its `HEALTHCHECK` hasn't run (CI only builds; locally Docker can't build) |
+| Docker container health check with the new Actuator security | NOT VERIFIED | Not run anywhere yet. CI's Docker job now starts the stack and checks readiness, the site, the API, metrics staying closed and 9091 staying unpublished (added 2026-11-14), but runs only on the next push. Locally, Docker Desktop's image storage is corrupted (current Alpine images fail with "exec format error" / I/O errors even after a re-pull); repairing it means purging all local Docker data, an owner decision |
 | Health check reachable by Railway | BLOCKED | the management port isn't the public port; Railway's health check path must be configured accordingly |
 | Fail-fast startup on missing secret or database | PASS | jar runs |
 | Graceful shutdown | NOT TESTED | configured (`server.shutdown: graceful`) |
@@ -87,7 +88,7 @@ This does not claim the system is "100 % production-ready"; it states what was v
 
 | Item | Status | Evidence |
 |---|---|---|
-| Frontend lint, tests, build; backend unit and integration tests | PASS (2026-11-13: 358 unit, 180 integration, 454 frontend) | TEST_RESULTS.md |
+| Frontend lint, tests, build; backend unit and integration tests | PASS (2026-11-14: 361 unit, 196 integration, 470 frontend) | TEST_RESULTS.md |
 | CI database version | PASS (backend) | CI's backend job (358 unit and 180 integration tests on `mysql:8.4`) passed for `ae8829e`, PR #3 run 43404039472; local runs use 8.0.43 |
 | Tests need no paid service or live credential | PASS | fakes and mocks for Razorpay, Nominatim, Gemini, mail |
 | Docker Compose configuration (base and production overlay) | PASS | `docker compose config` |
@@ -101,17 +102,18 @@ This does not claim the system is "100 % production-ready"; it states what was v
 
 ## Open code defects
 
-Known, documented in BUG_REGISTER.md, not fixed. None blocks a release on its own; each needs a decision or an API
-change.
+GG-36, GG-45 and GG-53 were fixed on 2026-11-14 (BUG_REGISTER.md has the details and tests), and GG-40 with them.
+Still open, none a code defect that blocks a release, each needing an owner decision:
 
-| ID | Severity | Defect | What it needs |
+| ID | Severity | Item | Decision needed |
 |---|---|---|---|
-| GG-36 | Medium | Saving a product form overwrites its stock with the form's value, losing units reserved by orders meanwhile | The product API to carry a version (or stock to be changed by delta) |
-| GG-45 | Medium (suspected) | The guest cart and wishlist merge at sign-in isn't exactly-once: a retry after a lost response could add the lines twice | An idempotency key on the merge endpoints |
-| GG-53 | Low | The order confirmation page says "We've emailed a confirmation" even when no email provider is configured | The API to say whether the email was queued for sending |
+| GG-55 | Medium | The homepage hero shows figures nothing backs ("50K+ Happy Customers", "1,200+ Gift Options" with 20 products, "98%", "4.9 ★") | Replace with true figures or remove |
+| GG-35 | Medium | Cash-on-delivery orders are only rate-limited per client | Per-customer cap or COD value limit, or keep as is |
+| GG-37 | Low | Access tokens (15 min) can't be revoked early | Keep, shorten to 5 min, or check a token version per request |
+| GG-38 | Low | A rotated refresh token works again for 30 s (multi-tab) | Keep, or allow one reuse only |
+| GG-39 | Low | Registration reveals registered emails; no verification | Keep, or neutral reply plus email verification |
 
-Also open, lower severity or owner decisions: GG-35 (per-customer cash-on-delivery cap), GG-37 to GG-40, GG-11,
-GG-12, GG-15.
+Also open, lower severity: GG-11, GG-12, GG-15.
 
 **GG-28, fixed and verified on 2026-11-13** (it had been listed as fixed on 2026-11-11, but that fix didn't take
 effect): a deadlock while queueing an order email is now passed on, so the order fails with a retryable 409 and

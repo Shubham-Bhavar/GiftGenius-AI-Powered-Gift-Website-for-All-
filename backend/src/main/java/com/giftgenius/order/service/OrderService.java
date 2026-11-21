@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 import com.giftgenius.analytics.InteractionEvent;
 import com.giftgenius.cart.Cart;
 import com.giftgenius.cart.CartItem;
+import com.giftgenius.notify.EmailStatus;
 import com.giftgenius.cart.CartService;
 import com.giftgenius.catalog.repository.ProductRepository;
 import com.giftgenius.common.ApiException;
@@ -73,11 +74,13 @@ public class OrderService {
     private final ApplicationEventPublisher events;
     private final TransactionTemplate tx;
     private final AppProperties.Orders orderProps;
+    private final EmailStatus emailStatus;
 
     public OrderService(OrderRepository orders, CartService carts, PricingService pricing,
             ProductRepository products, CouponRepository coupons, OnlinePayments payments,
             UserRepository users, OrderMapper mapper, OrderNotifier notifier, ApplicationEventPublisher events,
-            PlatformTransactionManager txManager, AppProperties properties) {
+            PlatformTransactionManager txManager, AppProperties properties, EmailStatus emailStatus) {
+        this.emailStatus = emailStatus;
         this.orders = orders;
         this.carts = carts;
         this.pricing = pricing;
@@ -273,7 +276,10 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public OrderDto get(Long userId, String orderNumber) {
-        return mapper.toDto(ownOrder(userId, orderNumber));
+        Order o = ownOrder(userId, orderNumber);
+        // Only what the outbox says about the confirmation, so the page never claims an email that wasn't sent.
+        return mapper.toDto(o).withConfirmationEmail(
+                emailStatus.of(OrderNotifier.confirmationKey(o)).map(Enum::name).orElse(null));
     }
 
     /** Public lookup. The email must match the order, and failures look identical to avoid enumeration. */

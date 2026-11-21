@@ -157,6 +157,9 @@ describe('order tracking (original track page)', () => {
     expect(screen.getByText('Tracking: DTDC 123')).toBeInTheDocument();
     const current = document.querySelector('.t-item[aria-current="step"]');
     expect(current).toHaveTextContent('Out for Delivery');
+    // GG-40: the email goes in the request body, never the URL (history, access logs, Referer).
+    expect(db.trackUrls).toHaveLength(2);
+    db.trackUrls.forEach((url) => expect(url).not.toMatch(/example\.com|email=/));
   });
 });
 

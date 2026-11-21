@@ -1,7 +1,9 @@
 package com.giftgenius.it;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
@@ -107,5 +109,9 @@ class EmailDeliveryAppIT extends AbstractIT {
             assertThat(e.attempts()).isEqualTo(1);
         });
         assertThat(SERVER.getReceivedMessages()).as("nothing sent twice").hasSize(4);
+
+        // GG-53: the order page says sent only now, after the mail server accepted the confirmation.
+        mvc.perform(s.auth(get("/api/orders/" + number))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.confirmationEmail").value("SENT"));
     }
 }

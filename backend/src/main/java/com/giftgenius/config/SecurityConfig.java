@@ -50,7 +50,7 @@ public class SecurityConfig {
                         "/api/auth/password/forgot", "/api/auth/password/reset").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/ai/**", "/api/checkout/quote",
                         "/api/newsletter/subscribe", "/api/contact", "/api/payments/razorpay/webhook",
-                        "/api/gift-box/suggestions", "/api/gift-box/check").permitAll()
+                        "/api/gift-box/suggestions", "/api/gift-box/check", "/api/orders/track").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/orders/track", "/api/checkout/options").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 // The role comes from the signed access token; the services also check the store's own status.

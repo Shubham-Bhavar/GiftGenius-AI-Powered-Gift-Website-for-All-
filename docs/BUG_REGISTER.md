@@ -204,17 +204,17 @@ passes on, and the order placed through the API.
 | GG-32 | Low | Orders | Cancelling an order paid in full by a coupon (₹0) queued a ₹0 refund and promised one | Fixed |
 | GG-33 | Low | Email reconciliation | The 5-minute reconciliation scanned all order events (no index for it) | Fixed (V9 index) |
 | GG-34 | Medium | AI assistant | Text the model writes could claim a price, discount or stock level | Fixed in the new assistant |
-| GG-35 | Medium | Orders | Unlimited cash-on-delivery orders: confirmation emails to any address, stock held | Partly fixed: `POST /api/orders` is now rate-limited per client; a per-customer cap is an owner decision |
-| GG-36 | Medium | Catalogue | Saving a product form overwrites stock with the form's value (lost update if orders reserved stock meanwhile) | Open: needs the product API to carry a version (API change) |
-| GG-37 | Low | Auth | Access tokens can't be revoked before they expire (15 min); seller application returns a new session from an access token | Open, owner decision |
-| GG-38 | Low | Auth | A rotated refresh token can be exchanged again any number of times within its 30-second grace | Open: tightening it signs out a third tab refreshing at once |
-| GG-39 | Low | Auth | Registration answers 409 for a registered email (enumeration); no email verification | Open, product decision |
-| GG-40 | Low | Order tracking | The tracking lookup sends the order number and email in the query string (logs, history) | Open: API change |
+| GG-35 | Medium | Orders | Unlimited cash-on-delivery orders: confirmation emails to any address, stock held | Owner decision: rate limit in place (30 orders a minute per client); a per-customer cap on unshipped cash-on-delivery orders, or a COD order-value limit, is a business rule (see below) |
+| GG-36 | Medium | Catalogue | Saving a product form overwrites stock with the form's value (lost update if orders reserved stock meanwhile) | Fixed (2026-11-14): the edit applies only the change made in the form (`stockSeen`) |
+| GG-37 | Low | Auth | Access tokens can't be revoked before they expire (15 min); seller application returns a new session from an access token | Owner decision (see below) |
+| GG-38 | Low | Auth | A rotated refresh token can be exchanged again any number of times within its 30-second grace | Owner decision (see below) |
+| GG-39 | Low | Auth | Registration answers 409 for a registered email (enumeration); no email verification | Owner decision (see below) |
+| GG-40 | Low | Order tracking | The tracking lookup sends the order number and email in the query string (logs, history) | Fixed (2026-11-14): `POST /api/orders/track` with a JSON body; the site uses it; GET kept for old links |
 | GG-41 | High | Cart and wishlist | A saved guest cart or wishlist in an unexpected shape (an older version, another tab, a hand edit) blanked the whole site | Fixed |
 | GG-42 | Medium | Session | A server error or network blip while restoring the session showed a signed-in shopper as signed out, with no retry | Fixed |
 | GG-43 | Medium | Checkout | A failed price quote showed no error and no way to retry | Fixed |
 | GG-44 | Medium (suspected) | Cart and wishlist | A cart read in flight during the sign-in merge could land after it and show the pre-merge cart | Fixed defensively; a race, no deterministic test |
-| GG-45 | Medium (suspected) | Cart and wishlist | The sign-in merge isn't exactly-once: a retry after a lost response could add the guest lines twice | Open: needs an idempotency key on the merge (API change) |
+| GG-45 | Medium (suspected) | Cart and wishlist | The sign-in merge isn't exactly-once: a retry after a lost response could add the guest lines twice | Fixed (2026-11-14): Idempotency-Key on the merge, recorded with it (V10) |
 | GG-46 | Low | Gift assistant | "Start over" while a reply was on its way let that reply land in the new conversation, and left the panel busy | Fixed |
 | GG-47 | Low | Cart | Quick quantity clicks for a signed-in shopper could overwrite each other | Fixed |
 | GG-48 | Low | Checkout | While a changed delivery option was being priced, the Pay button showed and accepted the previous total | Fixed |
@@ -222,8 +222,9 @@ passes on, and the order placed through the API.
 | GG-50 | Low | Layout | Search-box and link-scroll timers ran after the page changed; Enter on any control skipped the entry | Fixed; no dedicated test (timers) |
 | GG-51 | Low | Gift assistant | With nothing to go on, the assistant showed its question twice (the reply and the question are the same text) | Fixed (found in the 2026-11-13 demo run) |
 | GG-52 | Medium | Gift assistant | The sticky header covered the top of the assistant panel on phones and on short desktop windows | Fixed (found in the 2026-11-13 demo run) |
-| GG-53 | Low | Order confirmation | The confirmation page says "We've emailed a confirmation" even when no email provider is configured and nothing was sent | Open: the page can't tell; needs the API to say whether the email was queued for sending |
+| GG-53 | Low | Order confirmation | The confirmation page says "We've emailed a confirmation" even when no email provider is configured and nothing was sent | Fixed (2026-11-14): the order says what happened to the email; the page words it accordingly |
 | GG-54 | Low | Tests | A gift assistant test raced a sign-in redirect: it failed on CI's fast runners and checked nothing locally | Fixed (test removed; the behaviour is covered by a reliable test) |
+| GG-55 | Medium | Homepage | The hero shows figures nothing backs ("50K+ Happy Customers", "1,200+ Gift Options" with 20 products listed, "98% Customer Satisfaction", "4.9 ★"), from the original design | Owner decision: replace with true figures or remove (customer-facing claims) |
 
 ### Details of the fixed items
 
@@ -308,3 +309,41 @@ passes on, and the order placed through the API.
   out, waited 50 ms and expected no assistant; signed-out visitors are redirected to `/login`, where it shows. It
   failed on CI (PR #3 run 43404039472) and passed locally only because nothing had rendered yet. Removed; covered
   by "stays out of the way while paying and in the back offices", which signs in and waits for each page.
+- **GG-36:** `StockEdits` (used by the admin and seller product edits). The editors send the stock they showed
+  (`stockSeen`, optional); the server re-reads the product under a write lock, after the store's lock as everywhere
+  else, and saves `stock now + (entered - stockSeen)`. A restock from 50 to 60 while 2 sold leaves 58; taking away
+  more than is left is refused (409) and nothing of the edit is saved. Without `stockSeen` (older clients) the number
+  is taken as before. The editors say when sales changed the result. Tests: `StockEditIT` (5, including six orders
+  racing an edit), `seller.test.jsx`, `integrity.test.jsx`.
+- **GG-40:** `POST /api/orders/track` takes `{orderNumber, email}`; same answers, validation and rate limit as the GET
+  form, which stays for existing links. Tests: `TrackingLookupIT` (4), `RateLimitFilterTest`, `features.test.jsx`
+  (no request URL carries the email).
+- **GG-45:** the merge takes an `Idempotency-Key`; the first merge under a key is recorded in `cart_merges` (V10) in
+  the same transaction as its lines, after the user's row lock, and a repeat answers the cart unchanged. The browser
+  keeps one key per guest cart (`gg-cart-merge` in localStorage, a new key when the guest cart changes) and drops it
+  after a successful merge. A merge without a key behaves as before. Tests: `CartMergeIdempotencyIT` (5, including
+  four tabs at once), `integrity.test.jsx` (a lost reply, then the retry after a reload).
+- **GG-53:** the customer's order detail carries `confirmationEmail`: `SENDING`, `SENT` (the mail server accepted
+  it; not proof of delivery), `FAILED`, `NOT_SENT` (no provider: never "sent" or "on its way"), or nothing. The page
+  words each one and looks again for a minute while it is `SENDING`. Lists, admin views and tracking don't include
+  it. Tests: `EmailStatusTest`, `OrderConfirmationEmailIT`, `EmailDeliveryAppIT` (`SENT` after real SMTP delivery),
+  `integrity.test.jsx`.
+
+### Owner decisions (security and policy)
+
+Each needs a choice from the owner; the code keeps its current behaviour until then.
+
+- **GG-35, cash-on-delivery limits.** Orders are rate-limited per client (30 a minute). Choose whether to add a
+  per-customer cap on unshipped COD orders (for example 3) and/or a maximum COD order value. Either changes who can
+  order, so it isn't set by default.
+- **GG-37, early token revocation.** Access tokens last 15 minutes and can't be revoked before that; password
+  changes and resets, reuse of an old refresh token and admin promotion revoke all of a user's refresh tokens (logout
+  revokes that session's), so access ends within 15 minutes. Choose:
+  keep this; shorten access tokens to 5 minutes (more refresh calls); or check a per-user token version on every
+  request (immediate revocation, one database read per request).
+- **GG-38, refresh grace.** A rotated refresh token can be exchanged again for 30 seconds, so several tabs refreshing
+  at once stay signed in. Choose: keep it; or allow one reuse only (a third simultaneous tab is signed out).
+- **GG-39, account enumeration.** Registration says when an email is already registered, and accounts aren't
+  verified. Choose: keep it (clearer for shoppers); or a neutral reply plus email verification (needs working SMTP
+  and a verification flow).
+- **GG-55, homepage figures.** Replace the hero's figures with ones you can back, or remove them.

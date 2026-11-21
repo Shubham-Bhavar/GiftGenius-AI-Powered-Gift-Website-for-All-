@@ -241,7 +241,18 @@ export function handlers(db) {
       return HttpResponse.json(cartDto(db, user.id));
     })),
     http.post(`${API}/cart/merge`, authed(async ({ request, user }) => {
-      (await request.json()).items.forEach((i) => addLine(db, user.id, i));
+      // Like the API (GG-45): a merge already made under this Idempotency-Key adds nothing again.
+      const key = request.headers.get('Idempotency-Key');
+      db.mergeKeys ??= new Set();
+      db.mergeCalls = (db.mergeCalls ?? 0) + 1;
+      if (!key || !db.mergeKeys.has(`${user.id}:${key}`)) {
+        (await request.json()).items.forEach((i) => addLine(db, user.id, i));
+        if (key) db.mergeKeys.add(`${user.id}:${key}`);
+      }
+      if (db.loseMergeResponse) {
+        db.loseMergeResponse = false;
+        return HttpResponse.error(); // applied, but the reply never arrives
+      }
       return HttpResponse.json(cartDto(db, user.id));
     })),
     http.patch(`${API}/cart/items/:id`, authed(async ({ request, params, user }) => {
@@ -327,9 +338,11 @@ export function handlers(db) {
       db.carts[user.id] = [];
       return HttpResponse.json(o.dto);
     })),
-    http.get(`${API}/orders/track`, ({ request }) => {
-      const p = new URL(request.url).searchParams;
-      const o = db.orders.find((x) => x.dto.orderNumber === p.get('orderNumber')?.toUpperCase() && x.dto.shipping.email === p.get('email'));
+    // Only the POST form, as the site sends it (GG-40): a lookup with the email in the URL would find no handler.
+    http.post(`${API}/orders/track`, async ({ request }) => {
+      db.trackUrls = [...(db.trackUrls ?? []), request.url];
+      const p = await request.json();
+      const o = db.orders.find((x) => x.dto.orderNumber === p.orderNumber?.toUpperCase() && x.dto.shipping.email === p.email);
       if (!o) return problem(404, 'No order matches that order ID and email. Check both and try again.');
       const d = o.dto;
       return HttpResponse.json({ orderNumber: d.orderNumber, status: d.status, paymentMethod: d.paymentMethod, paymentStatus: d.paymentStatus, deliveryType: d.deliveryType,
@@ -337,7 +350,9 @@ export function handlers(db) {
     }),
     http.get(`${API}/orders/:number`, authed(({ params, user }) => {
       const o = db.orders.find((x) => x.userId === user.id && x.dto.orderNumber === params.number);
-      return o ? HttpResponse.json(o.dto) : problem(404, 'Order not found.');
+      // GG-53: like the API without an email provider unless a test says otherwise.
+      return o ? HttpResponse.json({ ...o.dto, confirmationEmail: db.confirmationEmail === undefined ? 'NOT_SENT' : db.confirmationEmail })
+        : problem(404, 'Order not found.');
     })),
     http.get(`${API}/orders`, authed(({ user }) => {
       const content = db.orders.filter((o) => o.userId === user.id).map(({ dto }) => ({
@@ -528,10 +543,12 @@ function sellerHandlers(db, authed) {
     if (p.sellerId !== user.id) return [null, problem(403, 'You can only manage your own products.')];
     return [p, null];
   };
+  // Like the API (GG-36): with stockSeen, only the change made in the form is applied to the stock as it is now.
+  const stockAfter = (p, body) => (body.stockSeen == null ? body.stock : p.stock + (body.stock - body.stockSeen));
   const apply = (p, body) => Object.assign(p, {
     name: body.name, description: body.description, longDescription: body.longDescription, category: body.category,
     occasion: body.occasion ?? [], tags: body.tags ?? [], price: body.price, originalPrice: body.compareAtPrice ?? body.price,
-    stock: body.stock, inStock: body.stock > 0, image: body.image, alt: body.alt ?? body.name,
+    stock: stockAfter(p, body), inStock: stockAfter(p, body) > 0, image: body.image, alt: body.alt ?? body.name,
   });
   const list = (p) => { p.active = p.status === 'APPROVED'; };
   db.sellerRequests = [];

@@ -14,6 +14,15 @@ const toForm = (p) => ({
   tags: p.tags.join(', '), occasion: p.occasion.join(', '), relationship: p.relationship.join(', '), personality: p.personality.join(', '),
 });
 const list = (s) => s.split(',').map((x) => x.trim()).filter(Boolean);
+
+/** When orders came in while the form was open, the saved stock differs from the number typed: say so. */
+export function stockNote(saved, entered) {
+  if (!saved || typeof saved.stock !== 'number' || saved.stock === entered) return null;
+  const sold = entered - saved.stock;
+  return sold > 0
+    ? `Saved ✓ Stock is ${saved.stock}: ${sold} sold while you were editing.`
+    : `Saved ✓ Stock is ${saved.stock}.`;
+}
 const BADGE_CLASS = { bestseller: 'pbadge--bestseller', new: 'pbadge--new', sale: 'pbadge--sale', 'top rated': 'pbadge--rated' };
 
 /** Create or edit a product (GiftGenius's own, or a seller's). */
@@ -36,13 +45,14 @@ export function ProductForm({ product, onDone }) {
       relationship: list(f.relationship), personality: list(f.personality),
       rating: product?.rating, reviewCount: product?.reviewCount, forWhom: product?.forWhom,
       isCultural: product?.isCultural, isFestival: product?.isFestival,
+      // The stock this form showed: the server applies only the change made here, so units sold meanwhile stay sold.
+      stockSeen: product ? product.stock : undefined,
     };
     try {
-      if (product) await adminApi.updateProduct(product.id, body);
-      else await adminApi.createProduct(body);
+      const saved = product ? await adminApi.updateProduct(product.id, body) : await adminApi.createProduct(body);
       [adminKeys.all(), catalogKeys.products(), catalogKeys.product(), catalogKeys.catalog(), catalogKeys.categories()]
         .forEach((queryKey) => qc.invalidateQueries({ queryKey }));
-      toast(product ? 'Product saved ✓' : 'Product created ✓');
+      toast(!product ? 'Product created ✓' : stockNote(saved, body.stock) ?? 'Product saved ✓');
       onDone();
     } catch (err) {
       setState({ busy: false, error: err, errors: err.errors || {} });

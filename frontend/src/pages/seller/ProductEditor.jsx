@@ -11,6 +11,7 @@ import { PRODUCT_STATUS, SELLER_CATEGORIES, SELLER_OCCASIONS, productState } fro
 import { canEditProducts, LoadError, Skeleton, useStore } from './shared.jsx';
 import { catalogKeys } from '../../services/catalog.js';
 import { HTTPS_URL_RE, MARKUP_RE } from '../../utils/validation.js';
+import { stockNote } from '../admin/ProductForm.jsx';
 
 const EMPTY_PRODUCT = {
   name: '', description: '', longDescription: '', category: '', occasion: [], tags: '', price: '', compareAtPrice: '',
@@ -60,11 +61,13 @@ export function validateProduct(f) {
   return e;
 }
 
-const productBody = (f, submit) => ({
+const productBody = (f, submit, product) => ({
   name: f.name.trim(), description: f.description.trim(), longDescription: f.longDescription.trim() || null,
   category: f.category, occasion: f.occasion, tags: tagList(f.tags), price: Number(f.price),
   compareAtPrice: f.compareAtPrice === '' ? null : Number(f.compareAtPrice), stock: Number(f.stock),
   image: f.image.trim(), alt: f.alt.trim() || null, submit,
+  // The stock this form showed: only the change made here is applied, so units sold meanwhile stay sold (GG-36).
+  stockSeen: product ? product.stock : undefined,
 });
 
 export function SellerProductEditor() {
@@ -112,12 +115,14 @@ function ProductEditorForm({ product, store }) {
     }
     setState({ busy: submit ? 'submit' : 'save', error: null, errors: {} });
     try {
-      const body = productBody(f, submit);
+      const body = productBody(f, submit, product);
       const saved = product ? await sellerApi.updateProduct(product.id, body) : await sellerApi.createProduct(body);
       qc.invalidateQueries({ queryKey: sellerKeys.all() });
       [catalogKeys.product(), catalogKeys.products(), catalogKeys.catalog()].forEach((queryKey) => qc.invalidateQueries({ queryKey }));
-      toast(saved.status === 'PENDING_APPROVAL' ? `${saved.name} sent for approval ✓`
-        : saved.status === 'APPROVED' ? `${saved.name} saved ✓ The shop shows your changes.` : `${saved.name} saved as a draft ✓`);
+      const stock = product ? stockNote(saved, body.stock) : null;
+      toast((saved.status === 'PENDING_APPROVAL' ? `${saved.name} sent for approval ✓`
+        : saved.status === 'APPROVED' ? `${saved.name} saved ✓ The shop shows your changes.` : `${saved.name} saved as a draft ✓`)
+        + (stock ? ` ${stock.replace('Saved ✓ ', '')}` : ''));
       navigate('/seller/products');
     } catch (err) {
       setState({ busy: null, error: err, errors: err.errors || {} });

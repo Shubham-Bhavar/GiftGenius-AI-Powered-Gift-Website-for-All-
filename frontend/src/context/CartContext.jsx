@@ -5,6 +5,8 @@ import { storage } from '../utils/storage.js';
 import { useAuth } from './AuthContext.jsx';
 
 export const GUEST_CART_KEY = 'gg-cart';
+/** The pending merge of the guest cart: its Idempotency-Key and the cart it was made for (GG-45). */
+export const MERGE_KEY = 'gg-cart-merge';
 export const MAX_QTY = 10;
 
 const CartContext = createContext(null);
@@ -42,6 +44,25 @@ export function readGuestCart(value) {
   return [...byKey.values()];
 }
 
+const newKey = () => (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+
+/**
+ * The Idempotency-Key for merging these guest lines into the account. It stays the same while the guest cart does,
+ * so a merge retried after a lost response (or by a second tab) is added once; a guest cart that changed gets a new
+ * key, so it is merged as the new cart it is. Exported for tests.
+ */
+/** The guest lines as the merge sends them (and as its key is keyed on). */
+const mergeLines = (guest) => guest.map(({ productId, quantity, customName, customMessage }) => ({ productId, quantity, customName, customMessage }));
+
+export function mergeKeyFor(lines) {
+  const cart = JSON.stringify(lines);
+  const saved = storage.getJson(MERGE_KEY, null);
+  if (saved && typeof saved.key === 'string' && saved.cart === cart) return saved.key;
+  const key = newKey();
+  storage.setJson(MERGE_KEY, { key, cart });
+  return key;
+}
+
 /**
  * One cart API for everyone. Guests keep lines in localStorage (synced across tabs); signed-in
  * shoppers use the server cart. On sign-in the guest cart is merged into the account.
@@ -53,6 +74,8 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     storage.setJson(GUEST_CART_KEY, guest);
+    // The merge key is made with the cart, not at sign-in, so tabs that merge at the same moment share it.
+    if (guest.length > 0) mergeKeyFor(mergeLines(guest));
   }, [guest]);
 
   useEffect(() => {
@@ -77,13 +100,15 @@ export function CartProvider({ children }) {
     if (!user || guest.length === 0 || merging.current) return;
     merging.current = true;
     setMergePending(true);
+    const lines = mergeLines(guest);
     cartApi
-      .mergeCart(guest.map(({ productId, quantity, customName, customMessage }) => ({ productId, quantity, customName, customMessage })))
+      .mergeCart(lines, mergeKeyFor(lines))
       .then(async (cart) => {
         // A cart read started before the merge committed must not land after it and undo it.
         await qc.cancelQueries({ queryKey: cartKeys.cart() });
         qc.setQueryData(cartKeys.cart(), cart);
         setGuest([]);
+        storage.remove(MERGE_KEY);
       })
       .catch(() => {
         /* keep the guest lines; the next sign-in retries */

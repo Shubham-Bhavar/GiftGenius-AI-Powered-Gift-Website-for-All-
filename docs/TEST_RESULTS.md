@@ -576,3 +576,34 @@ Still uncommitted on `feat/gift-decision-assistant` (HEAD `8486cc7`), same throw
   of the backend and frontend images, then the production compose file validated). CI only builds the images: no
   container was started, so the image's health check is still unverified. Locally the images still can't be built
   ("exec format error" on the Alpine base images).
+
+## Completion mission (2026-11-14)
+
+Uncommitted on `feat/gift-decision-assistant` (HEAD `09d91df`). Throw-away MySQL 8.0.43 on 127.0.0.1:3307, Java 21,
+Maven 3.9.11, Node 22, GSAP 3.15.0. No real email, payment, AI call or production system was used.
+
+| Command | Result |
+|---|---|
+| `mvn -o -B clean verify -Pintegration` (backend unit, Surefire) | 361 run, 0 failures, 0 errors, 0 skipped (358 before; `EmailStatusTest` 3) |
+| same run, integration (Failsafe, MySQL 8.0.43) | 196 run, 0 failures, 0 errors, 0 skipped (180 before; `StockEditIT` 5, `CartMergeIdempotencyIT` 5, `TrackingLookupIT` 4, `OrderConfirmationEmailIT` 2); BUILD SUCCESS |
+| `npx vitest run` | 21 files, 470 passed, 0 failed, 0 skipped (454 before; `integrity.test.jsx` 11, `motion.test.jsx` 4, one more in `seller.test.jsx`) |
+| `npx eslint .` | 0 problems |
+| `npx vite build` | OK; GSAP 70 KB and ScrollTrigger 43 KB (27.5 and 17.6 KB gzipped) in their own chunks, loaded by the homepage hero only; the existing 3D studio chunk warning remains |
+| `npm audit` (all dependencies) | 0 vulnerabilities (3 moderate `minimatch` advisories in ESLint's tree fixed with `npm audit fix`) |
+| Deliberate breaks | 12 run, 12 caught (each GG-36, GG-45, GG-53 and GG-40 fix undone in backend and frontend, and the hero's cleanup and reduced-motion guard) |
+| Flyway upgrade | the populated demo database (1 order, 2 users) went from V9 to V10 with its data intact; the empty-database path runs in every integration run |
+| Real browser (built-in pane, reduced motion on this PC) | hero shown at once without loading GSAP; with motion forced on, the entrance held and then showed the hero, the collage followed the scroll, and stopping left no inline styles; tracking sent as `POST` with no email in the URL; the just-placed order page said no confirmation was sent (no SMTP); every changed page fits 375 px |
+
+- **Found in the real browser:** the browser pane, being hidden, ran no animation frames, so the hero's GSAP entrance
+  never advanced and the hero stayed invisible once GSAP had loaded (the fail-safe had been cancelled at that point).
+  The fail-safe now stays armed until the entrance completes and jumps it to the end if frames don't come; re-checked
+  in the same frame-starved pane: hidden at 1 s, fully shown at 3 s.
+- **Code review** (`/code-review`, high): 7 findings; 4 fixed (two tabs could mint different cart-merge keys; CI
+  `curl | grep -q` under pipefail; email-status polling on every order visit; the hero replaying on every homepage
+  visit), 3 cleanups recorded and skipped (shared Idempotency-Key helper, the record copy in `OrderDto`, the
+  "email configured" rule living in two places).
+- **Docker:** not run locally. Docker Desktop on this PC can't run current Alpine images (`node:22-alpine` "exec
+  format error", `eclipse-temurin:21-jre-alpine` I/O error, still after removing and re-pulling them; `alpine:3.20`
+  works), which points to corrupted local image storage. CI's Docker job now also starts the stack and checks it;
+  that runs on the next push.
+- **Not tested:** real SMTP delivery, live Gemini, Razorpay test mode, any production host or database, backups.

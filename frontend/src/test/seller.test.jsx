@@ -260,6 +260,20 @@ describe('Seller Center', () => {
     expect(updated.image).toBe('https://img.example.com/rose-candle.jpg');
   });
 
+  it('keeps units sold while the edit form was open (GG-36), and says so', async () => {
+    signedInAs(SANA);
+    const { user } = renderApp('/seller/products/23/edit');
+    await screen.findByRole('heading', { name: '✏️ Edit: Rose Petal Candle' });
+    const shown = Number(screen.getByLabelText('Stock').value);
+    db.products.find((p) => p.id === 23).stock = shown - 3; // three sell while the form is open
+    await user.clear(screen.getByLabelText('Stock'));
+    await user.type(screen.getByLabelText('Stock'), String(shown + 10)); // the seller restocks by 10
+    await user.click(screen.getByRole('button', { name: 'Save as Draft' }));
+    expect(await screen.findByText(new RegExp(`Stock is ${shown + 7}: 3 sold while you were editing`))).toBeInTheDocument();
+    expect(db.products.find((p) => p.id === 23).stock).toBe(shown + 7);
+    expect(db.sellerRequests.find((r) => r.type === 'update').body).toMatchObject({ stock: shown + 10, stockSeen: shown });
+  });
+
   it('shows only the seller’s own order lines and updates their fulfilment', async () => {
     signedInAs(SANA);
     const { user, unmount } = renderApp('/seller/orders');

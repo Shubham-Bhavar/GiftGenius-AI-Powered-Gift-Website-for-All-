@@ -33,6 +33,8 @@ class RateLimitFilterTest {
         assertThat(RateLimitFilter.bucketFor("POST", "/api/auth/password/forgot")).isEqualTo(Bucket.AUTH);
         assertThat(RateLimitFilter.bucketFor("POST", "/api/auth/refresh")).isEqualTo(Bucket.PUBLIC);
         assertThat(RateLimitFilter.bucketFor("GET", "/api/orders/track")).isEqualTo(Bucket.PUBLIC);
+        assertThat(RateLimitFilter.bucketFor("POST", "/api/orders/track")).as("the body form (GG-40), same limit")
+                .isEqualTo(Bucket.PUBLIC);
         assertThat(RateLimitFilter.bucketFor("POST", "/api/newsletter/subscribe")).isEqualTo(Bucket.PUBLIC);
         assertThat(RateLimitFilter.bucketFor("POST", "/api/contact")).isEqualTo(Bucket.PUBLIC);
         assertThat(RateLimitFilter.bucketFor("GET", "/api/products")).isNull();

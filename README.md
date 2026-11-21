@@ -30,6 +30,8 @@ giftgenius/
 
 **Contact form**: messages are saved to the database and emailed to `ADMIN_EMAIL` (when SMTP is configured). The store owner reads and closes them in Store admin → Messages.
 
+**Homepage motion**: after the entry, the hero's text and gift collage come in with a short GSAP timeline, and the collage drifts as the hero scrolls away. GSAP loads on the homepage only, moves only transforms and opacity, and nothing animates (or is hidden) with reduced motion.
+
 **First visit**: the entry (the Gift Studio's box opens on a welcome card), then a welcome screen: **Log In**, **Sign Up** or **Continue without an account**. Guests shop with a cart and wishlist kept on their device (merged into the account whenever they sign in); the choice is remembered, and signed-in shoppers go straight to the shop. Visitors who prefer reduced motion, or who save data, see two stills of the same box instead of the film. Checkout asks guests to sign in, keeping the cart, and then continues to checkout.
 
 **Delivery address**: at checkout, **📍 Use my current location** fills street, area, city, state and pincode. It asks for permission only when clicked, reads the position once (no tracking), sends only rounded coordinates (about 11 m) to our API, which looks them up through OpenStreetMap Nominatim and never stores or logs them. If permission is refused, the browser can't locate, or the lookup fails, shoppers simply type the address.
@@ -88,6 +90,8 @@ The frontend ships a `frontend/vercel.json` that serves `index.html` for every a
 
 ## Production deployment
 
+Hosting requirements, every environment variable, backups and restore, SMTP (with SPF/DKIM/DMARC), Gemini, Razorpay test mode and monitoring are in [docs/OPERATIONS.md](docs/OPERATIONS.md).
+
 On a Linux server with Docker, and with your domain's DNS pointing at it (ports 80 and 443 open):
 
 ```bash
@@ -127,9 +131,9 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 ## Tests
 
 ```bash
-cd backend && mvn verify                  # unit tests (351)
-cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (179)
-cd frontend && npm run lint && npm test   # 454 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
+cd backend && mvn verify                  # unit tests (361)
+cd backend && IT_DB_PASSWORD=... mvn verify -Pintegration   # + integration tests on real MySQL (196)
+cd frontend && npm run lint && npm test   # 470 tests: every page, flow and overlay against a mock of the API, plus axe-core accessibility checks
 ```
 
 The **integration tests** start the whole application against a real MySQL database, which is Flyway-cleaned first. A local fake Razorpay server stands in for payments, and the LLM is mocked. They cover:
@@ -195,14 +199,14 @@ CI runs all three suites, with MySQL as a service container, and builds the Dock
 |---|---|
 | Auth | `POST /api/auth/register · login · refresh · logout`, `GET/PATCH /api/auth/me`, `POST /api/auth/password/forgot · reset · change` |
 | Catalog | `GET /api/products?q&category&tag&occasion&minPrice&maxPrice&sort&page&size`, `/api/products/{id}`, `/{id}/related`, `/categories` |
-| Cart | `GET/DELETE /api/cart`, `POST /api/cart/items`, `PATCH/DELETE /api/cart/items/{id}`, `POST /api/cart/merge` |
+| Cart | `GET/DELETE /api/cart`, `POST /api/cart/items`, `PATCH/DELETE /api/cart/items/{id}`, `POST /api/cart/merge` (optional Idempotency-Key: the same guest cart merged twice is added once) |
 | Wishlist | `GET /api/wishlist`, `PUT/DELETE /api/wishlist/{productId}`, `POST /api/wishlist/merge` |
 | Checkout | `GET /api/checkout/options`, `POST /api/checkout/quote` |
-| Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `GET /api/orders/track?orderNumber&email` |
+| Orders | `POST /api/orders` (Idempotency-Key), `GET /api/orders`, `GET /api/orders/{n}`, `POST /api/orders/{n}/payment/verify`, `POST /api/orders/{n}/cancel`, `POST /api/orders/track` (`{orderNumber, email}` in the body, used by the site) or the older `GET /api/orders/track?orderNumber&email`; `GET /api/orders/{n}` also says what happened to the confirmation email (`confirmationEmail`: `SENDING`, `SENT`, `FAILED` or `NOT_SENT`) |
 | AI | `POST /api/ai/recommendations` (quiz answers, optional `avoid`; picks with `match` and `checks`, plus `avoided` and a budget `plan`), `POST /api/ai/gift-message`, `POST /api/ai/gift-request` (a request in the shopper's own words; used by the Gift Studio's *Start from what you want to say*), `POST /api/ai/assistant` (`messages`: up to 8 of the shopper's messages, oldest first; a reply, an optional follow-up question and catalogue picks) |
 | Gift Studio | `POST /api/gift-box/suggestions` (`budget`, 2–4 gifts and the quiz answers; boxes of different kinds within the budget, each gift with its reason, plus compatibility checks), `POST /api/gift-box/check` (up to 6 product ids; total and checks). Public; nothing is stored |
 | Search | `GET /api/search?q&page&size` (gift-aware search; backend only, the storefront uses `/api/products?q`) |
-| Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}` |
+| Admin | `/api/admin/products` (CRUD), `/api/admin/orders?status=CONFIRMED,PACKED` (list by one or more statuses, detail, `PATCH /{n}/status`), `/api/admin/coupons`, `GET /api/admin/stats`, `GET /api/admin/messages?handled`, `PATCH /api/admin/messages/{id}`. Product edits may send `stockSeen` (the stock the form showed): only the change made is applied, so units sold meanwhile stay sold |
 | Location | `POST /api/location/reverse` (signed in; `{latitude, longitude}` → address parts) |
 | Seller (SELLER role) | `GET /api/seller/me · dashboard · analytics`, `PUT /api/seller/profile`, `POST /api/seller/profile/reapply`, `GET/POST /api/seller/products`, `GET/PUT/DELETE /api/seller/products/{id}`, `POST /api/seller/products/{id}/submit`, `GET /api/seller/orders`, `GET /api/seller/orders/{n}`, `PATCH /api/seller/orders/{n}/status` |
 | Becoming a seller | `POST /api/auth/register` with a `seller` object, or `POST /api/auth/seller-application` (signed-in customer) |
