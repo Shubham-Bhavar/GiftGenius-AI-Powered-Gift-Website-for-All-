@@ -91,8 +91,13 @@ jobs:
           if docker compose exec -T backend wget -qO- http://127.0.0.1:9091/actuator/prometheus; then
             echo "metrics answered without a token"; exit 1
           fi
-          # The management port is never published.
-          if docker compose port backend 9091 2>/dev/null | grep -q ':'; then echo "port 9091 is published"; exit 1; fi
+          # The management port is never published. `docker port` fails when the container has no host mapping for it
+          # and prints the mapping when it has one (`docker compose port` prints ":0" for an unpublished port).
+          backend=$(docker compose ps -q backend)
+          if [ -z "$backend" ]; then echo "no backend container to check"; exit 1; fi
+          if docker port "$backend" 9091 >/dev/null 2>&1; then
+            echo "port 9091 is published:"; docker port "$backend" 9091; exit 1
+          fi
       - name: Logs if the stack failed
         if: failure()
         run: docker compose logs --no-color --tail=200
