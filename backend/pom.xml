@@ -69,6 +69,14 @@
       <artifactId>mysql-connector-j</artifactId>
       <scope>runtime</scope>
     </dependency>
+    <!-- TiDB Cloud: Hibernate's TiDBDialect (version from Spring Boot). Selected only where the host sets
+         SPRING_JPA_DATABASE_PLATFORM=org.hibernate.community.dialect.TiDBDialect; MySQL keeps the default dialect.
+         Needed because MySQL 8's "FOR UPDATE OF <alias>" is read by TiDB as a table name. -->
+    <dependency>
+      <groupId>org.hibernate.orm</groupId>
+      <artifactId>hibernate-community-dialects</artifactId>
+      <scope>runtime</scope>
+    </dependency>
     <dependency>
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
