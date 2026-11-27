@@ -1,10 +1,13 @@
 # ---- build ----
 FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /src
-COPY pom.xml .
-RUN mvn -q -B dependency:go-offline
+COPY pom.xml maven-settings.xml ./
+# Maven Central rate-limits shared cloud build addresses (HTTP 429). Fetch through Google's public mirror of Maven
+# Central; only if that fails, fall back to Maven Central itself. -C: fail on any checksum mismatch.
+RUN mvn -q -B -C -s maven-settings.xml dependency:go-offline \
+ || mvn -q -B -C dependency:go-offline
 COPY src ./src
-RUN mvn -q -B package -DskipTests
+RUN mvn -q -B -C -s maven-settings.xml package -DskipTests
 
 # ---- run ----
 FROM eclipse-temurin:21-jre-alpine
