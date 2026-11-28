@@ -8,6 +8,9 @@
  * - A 401 on an authenticated call triggers one refresh, then the call is retried once.
  * - Refreshes are serialised within the tab (shared promise) and across tabs (Web Locks API), so two
  *   tabs never present the same rotating refresh token at once.
+ * - Every request gives up after a time limit (REQUEST_TIMEOUT_MS, or the call's `timeoutMs`) with an ApiError marked
+ *   `timedOut`; a caller's own AbortSignal still cancels it with the usual AbortError.
+ * - The number of requests in flight is published (onPendingChange), so the UI can say when the server is slow to wake.
  */
 import { storage } from '../../utils/storage.js';
 
@@ -33,9 +36,36 @@ export class ApiError extends Error {
   }
 }
 
+/**
+ * How long one request may wait for the server's answer. A sleeping free-tier backend takes about two minutes to start,
+ * so the limit sits above that; past it the request is abandoned instead of leaving the page waiting indefinitely.
+ * VITE_API_TIMEOUT_MS overrides it at build time.
+ */
+export const REQUEST_TIMEOUT_MS = Number(import.meta.env.VITE_API_TIMEOUT_MS) > 0
+  ? Number(import.meta.env.VITE_API_TIMEOUT_MS) : 150_000;
+export const TIMEOUT_MESSAGE = 'The server is taking too long to answer. Please try again in a moment.';
+
+let requestTimeoutMs = REQUEST_TIMEOUT_MS;
+/** The time limit in force (tests shorten it). */
+export const requestTimeout = () => requestTimeoutMs;
+
 let accessToken = null;
 let refreshing = null;
 const listeners = new Set();
+
+let pending = 0;
+const pendingListeners = new Set();
+/** Requests currently waiting for the server. */
+export const pendingRequests = () => pending;
+/** Subscribe to the number of requests in flight; returns the unsubscribe function. */
+export function onPendingChange(fn) {
+  pendingListeners.add(fn);
+  return () => pendingListeners.delete(fn);
+}
+function changePending(by) {
+  pending = Math.max(0, pending + by);
+  pendingListeners.forEach((fn) => fn(pending));
+}
 
 /** Subscribe to session changes: called with the user object, or null on sign-out. */
 export function onSessionChange(fn) {
@@ -74,10 +104,23 @@ async function parse(res) {
 }
 
 /** One fetch with the API's headers; no refresh, no error parsing (the auth service's logout uses it). */
-export async function rawFetch(path, { method = 'GET', body, headers = {}, auth = true, signal } = {}) {
+export async function rawFetch(path, { method = 'GET', body, headers = {}, auth = true, signal, timeoutMs } = {}) {
   const h = { Accept: 'application/json', ...headers };
   if (body !== undefined) h['Content-Type'] = 'application/json';
   if (auth && accessToken) h.Authorization = `Bearer ${accessToken}`;
+
+  // One signal for both reasons to stop: the caller cancelling, or the time limit passing.
+  const controller = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs ?? requestTimeoutMs);
+  const onCallerAbort = () => controller.abort(signal.reason);
+  if (signal?.aborted) onCallerAbort();
+  else signal?.addEventListener('abort', onCallerAbort, { once: true });
+
+  changePending(1);
   let res;
   try {
     res = await fetch(BASE + path, {
@@ -85,11 +128,20 @@ export async function rawFetch(path, { method = 'GET', body, headers = {}, auth 
       headers: h,
       body: body === undefined ? undefined : JSON.stringify(body),
       credentials: 'include',
-      signal,
+      signal: controller.signal,
     });
   } catch (e) {
-    if (e?.name === 'AbortError') throw e;
+    if (timedOut) {
+      const err = new ApiError(0, TIMEOUT_MESSAGE);
+      err.timedOut = true;
+      throw err;
+    }
+    if (e?.name === 'AbortError' || signal?.aborted) throw e;
     throw new ApiError(0, "We couldn't reach GiftGenius. Check your connection and try again.");
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', onCallerAbort);
+    changePending(-1);
   }
   return res;
 }
@@ -150,4 +202,11 @@ export function __resetApiForTests() {
   accessToken = null;
   refreshing = null;
   listeners.clear();
+  requestTimeoutMs = REQUEST_TIMEOUT_MS;
+  pending = 0;
+}
+
+/** For tests only: a shorter time limit for every request. */
+export function __setRequestTimeoutForTests(ms) {
+  requestTimeoutMs = ms;
 }

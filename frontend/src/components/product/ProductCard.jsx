@@ -127,15 +127,19 @@ export function ProductGrid({ products, reasons, id, label = 'Products' }) {
   );
 }
 
-export function ProductGridSkeleton({ count = 8 }) {
+/** Placeholder cards while products load; the cards are hidden from screen readers, which hear `label` instead. */
+export function ProductGridSkeleton({ count = 8, label = 'Loading gifts…' }) {
   return (
-    <div className="product-grid" aria-hidden="true">
-      {Array.from({ length: count }, (_, i) => (
-        <div key={i} className="pcard pcard--skeleton">
-          <div className="pcard-img" />
-          <div className="pcard-body"><p className="pcard-cat" /><h3 className="pcard-name" /></div>
-        </div>
-      ))}
-    </div>
+    <>
+      <p className="sr-only" role="status">{label}</p>
+      <div className="product-grid" aria-hidden="true">
+        {Array.from({ length: count }, (_, i) => (
+          <div key={i} className="pcard pcard--skeleton">
+            <div className="pcard-img" />
+            <div className="pcard-body"><p className="pcard-cat" /><h3 className="pcard-name" /></div>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }

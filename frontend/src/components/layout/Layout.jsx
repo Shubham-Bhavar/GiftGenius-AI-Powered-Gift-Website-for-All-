@@ -9,6 +9,7 @@ import WelcomeGate from '../intro/WelcomeGate.jsx';
 import { Announcement } from './Announcement.jsx';
 import { Header } from './Header.jsx';
 import { Footer } from './Footer.jsx';
+import { ServerWakeNotice } from './ServerWakeNotice.jsx';
 import { Spinner } from '../common/ui.jsx';
 import { useAuth } from '../../context/AuthContext.jsx';
 import { useUi } from '../../context/UiContext.jsx';
@@ -35,6 +36,7 @@ export default function Layout() {
       <Announcement />
       <Header />
       <main id="main-content" tabIndex={-1}>
+        <ServerWakeNotice />
         {ready ? <Outlet /> : <Spinner label="Restoring your session…" />}
       </main>
       <Footer />

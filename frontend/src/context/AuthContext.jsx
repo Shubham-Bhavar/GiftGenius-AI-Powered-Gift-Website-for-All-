@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { forgetSession, hasSessionHint, onSessionChange, refreshSession } from '../services/api/client.js';
+import { forgetSession, hasSessionHint, onSessionChange, refreshSession, requestTimeout } from '../services/api/client.js';
 import { authApi } from '../services/auth.js';
 import { cartKeys } from '../services/cart.js';
 import { wishlistKeys } from '../services/wishlist.js';
@@ -24,14 +24,17 @@ export function AuthProvider({ children }) {
   // Restore the session. refreshSession clears the hint only when the session has really ended, so a hint that is
   // still there after it answers null means the server couldn't be reached (a deploy, a network blip): try again
   // a couple of times before showing the site, then again when the tab regains focus or the network comes back.
+  // Retries stop once the request time limit has been used up (a slow server, not a blip): the site shows rather than
+  // keeping a returning shopper on "Restoring your session…" for several more minutes.
   useEffect(() => {
     if (!hasSessionHint()) return undefined;
     let cancelled = false;
     let timer;
+    const started = Date.now();
     const attempt = async (n) => {
       const restored = await refreshSession();
       if (cancelled) return;
-      if (restored || !hasSessionHint() || n >= RESTORE_RETRIES) {
+      if (restored || !hasSessionHint() || n >= RESTORE_RETRIES || Date.now() - started >= requestTimeout()) {
         setReady(true);
         return;
       }

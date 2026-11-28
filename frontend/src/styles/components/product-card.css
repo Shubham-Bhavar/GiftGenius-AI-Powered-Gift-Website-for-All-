@@ -265,3 +265,7 @@
 /* Skeleton loader */
 .pcard--skeleton .pcard-img { background: linear-gradient(90deg, var(--cream-dark) 25%, var(--parchment) 50%, var(--cream-dark) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
 .pcard--skeleton .pcard-name, .pcard--skeleton .pcard-cat { height: 12px; border-radius: 4px; background: var(--cream-dark); animation: shimmer 1.5s infinite; }
+/* No shimmer at all for reduced motion (reduced-motion.css only shortens animations): plain placeholder blocks. */
+@media (prefers-reduced-motion: reduce) {
+  .pcard--skeleton .pcard-img, .pcard--skeleton .pcard-name, .pcard--skeleton .pcard-cat { animation: none; }
+}

@@ -88,6 +88,8 @@
 .gg-alert--error { color: var(--danger); border-color: rgba(184,50,50,0.3); background: rgba(184,50,50,0.06); }
 .gg-alert--warn { color: #9a6200; border-color: rgba(212,175,55,0.45); background: var(--gold-dim); }
 .gg-alert--info { color: var(--teal-dark); border-color: rgba(110,198,207,0.4); background: var(--teal-pale); }
+/* "Our free server is waking up…" (ServerWakeNotice): the page's width, above its content. Empty when not shown. */
+.wake-notice .gg-alert { width: 90%; max-width: 1180px; margin: 12px auto 0; justify-content: flex-start; }
 [data-theme="dark"] .gg-alert--error { color: #ff8a80; }
 [data-theme="dark"] .gg-alert--warn { color: var(--gold-light); }
 [data-theme="dark"] .gg-alert--info { color: var(--teal); }

@@ -252,7 +252,7 @@ export default function GiftFinder() {
             {phase === 'thinking' && (
               <div className="thinking-box">
                 <div className="thinking-dots"><span /><span /><span /></div>
-                <p>Scoring your matches…</p>
+                <p role="status">Scoring your matches…</p>
               </div>
             )}
 
